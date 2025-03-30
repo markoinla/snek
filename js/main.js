@@ -106,6 +106,7 @@ function resetGame() {
 
     // Reset UI elements
     UI.resetUI(0); // Reset score display, hide game over, etc.
+    UI.updateKills(0); // Initialize kill counter
 
     // Reset camera position/focus? (Optional, updateCamera handles it)
     // gameState.camera.position.set(0, CONFIG.CAMERA_HEIGHT, CONFIG.CAMERA_DISTANCE);
@@ -172,6 +173,7 @@ function render() {
     if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
         Player.updatePlayer(deltaTime, currentTime, gameState);
         Enemy.updateEnemies(deltaTime, currentTime, gameState);
+        Enemy.checkEnemyRespawns(gameState); // Check if any enemies need to respawn
         Particles.updateParticles(deltaTime, gameState.scene); // Update particles regardless of game over? Your choice.
     } else {
         // Still update particles even if game is over?

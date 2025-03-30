@@ -17,7 +17,7 @@ export const ENEMY_START_LENGTH = 5;
 export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
-export const ENEMY_TAIL_COLOR = 0xE91E63; // Pink color for edible tail segments
+export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
 export const ENEMY_KILL_SCORE = 10; // Points awarded for killing an enemy
 export const ENEMY_RESPAWN_TIME = 10; // Seconds before a new enemy spawns after being killed
 

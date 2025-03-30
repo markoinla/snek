@@ -3,7 +3,7 @@ import * as CONFIG from './config.js';
 import { GEOMETRIES } from './constants.js';
 import { createSnakeSegmentMesh, generateUniquePosition, isPositionOccupied } from './utils.js';
 import { findClosestFood, addNewFoodItem } from './food.js';
-import { createExplosion } from './particleSystem.js';
+import { createExplosion, createKillEffect } from './particleSystem.js';
 import { checkObstacleCollision } from './obstacles.js'; // Make sure this import exists
 
 let enemyMeshes = {}; // Store meshes keyed by enemy ID: { id: [mesh1, mesh2,...] }
@@ -467,19 +467,39 @@ export function updateEnemyMaterialsAfterMove(enemy, gameState) {
     const meshes = enemyMeshes[enemy.id];
     if (!meshes) return;
     
-    // Update textures based on animation frame
-    updateEnemySnakeTextures(enemy, gameState);
-    
-    // Color the edible tail segments
-    const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
-    if (meshes.length >= tailSegments) {
-        // Apply edible tail color to the last N segments
-        for (let i = Math.max(1, meshes.length - tailSegments); i < meshes.length; i++) {
-            if (meshes[i] && meshes[i].material) {
-                meshes[i].material.color.setHex(CONFIG.ENEMY_TAIL_COLOR);
+    // Apply materials to each segment
+    meshes.forEach((mesh, index) => {
+        if (!mesh) return;
+        
+        if (index === 0) {
+            // Head
+            mesh.material = enemy.animationFrame === 0 ? 
+                materials.enemy.head1 : 
+                materials.enemy.head2;
+        } else {
+            // Check if this is one of the last N segments (tail)
+            const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
+            if (meshes.length >= tailSegments && 
+                index >= meshes.length - tailSegments) {
+                // This is part of the edible tail - create a lighter version of the body material
+                const tailMaterial = enemy.animationFrame === 0 ? 
+                    materials.enemy.body1.clone() : 
+                    materials.enemy.body2.clone();
+                
+                // Set to the configured lighter color
+                tailMaterial.color.setHex(CONFIG.ENEMY_TAIL_COLOR);
+                mesh.material = tailMaterial;
+            } else {
+                // Regular body segment
+                mesh.material = enemy.animationFrame === 0 ? 
+                    materials.enemy.body1 : 
+                    materials.enemy.body2;
             }
         }
-    }
+    });
+    
+    // Log for debugging
+    console.log(`Updated enemy ${enemy.id} materials. Tail segments colored: ${CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS}`);
 }
 
 // --- Collision Check (External) ---
@@ -531,14 +551,23 @@ export function killEnemySnake(enemyId, gameState) {
     // Create explosion effect at each segment
     if (meshes) {
         meshes.forEach((mesh, index) => {
-            // Create explosion effect with the enemy's color
-            createExplosion(
-                scene, 
-                gameState.camera, 
-                mesh.position.clone(), 
-                CONFIG.PARTICLE_COUNT_KILL / meshes.length, // Distribute particles among segments
-                CONFIG.PARTICLE_COLOR_KILL
-            );
+            if (index === 0) {
+                // Create special kill effect for the head
+                createKillEffect(
+                    scene, 
+                    gameState.camera, 
+                    mesh.position.clone()
+                );
+            } else {
+                // Create regular explosion effect for body segments
+                createExplosion(
+                    scene, 
+                    gameState.camera, 
+                    mesh.position.clone(), 
+                    CONFIG.PARTICLE_COUNT_KILL / meshes.length, // Distribute particles among segments
+                    CONFIG.PARTICLE_COLOR_KILL
+                );
+            }
             
             // Remove mesh from scene
             scene.remove(mesh);
@@ -551,6 +580,9 @@ export function killEnemySnake(enemyId, gameState) {
     
     // Schedule respawn
     const respawnTime = clock.getElapsedTime() + CONFIG.ENEMY_RESPAWN_TIME;
+    if (!enemies.respawnQueue) {
+        enemies.respawnQueue = [];
+    }
     enemies.respawnQueue.push({ id: enemyId, respawnTime });
     
     console.log(`Enemy ${enemyId} killed. Scheduled to respawn in ${CONFIG.ENEMY_RESPAWN_TIME} seconds.`);

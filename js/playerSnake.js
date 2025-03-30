@@ -487,6 +487,49 @@ function updatePowerUpState(currentTime, gameState) {
     }
 }
 
+// Updates textures for the entire snake based on animation frame and ghost mode
+export function updatePlayerSnakeTextures(gameState) {
+    const { playerSnake, materials } = gameState;
+    if (!materials?.snake) return;
+
+    const headMaterial = (playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2);
+    const bodyMaterial = (playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2);
+
+    playerSnakeMeshes.forEach((mesh, index) => {
+        if (!mesh) return;
+        const targetMaterial = (index === 0) ? headMaterial : bodyMaterial;
+        mesh.material = targetMaterial;
+        // Apply ghost effect
+        mesh.material.transparent = playerSnake.ghostModeActive;
+        mesh.material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
+        mesh.material.needsUpdate = true; // Ensure changes apply
+    });
+}
+
+// Function to update player materials after movement
+function updatePlayerMaterialsAfterMove(gameState) {
+    const { playerSnake, materials } = gameState;
+    if (playerSnakeMeshes.length === 0 || !materials?.snake) return;
+
+    const headMaterial = (playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2);
+    const bodyMaterial = (playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2);
+
+    // Update head mesh
+    playerSnakeMeshes[0].material = headMaterial;
+     // Update opacity/transparency based on ghost mode for head
+    playerSnakeMeshes[0].material.transparent = playerSnake.ghostModeActive;
+    playerSnakeMeshes[0].material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
+    playerSnakeMeshes[0].material.needsUpdate = true; // Important if changing transparency
+
+    // Update the segment that was previously the head (now the first body segment)
+    if (playerSnakeMeshes.length > 1) {
+        playerSnakeMeshes[1].material = bodyMaterial;
+        // Update opacity/transparency based on ghost mode for body
+        playerSnakeMeshes[1].material.transparent = playerSnake.ghostModeActive;
+        playerSnakeMeshes[1].material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
+         playerSnakeMeshes[1].material.needsUpdate = true;
+    }
+}
 
 // --- Death ---
 function triggerPlayerDeath(gameState) {

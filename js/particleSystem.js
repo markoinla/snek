@@ -100,6 +100,58 @@ export function createExplosion(scene, camera, position, count, color = 0xffffff
     }
 }
 
+// Create a special effect for killing enemy snakes
+export function createKillEffect(scene, camera, position) {
+    if (!particleMaterialRef || !scene || !camera) {
+        console.warn("Cannot create kill effect - material, scene or camera missing.");
+        return;
+    }
+    
+    // Create a more dramatic explosion with larger particles and longer lifespan
+    const particleCount = CONFIG.PARTICLE_COUNT_KILL;
+    const color = new THREE.Color(CONFIG.PARTICLE_COLOR_KILL);
+    const size = CONFIG.PARTICLE_SIZE * 1.5; // Larger particles
+    const lifespan = CONFIG.PARTICLE_LIFESPAN * 1.5; // Longer lifespan
+    const speed = CONFIG.PARTICLE_SPEED * 1.2; // Faster particles
+    
+    // Create particles in a spiral pattern
+    for (let i = 0; i < particleCount; i++) {
+        // Create particle geometry
+        const geometry = new THREE.SphereGeometry(size, 4, 4);
+        
+        // Clone the material and set its color
+        const material = particleMaterialRef.clone();
+        material.color.copy(color);
+        
+        // Create mesh
+        const particle = new THREE.Mesh(geometry, material);
+        
+        // Position at the explosion center
+        particle.position.copy(position);
+        
+        // Calculate spiral pattern
+        const angle = (i / particleCount) * Math.PI * 8; // 4 full rotations
+        const radius = (i / particleCount) * 5; // Increasing radius
+        const height = (i / particleCount) * 4 - 2; // Vertical spread
+        
+        // Set velocity based on spiral pattern
+        const velocity = new THREE.Vector3(
+            Math.cos(angle) * radius * speed,
+            height * speed,
+            Math.sin(angle) * radius * speed
+        );
+        
+        // Add to scene and active particles
+        scene.add(particle);
+        activeParticles.push({
+            mesh: particle,
+            velocity: velocity,
+            life: lifespan,
+            initialLife: lifespan
+        });
+    }
+}
+
 export function updateParticles(deltaTime, scene) { // Pass scene for removal
     if (!scene) return;
     const gravity = 9.8; // Simple gravity simulation
