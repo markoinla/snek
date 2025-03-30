@@ -64,6 +64,10 @@ async function init() {
     // Set up game start event listener
     window.addEventListener('gameStarted', startGameplay);
     
+    // Set up game pause/resume event listeners
+    window.addEventListener('gamePaused', pauseGame);
+    window.addEventListener('gameResumed', resumeGame);
+    
     // Show intro screen (only shown for first-time users)
     UI.showIntroScreen();
     
@@ -87,6 +91,26 @@ function startGameplay() {
 
         // Start Animation Loop
         animate();
+    }
+}
+
+// Function to pause the game (when help screen is opened)
+function pauseGame() {
+    console.log("Game paused");
+    gameState.flags.gameRunning = false;
+}
+
+// Function to resume the game (when help screen is closed)
+function resumeGame() {
+    console.log("Game resumed");
+    if (!gameState.flags.gameOver) {
+        gameState.flags.gameRunning = true;
+        
+        // If animation loop isn't running, restart it
+        if (!gameState.flags.animating) {
+            gameState.flags.animating = true;
+            animate();
+        }
     }
 }
 
@@ -177,8 +201,15 @@ export function requestRestart() {
 
 // --- Main Loop ---
 function animate() {
-    // Use renderer's built-in loop
-    gameState.renderer.setAnimationLoop(render);
+    // Set flag to indicate animation is running
+    gameState.flags.animating = true;
+    
+    requestAnimationFrame(animate);
+    
+    // Skip rendering if game is not running
+    if (!gameState.flags.gameRunning) return;
+    
+    render();
 }
 
 function render() {

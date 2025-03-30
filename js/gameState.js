@@ -76,6 +76,7 @@ export const gameState = {
         gameOver: false,
         gameRunning: false, // Indicate if the main loop is active
         restartRequested: false,
+        animating: false,   // Track if the animation loop is currently running
     },
 
     // Input cleanup function
@@ -114,6 +115,7 @@ export function resetGameStateForNewGame() {
      gameState.flags.gameOver = false;
      gameState.flags.gameRunning = true; // Mark as running after reset
      gameState.flags.restartRequested = false;
+     gameState.flags.animating = false; // Reset animating flag
 
      // Reset timers (might need access to clock)
      if (gameState.clock) {

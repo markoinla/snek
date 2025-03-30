@@ -92,7 +92,19 @@ if (document.readyState === 'loading') {
 function setupEventListeners() {
     // Start button
     if (startButton) {
-        startButton.addEventListener('click', startGame);
+        startButton.addEventListener('click', function() {
+            // If this is the first time, start the game
+            // If this is from the help screen, resume the game
+            if (introScreen.style.display === 'flex') {
+                if (gameStarted) {
+                    // This is the help screen, resume the game
+                    resumeGameFromHelp();
+                } else {
+                    // This is the first-time intro screen, start the game
+                    startGame();
+                }
+            }
+        });
     }
     
     // Restart button
@@ -152,7 +164,19 @@ export function showHelpScreen() {
     if (introScreen) {
         introScreen.style.display = 'flex';
     }
-    // Don't change gameStarted state - this is just a temporary overlay
+    
+    // Dispatch an event to pause the game
+    window.dispatchEvent(new CustomEvent('gamePaused'));
+}
+
+// Function to resume the game after help screen is closed
+export function resumeGameFromHelp() {
+    if (introScreen) {
+        introScreen.style.display = 'none';
+    }
+    
+    // Dispatch an event to resume the game
+    window.dispatchEvent(new CustomEvent('gameResumed'));
 }
 
 let powerUpTextAnimationHandler = null;
