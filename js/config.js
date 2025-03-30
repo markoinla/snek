@@ -8,18 +8,18 @@ export const CAMERA_LAG = 0.2;
 export const SPRITE_SHEET_DIM = 2;
 export const NUM_INITIAL_FOOD = 35;
 export const MIN_SNAKE_LENGTH = 3;
-export const NUM_OBSTACLES = 35;
+export const NUM_OBSTACLES = 17;
 export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if needed
 
 // Enemy snake settings
 export const NUM_ENEMIES = 6;
 export const ENEMY_START_LENGTH = 5;
-export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
+export const ENEMY_SNAKE_SPEED = 0.2; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
 export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
-export const ENEMY_KILL_SCORE = 10; // Points awarded for killing an enemy
-export const ENEMY_RESPAWN_TIME = 10; // Seconds before a new enemy spawns after being killed
+export const ENEMY_KILL_SCORE = 7; // Points awarded for killing an enemy
+export const ENEMY_RESPAWN_TIME = 5; // Seconds before a new enemy spawns after being killed
 
 // Player powerup settings
 export const ENLARGED_HEAD_DURATION = 5; // Seconds the player's head stays enlarged after killing an enemy
@@ -74,7 +74,7 @@ export const GAME_TEXT = {
     POWERUPS: {
         SPEED_BOOST: "TURBO SNEK!",
         GHOST_MODE: "GHOST MODE!",
-        SCORE_MULTIPLIER: "DOUBLE SNEK!",
+        SCORE_MULTIPLIER: "DOUBLE FOOD!",
         SHRINK: "SHRINKAAAGE!",
         // Array of possible enemy kill messages - one will be randomly selected
         ENEMY_KILLED_MESSAGES: [
