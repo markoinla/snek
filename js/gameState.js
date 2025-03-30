@@ -49,6 +49,17 @@ export const gameState = {
         skybox: null,
     },
 
+    // Camera effects
+    cameraEffects: {
+        shake: {
+            active: false,
+            startTime: 0,
+            duration: 0,
+            intensity: 0,
+            originalPosition: new THREE.Vector3()
+        }
+    },
+
     // Game Status
     score: 0,
     flags: {

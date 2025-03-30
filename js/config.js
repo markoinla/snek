@@ -16,9 +16,14 @@ export const ENEMY_SNAKE_SPEED = 0.18;
 export const GRASS_COUNT = 15000;
 export const PARTICLE_COUNT_EAT = 25;
 export const PARTICLE_COUNT_DEATH = 60;
-export const PARTICLE_SIZE = 1;
+export const PARTICLE_SIZE = 5;
 export const PARTICLE_LIFESPAN = 0.8;
 export const PARTICLE_SPEED = 5.0;
+
+// Regular food particle settings (smaller, green effect)
+export const PARTICLE_COUNT_NORMAL_FOOD = 1; // Fewer particles for regular food
+export const PARTICLE_COLOR_NORMAL_FOOD = 0x4CAF50; // Green color for regular food particles
+
 export const WALL_HEIGHT = 3;
 export const WALL_THICKNESS = 1;
 
@@ -27,3 +32,20 @@ export const FOG_DENSITY = 0.018;
 
 export const START_SAFE_ZONE = 5; // Player start area free of obstacles
 export const ENEMY_START_SAFE_ZONE = 10; // Enemy start area free of obstacles/player start
+
+// Ground color (set to null to use texture without tint)
+export const GROUND_COLOR = 0x4682B4; // Light blue tint
+
+// Camera shake settings
+export const CAMERA_SHAKE_ENABLED = true;
+export const CAMERA_SHAKE_DURATION = 0.2; // seconds
+export const CAMERA_SHAKE_INTENSITY = 3; // maximum displacement
+
+// Food type spawn ratios (must add up to 100)
+export const FOOD_SPAWN_RATIOS = {
+    normal: 75,    // Regular food (60% chance)
+    speed: 10,     // Speed boost (10% chance)
+    shrink: 5,    // Shrink snake (10% chance)
+    score_x2: 5,  // Score multiplier (10% chance)
+    ghost: 5      // Ghost mode (10% chance)
+};

@@ -329,74 +329,109 @@ export function updateCamera(gameState) {
 
 // --- Power-ups ---
 export function applyPowerUp(type, gameState) {
-    const { playerSnake, clock, scene, materials } = gameState;
+    const { playerSnake, clock } = gameState;
     if (!playerSnake || !clock) return;
 
-    const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === type);
-    if (!foodTypeInfo) return;
+    // Clear any existing power-up first
+    clearPowerUpEffects(gameState);
 
     const currentTime = clock.getElapsedTime();
-    const duration = foodTypeInfo.powerUpDuration;
-
-     // --- UI Effect Text ---
-     // Show the text effect regardless of clearing previous powerups
-     if (foodTypeInfo.effectText) {
-         UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
-     }
-
-    // --- Clear existing effects before applying new ones ---
-    // Clear visual/speed effects only, keep timer running if applicable until new one starts
-    clearPowerUpEffects(gameState, false); // false = don't clear timer display yet
-
-    // If there's an active powerup timer, clear it (new powerup overrides)
-    if (playerSnake.activePowerUp) {
-         // No need to explicitly clear here, setting new one below overrides
-         // console.log(`Overriding powerup ${playerSnake.activePowerUp.type} with ${type}`);
+    const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === type);
+    
+    if (!foodTypeInfo) {
+        console.error(`Unknown power-up type: ${type}`);
+        return;
     }
 
-    // --- Apply new effects ---
-    if (duration > 0) {
-        playerSnake.activePowerUp = { type: type, endTime: currentTime + duration };
-        // Update UI timer display immediately
-        UI.updatePowerUpInfo(`${foodTypeInfo.description}: ${duration.toFixed(1)}s`);
-    } else {
-        playerSnake.activePowerUp = null; // No duration (e.g., shrink)
-        UI.updatePowerUpInfo(''); // Clear timer display
+    console.log(`Applying power-up: ${foodTypeInfo.description}`);
+
+    // Start camera shake effect if enabled AND it's not regular food
+    if (CONFIG.CAMERA_SHAKE_ENABLED && type !== 'normal') {
+        startCameraShake(gameState);
     }
 
+    // Apply power-up effect based on type
     switch (type) {
         case 'speed':
-            playerSnake.speed = CONFIG.BASE_SNAKE_SPEED * 0.6; // Faster (lower interval)
+            playerSnake.speed = CONFIG.BASE_SNAKE_SPEED * 0.6; // 40% faster
+            playerSnake.activePowerUp = {
+                type: type,
+                endTime: currentTime + foodTypeInfo.powerUpDuration
+            };
+            UI.updatePowerUpInfo(`Speed Boost! (${Math.round(foodTypeInfo.powerUpDuration)}s)`);
             break;
-        case 'shrink':
-            const amountToShrink = Math.max(0, playerSnake.segments.length - CONFIG.MIN_SNAKE_LENGTH);
-            if (amountToShrink > 0) {
-                for (let i = 0; i < amountToShrink; i++) {
-                    playerSnake.segments.pop(); // Remove from state
-                    const removedMesh = playerSnakeMeshes.pop(); // Remove from mesh array
-                    if (removedMesh) {
-                        scene.remove(removedMesh); // Remove from scene
-                    }
-                }
-                 // Need to update textures if the segment becoming the tail changes
-                 if (playerSnakeMeshes.length > 0) {
-                    updatePlayerSnakeTextures(gameState);
-                 }
-            }
-            break;
-        case 'score_x2':
-            playerSnake.scoreMultiplier = 2;
-            break;
+        
         case 'ghost':
             playerSnake.ghostModeActive = true;
-            updatePlayerSnakeTextures(gameState); // Apply transparency/opacity
+            playerSnake.activePowerUp = {
+                type: type,
+                endTime: currentTime + foodTypeInfo.powerUpDuration
+            };
+            updatePlayerSnakeTextures(gameState); // Update visuals immediately
+            UI.updatePowerUpInfo(`Ghost Mode! (${Math.round(foodTypeInfo.powerUpDuration)}s)`);
             break;
-        case 'normal': // Normal food has no timed effect, only grow handled elsewhere
-             break;
+        
+        case 'score_x2':
+            playerSnake.scoreMultiplier = 2;
+            playerSnake.activePowerUp = {
+                type: type,
+                endTime: currentTime + foodTypeInfo.powerUpDuration
+            };
+            UI.updatePowerUpInfo(`Score x2! (${Math.round(foodTypeInfo.powerUpDuration)}s)`);
+            break;
+        
+        case 'shrink':
+            // Shrink the snake by removing tail segments (to a minimum length)
+            const currentLength = playerSnake.segments.length;
+            const targetLength = Math.max(CONFIG.MIN_SNAKE_LENGTH, Math.floor(currentLength * 0.6)); // Shrink by 40%
+            const segmentsToRemove = currentLength - targetLength;
+            
+            if (segmentsToRemove > 0) {
+                // Remove tail segments
+                playerSnake.segments.splice(playerSnake.segments.length - segmentsToRemove, segmentsToRemove);
+                
+                // Remove corresponding meshes
+                for (let i = 0; i < segmentsToRemove; i++) {
+                    const mesh = playerSnakeMeshes.pop();
+                    if (mesh && gameState.scene) {
+                        gameState.scene.remove(mesh);
+                    }
+                }
+                
+                // No need to set activePowerUp since this is an immediate effect
+                UI.updatePowerUpInfo(`Shrunk by ${segmentsToRemove} segments!`);
+                
+                // Clear info after a few seconds
+                setTimeout(() => {
+                    if (playerSnake.activePowerUp === null) { // Only clear if no other power-up is active
+                        UI.updatePowerUpInfo('');
+                    }
+                }, 3000);
+            }
+            break;
+            
+        case 'normal':
+        default:
+            // Regular food has no special effect
+            break;
     }
 }
 
-// Added clearUIDisplay flag
+// Helper function to start camera shake effect
+function startCameraShake(gameState) {
+    const { camera, cameraEffects, clock } = gameState;
+    if (!camera || !clock || !cameraEffects || !cameraEffects.shake) return;
+    
+    // Store original camera position
+    cameraEffects.shake.originalPosition.copy(camera.position);
+    
+    // Set shake parameters
+    cameraEffects.shake.active = true;
+    cameraEffects.shake.startTime = clock.getElapsedTime();
+    cameraEffects.shake.duration = CONFIG.CAMERA_SHAKE_DURATION;
+    cameraEffects.shake.intensity = CONFIG.CAMERA_SHAKE_INTENSITY;
+}
+
 function clearPowerUpEffects(gameState, clearUIDisplay = true) {
     const { playerSnake } = gameState;
     if (!playerSnake) return;

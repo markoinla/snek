@@ -17,6 +17,9 @@ async function init() {
     console.log("Initializing game...");
     gameState.flags.gameRunning = false; // Not running until setup is complete
 
+    // Validate configuration
+    validateConfig();
+
     // Basic Setup
     const canvas = document.getElementById('gameCanvas');
     if (!canvas) {
@@ -75,6 +78,19 @@ function resetGame() {
 
     // Reset core game state variables (score, flags)
     resetGameStateForNewGame();
+
+    // Initialize camera effects if not already present
+    if (!gameState.cameraEffects) {
+        gameState.cameraEffects = {
+            shake: {
+                active: false,
+                startTime: 0,
+                duration: 0,
+                intensity: 0,
+                originalPosition: new THREE.Vector3()
+            }
+        };
+    }
 
     // Reset individual game components
     Particles.resetParticles(gameState.scene);
@@ -164,9 +180,43 @@ function render() {
 
     // Update camera (even slightly after game over for effect?)
     Player.updateCamera(gameState);
+    
+    // Update camera effects (shake, etc.)
+    updateCameraEffects(currentTime);
 
     // Render the scene
     gameState.renderer.render(gameState.scene, gameState.camera);
+}
+
+// --- Camera Effects ---
+function updateCameraEffects(currentTime) {
+    const { camera, cameraEffects } = gameState;
+    if (!camera || !cameraEffects || !cameraEffects.shake) return; // Add safety check
+    
+    // Handle camera shake effect
+    if (cameraEffects.shake.active) {
+        const shake = cameraEffects.shake;
+        const elapsedTime = currentTime - shake.startTime;
+        
+        // Check if shake effect should end
+        if (elapsedTime >= shake.duration) {
+            // Reset camera position and deactivate shake
+            camera.position.copy(shake.originalPosition);
+            shake.active = false;
+        } else {
+            // Calculate shake intensity based on remaining time (fade out effect)
+            const remainingFactor = 1 - (elapsedTime / shake.duration);
+            const currentIntensity = shake.intensity * remainingFactor;
+            
+            // Apply random displacement to camera position
+            const originalPos = shake.originalPosition;
+            camera.position.set(
+                originalPos.x + (Math.random() * 2 - 1) * currentIntensity,
+                originalPos.y + (Math.random() * 2 - 1) * currentIntensity * 0.5, // Less vertical shake
+                originalPos.z + (Math.random() * 2 - 1) * currentIntensity
+            );
+        }
+    }
 }
 
 // --- Event Handlers ---
@@ -176,6 +226,54 @@ function onWindowResize() {
         gameState.camera.updateProjectionMatrix();
         gameState.renderer.setSize(window.innerWidth, window.innerHeight);
         // Note: Pixel ratio is set once at init, usually doesn't need update
+    }
+}
+
+// --- Configuration Validation ---
+function validateConfig() {
+    // Validate food spawn ratios
+    const foodRatios = CONFIG.FOOD_SPAWN_RATIOS;
+    let totalRatio = 0;
+    
+    // Calculate total of all ratios
+    for (const type in foodRatios) {
+        if (foodRatios.hasOwnProperty(type)) {
+            totalRatio += foodRatios[type];
+        }
+    }
+    
+    // Check if ratios add up to 100
+    if (Math.abs(totalRatio - 100) > 0.001) { // Allow for tiny floating point errors
+        console.warn(`Food spawn ratios do not add up to 100! Current total: ${totalRatio}`);
+        
+        // Normalize ratios to ensure they add up to 100
+        const normalizationFactor = 100 / totalRatio;
+        for (const type in foodRatios) {
+            if (foodRatios.hasOwnProperty(type)) {
+                foodRatios[type] = Math.round(foodRatios[type] * normalizationFactor);
+            }
+        }
+        
+        console.log("Food spawn ratios have been normalized:", foodRatios);
+    }
+    
+    // Apply ground color from config
+    updateGroundColor();
+    
+    console.log("Configuration validated.");
+}
+
+// Function to update ground color from config
+function updateGroundColor() {
+    if (gameState.environment && gameState.environment.groundMesh) {
+        const groundMesh = gameState.environment.groundMesh;
+        if (groundMesh.material) {
+            // Update the color directly
+            groundMesh.material.color.set(CONFIG.GROUND_COLOR || 0xFFFFFF);
+            groundMesh.material.needsUpdate = true;
+            console.log("Ground color updated to:", CONFIG.GROUND_COLOR ? 
+                "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
+        }
     }
 }
 

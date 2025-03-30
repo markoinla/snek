@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 // Asset Paths
 export const PATHS = {
-    snakeSheet: 'assets/svg/snake_spritesheet.svg',
+    snakeSheet: 'assets/svg/snake_spritesheet_improved.svg', // Using the improved spritesheet
     particle: 'assets/svg/particle.svg',
     skybox: 'assets/svg/skybox_blocky.svg',
     groundTile: 'assets/svg/ground_tile_grass_dirt.svg',

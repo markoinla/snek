@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as CONFIG from './config.js';
 import { FOOD_TYPES, GEOMETRIES } from './constants.js';
 import { generateUniquePosition } from './utils.js';
-import { createExplosion } from './particleSystem.js';
+import { createExplosion, createNormalFoodEffect } from './particleSystem.js';
 import { applyPowerUp } from './playerSnake.js'; // Import power-up logic
 import { showPowerUpTextEffect } from './ui.js';
 
@@ -47,10 +47,8 @@ export function addNewFoodItem(gameState) {
         return;
     }
 
-    // Weighted random selection (e.g., more normal food)
-    // Simple random for now:
-    const randomTypeIndex = Math.floor(Math.random() * FOOD_TYPES.length);
-    const type = FOOD_TYPES[randomTypeIndex].type;
+    // Use the configured food spawn ratios to determine food type
+    const type = selectFoodTypeByRatio();
 
     const newMesh = createFoodMeshInstance(newPos, type, materials);
     if (newMesh) {
@@ -60,6 +58,30 @@ export function addNewFoodItem(gameState) {
     } else {
         console.error(`Failed to create mesh for food type ${type}`);
     }
+}
+
+// Helper function to select food type based on configured ratios
+function selectFoodTypeByRatio() {
+    // Generate a random number between 1 and 100
+    const randomValue = Math.floor(Math.random() * 100) + 1;
+    
+    // Calculate cumulative probabilities
+    let cumulativeProbability = 0;
+    
+    // Check each food type's probability range
+    for (const foodType of FOOD_TYPES) {
+        const ratio = CONFIG.FOOD_SPAWN_RATIOS[foodType.type] || 0;
+        cumulativeProbability += ratio;
+        
+        // If our random value falls within this type's range, return it
+        if (randomValue <= cumulativeProbability) {
+            return foodType.type;
+        }
+    }
+    
+    // Fallback to normal food if something goes wrong
+    console.warn("Food selection fallback - check that FOOD_SPAWN_RATIOS adds up to 100");
+    return 'normal';
 }
 
 // Returns the type of food eaten, or null if no food at position
@@ -85,14 +107,26 @@ export function checkAndEatFood(position, gameState) {
 
         // Trigger effects (particles, sound?, UI text)
         if (eatenFoodMesh) {
-            // *** UPDATED CALL ***
-            createExplosion(
-                scene,
-                camera, // Pass camera
-                eatenFoodMesh.position,
-                CONFIG.PARTICLE_COUNT_EAT,
-                foodTypeInfo?.colorHint.getHex() || 0xffffff
-            );
+            // Different particle effects based on food type
+            if (eatenFoodType === 'normal') {
+                // Small green particles for regular food
+                console.log("Creating normal food particle effect");
+                createNormalFoodEffect(
+                    scene,
+                    camera,
+                    eatenFoodMesh.position
+                );
+            } else {
+                // Colorful explosion for power-ups
+                console.log("Creating power-up explosion effect for:", eatenFoodType);
+                createExplosion(
+                    scene,
+                    camera,
+                    eatenFoodMesh.position,
+                    CONFIG.PARTICLE_COUNT_EAT,
+                    foodTypeInfo?.colorHint.getHex() || 0xffffff
+                );
+            }
             scene.remove(eatenFoodMesh); // Remove mesh from scene
         }
         if (foodTypeInfo?.effectText) {
@@ -114,7 +148,6 @@ export function checkAndEatFood(position, gameState) {
 
     return null; // No food eaten
 }
-
 
 export function resetFood(gameState) {
     const { scene, food } = gameState;

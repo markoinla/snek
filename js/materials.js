@@ -132,7 +132,17 @@ export async function loadAndCreateMaterials() {
         materials.obstacle.bush = new THREE.MeshStandardMaterial({ color: 0x689F38, roughness: 0.85, metalness: 0.0 });
 
         // Environment Materials
-        materials.ground = new THREE.MeshStandardMaterial({ map: groundTileTex, side: THREE.FrontSide, roughness: 0.9, metalness: 0.0 });
+        materials.ground = new THREE.MeshStandardMaterial({ 
+            map: groundTileTex, 
+            side: THREE.FrontSide, 
+            roughness: 0.9, 
+            metalness: 0.0,
+            // Apply color tint if configured
+            color: CONFIG.GROUND_COLOR || 0xFFFFFF // Use white (no tint) if GROUND_COLOR is null
+        });
+        console.log("Ground material created with color:", CONFIG.GROUND_COLOR ? 
+            "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
+        
         materials.wall = new THREE.MeshStandardMaterial({ map: wallBrickTex, side: THREE.FrontSide, roughness: 0.9, metalness: 0.05 });
         materials.grass = new THREE.MeshStandardMaterial({ color: 0x558B2F, side: THREE.DoubleSide, roughness: 0.95 }); // Simple green for grass blades
         materials.skybox = new THREE.MeshBasicMaterial({ map: skyboxTex, side: THREE.BackSide, fog: false });

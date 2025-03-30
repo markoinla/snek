@@ -14,7 +14,50 @@ export function initParticles(material) {
     activeParticles = []; // Clear any previous particles
 }
 
-// *** UPDATED SIGNATURE & USAGE ***
+// Regular food particle effect (smaller, green particles)
+export function createNormalFoodEffect(scene, camera, position) {
+    if (!particleMaterialRef || !scene || !camera) {
+        console.warn("Cannot create food effect - material, scene or camera missing.");
+        return;
+    }
+
+    const baseColor = new THREE.Color(CONFIG.PARTICLE_COLOR_NORMAL_FOOD);
+    const count = CONFIG.PARTICLE_COUNT_NORMAL_FOOD;
+    
+    for (let i = 0; i < count; i++) {
+        // Clone material for color tint
+        const pMat = particleMaterialRef.clone();
+        pMat.color = baseColor.clone();
+
+        const particleMesh = new THREE.Mesh(GEOMETRIES.particle, pMat);
+        particleMesh.position.copy(position);
+        particleMesh.scale.setScalar(0.6); // Smaller particles for regular food
+        
+        // Make particles face the camera
+        particleMesh.lookAt(camera.position);
+
+        const angle = Math.random() * Math.PI * 2;
+        const speed = CONFIG.PARTICLE_SPEED * 0.6 * (0.6 + Math.random() * 0.8);
+        // More gentle spread
+        const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            (Math.random() * 0.5) * speed, // Gentle upward movement
+            Math.sin(angle) * speed
+        );
+
+        const life = CONFIG.PARTICLE_LIFESPAN * 0.6; // Shorter lifespan
+
+        activeParticles.push({
+            mesh: particleMesh,
+            velocity: velocity,
+            life: life,
+            initialLife: life
+        });
+        scene.add(particleMesh);
+    }
+}
+
+// Power-up particle effect (original explosion effect)
 export function createExplosion(scene, camera, position, count, color = 0xffffff) {
     // Added 'camera' to the check
     if (!particleMaterialRef || !scene || !camera) {

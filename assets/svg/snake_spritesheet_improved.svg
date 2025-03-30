@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- 2x2 Grid Layout:
+       Top Left (0,0): Head Frame 1
+       Top Right (1,0): Head Frame 2
+       Bottom Left (0,1): Body Frame 1
+       Bottom Right (1,1): Body Frame 2 -->
+  
+  <!-- Background Grid (for reference) -->
+  <rect x="0" y="0" width="100" height="100" fill="#444444" opacity="0.1"/>
+  <rect x="100" y="0" width="100" height="100" fill="#555555" opacity="0.1"/>
+  <rect x="0" y="100" width="100" height="100" fill="#555555" opacity="0.1"/>
+  <rect x="100" y="100" width="100" height="100" fill="#444444" opacity="0.1"/>
+  
+  <!-- Snake Head Frame 1 (Top Left) - DARKER GREEN -->
+  <g transform="translate(0, 0)">
+    <!-- Base Head Shape -->
+    <rect x="10" y="10" width="80" height="80" rx="15" fill="#2E7D32" />
+    
+    <!-- Scales Pattern -->
+    <path d="M10,50 Q30,40 50,50 Q70,60 90,50" stroke="#1B5E20" stroke-width="3" fill="none" opacity="0.7"/>
+    <path d="M10,65 Q30,55 50,65 Q70,75 90,65" stroke="#1B5E20" stroke-width="3" fill="none" opacity="0.7"/>
+    <path d="M10,35 Q30,25 50,35 Q70,45 90,35" stroke="#1B5E20" stroke-width="3" fill="none" opacity="0.7"/>
+    
+    <!-- Eyes -->
+    <circle cx="30" cy="30" r="8" fill="white"/>
+    <circle cx="30" cy="30" r="4" fill="black"/>
+    <circle cx="70" cy="30" r="8" fill="white"/>
+    <circle cx="70" cy="30" r="4" fill="black"/>
+    
+    <!-- Mouth -->
+    <path d="M40,70 Q50,80 60,70" stroke="#1B5E20" stroke-width="3" fill="none"/>
+    
+    <!-- Highlight -->
+    <rect x="15" y="15" width="70" height="20" rx="10" fill="white" opacity="0.2"/>
+  </g>
+  
+  <!-- Snake Head Frame 2 (Top Right) - DARKER GREEN -->
+  <g transform="translate(100, 0)">
+    <!-- Base Head Shape -->
+    <rect x="10" y="10" width="80" height="80" rx="15" fill="#2E7D32" />
+    
+    <!-- Scales Pattern -->
+    <path d="M10,50 Q30,40 50,50 Q70,60 90,50" stroke="#1B5E20" stroke-width="3" fill="none" opacity="0.7"/>
+    <path d="M10,65 Q30,55 50,65 Q70,75 90,65" stroke="#1B5E20" stroke-width="3" fill="none" opacity="0.7"/>
+    <path d="M10,35 Q30,25 50,35 Q70,45 90,35" stroke="#1B5E20" stroke-width="3" fill="none" opacity="0.7"/>
+    
+    <!-- Eyes (slightly different for animation) -->
+    <circle cx="30" cy="32" r="7" fill="white"/>
+    <circle cx="30" cy="32" r="3" fill="black"/>
+    <circle cx="70" cy="32" r="7" fill="white"/>
+    <circle cx="70" cy="32" r="3" fill="black"/>
+    
+    <!-- Mouth (slightly different) -->
+    <path d="M40,72 Q50,78 60,72" stroke="#1B5E20" stroke-width="3" fill="none"/>
+    
+    <!-- Highlight -->
+    <rect x="15" y="15" width="70" height="20" rx="10" fill="white" opacity="0.2"/>
+  </g>
+  
+  <!-- Snake Body Frame 1 (Bottom Left) -->
+  <g transform="translate(0, 100)">
+    <!-- Base Body Shape -->
+    <rect x="10" y="10" width="80" height="80" rx="10" fill="#66BB6A" />
+    
+    <!-- Scales Pattern -->
+    <path d="M10,30 Q30,20 50,30 Q70,40 90,30" stroke="#43A047" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M10,50 Q30,40 50,50 Q70,60 90,50" stroke="#43A047" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M10,70 Q30,60 50,70 Q70,80 90,70" stroke="#43A047" stroke-width="3" fill="none" opacity="0.6"/>
+    
+    <!-- Diamond Pattern -->
+    <rect x="30" y="30" width="40" height="40" transform="rotate(45, 50, 50)" fill="#43A047" opacity="0.3"/>
+    
+    <!-- Highlight -->
+    <rect x="15" y="15" width="70" height="15" rx="7" fill="white" opacity="0.15"/>
+  </g>
+  
+  <!-- Snake Body Frame 2 (Bottom Right) -->
+  <g transform="translate(100, 100)">
+    <!-- Base Body Shape -->
+    <rect x="10" y="10" width="80" height="80" rx="10" fill="#66BB6A" />
+    
+    <!-- Scales Pattern (slightly different for animation) -->
+    <path d="M10,32 Q30,22 50,32 Q70,42 90,32" stroke="#43A047" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M10,52 Q30,42 50,52 Q70,62 90,52" stroke="#43A047" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M10,72 Q30,62 50,72 Q70,82 90,72" stroke="#43A047" stroke-width="3" fill="none" opacity="0.6"/>
+    
+    <!-- Diamond Pattern (slightly different) -->
+    <rect x="32" y="32" width="36" height="36" transform="rotate(45, 50, 50)" fill="#43A047" opacity="0.3"/>
+    
+    <!-- Highlight -->
+    <rect x="15" y="15" width="70" height="15" rx="7" fill="white" opacity="0.15"/>
+  </g>
+</svg>
