@@ -368,6 +368,23 @@ export function resetUI(initialScore = 0) {
     }
 }
 
+// Function to get a random enemy kill message from the config array
+export function getRandomEnemyKillMessage() {
+    // Get the array of possible messages
+    const messages = CONFIG.GAME_TEXT.POWERUPS.ENEMY_KILLED_MESSAGES;
+    
+    // If the array is empty or doesn't exist, return a default message
+    if (!messages || messages.length === 0) {
+        return "ENEMY KILLED!";
+    }
+    
+    // Select a random index from the array
+    const randomIndex = Math.floor(Math.random() * messages.length);
+    
+    // Return the message at that index
+    return messages[randomIndex];
+}
+
 // --- Alpha Mode UI Functions ---
 
 /**

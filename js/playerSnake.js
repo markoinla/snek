@@ -327,7 +327,7 @@ export function killEnemySnake(enemyId, gameState) {
         UI.updateKills(gameState.enemies.kills);
         
         // Show kill message with particle effect color
-        UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.POWERUPS.ENEMY_KILLED, CONFIG.PARTICLE_COLOR_KILL);
+        UI.showPowerUpTextEffect(UI.getRandomEnemyKillMessage(), CONFIG.PARTICLE_COLOR_KILL);
         
         // Trigger camera shake
         startCameraShake(gameState);

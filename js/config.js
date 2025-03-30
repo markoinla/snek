@@ -12,7 +12,7 @@ export const NUM_OBSTACLES = 35;
 export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if needed
 
 // Enemy snake settings
-export const NUM_ENEMIES = 3;
+export const NUM_ENEMIES = 6;
 export const ENEMY_START_LENGTH = 5;
 export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
@@ -76,7 +76,16 @@ export const GAME_TEXT = {
         GHOST_MODE: "GHOST MODE!",
         SCORE_MULTIPLIER: "DOUBLE SNEK!",
         SHRINK: "SHRINKAAAGE!",
-        ENEMY_KILLED: "SWALLOWED WHOLE!"
+        // Array of possible enemy kill messages - one will be randomly selected
+        ENEMY_KILLED_MESSAGES: [
+            "SWALLOWED WHOLE!",
+            "GOBBLE GOBBLE!",
+            "SNEK SNACK!",
+            "TASTY SNEK!",
+            "DEVOURED!",
+            "GULP!",
+            "YOU ATE YOUR COUSIN!"
+        ]
     },
     
     // Tutorial/Help Messages
