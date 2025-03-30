@@ -1,5 +1,6 @@
 // --- DOM Element References ---
 const scoreElement = document.getElementById('info');
+const killsElement = document.getElementById('kills');
 const powerUpInfoElement = document.getElementById('powerUpInfo');
 const gameOverElement = document.getElementById('gameOver');
 const finalScoreElement = document.getElementById('finalScore');
@@ -11,6 +12,7 @@ let powerUpTextAnimationHandler = null;
 
 export const elements = {
     scoreElement,
+    killsElement,
     powerUpInfoElement,
     gameOverElement,
     finalScoreElement,
@@ -22,6 +24,12 @@ export const elements = {
 export function updateScore(score) {
     if (scoreElement) {
         scoreElement.textContent = `Score: ${score}`;
+    }
+}
+
+export function updateKills(kills) {
+    if (killsElement) {
+        killsElement.textContent = `Kills: ${kills}`;
     }
 }
 
@@ -93,6 +101,7 @@ export function hidePowerUpTextEffect() {
 
 export function resetUI(initialScore = 0) {
     updateScore(initialScore);
+    updateKills(0); // Reset kills counter
     hideGameOver();
     updatePowerUpInfo(''); // Clear power-up text
     hidePowerUpTextEffect();

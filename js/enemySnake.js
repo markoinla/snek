@@ -460,18 +460,124 @@ function moveEnemy(enemy, gameState) {
     updateEnemyMaterialsAfterMove(enemy, gameState);
 }
 
-
-// --- Texture/Material Updates ---
-
-function updateEnemyMaterialsAfterMove(enemy, gameState) {
+export function updateEnemyMaterialsAfterMove(enemy, gameState) {
     const { materials } = gameState;
+    if (!materials?.enemy) return;
+    
     const meshes = enemyMeshes[enemy.id];
-    if (!meshes || meshes.length === 0 || !materials?.enemy) return;
-
-    meshes[0].material = (enemy.animationFrame === 0 ? materials.enemy.head1 : materials.enemy.head2);
-    if (meshes.length > 1) {
-        meshes[1].material = (enemy.animationFrame === 0 ? materials.enemy.body1 : materials.enemy.body2);
+    if (!meshes) return;
+    
+    // Update textures based on animation frame
+    updateEnemySnakeTextures(enemy, gameState);
+    
+    // Color the edible tail segments
+    const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
+    if (meshes.length >= tailSegments) {
+        // Apply edible tail color to the last N segments
+        for (let i = Math.max(1, meshes.length - tailSegments); i < meshes.length; i++) {
+            if (meshes[i] && meshes[i].material) {
+                meshes[i].material.color.setHex(CONFIG.ENEMY_TAIL_COLOR);
+            }
+        }
     }
+}
+
+// --- Collision Check (External) ---
+export function checkEnemyCollision(position, gameState, isPlayerHead = false) {
+    const { enemies } = gameState;
+    if (!enemies?.list) return { collided: false };
+    
+    for (let i = 0; i < enemies.list.length; i++) {
+        const enemy = enemies.list[i];
+        for (let j = 0; j < enemy.snake.length; j++) {
+            const segment = enemy.snake[j];
+            
+            // Check if positions match
+            if (segment.x === position.x && segment.z === position.z) {
+                // If it's the player's head and this is one of the last N segments of the enemy
+                if (isPlayerHead && j >= enemy.snake.length - CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS) {
+                    return { 
+                        collided: true, 
+                        isEdibleTail: true,
+                        enemyId: enemy.id,
+                        segmentIndex: j
+                    };
+                }
+                
+                // Regular collision
+                return { 
+                    collided: true,
+                    isEdibleTail: false
+                };
+            }
+        }
+    }
+    
+    return { collided: false };
+}
+
+// Function to kill an enemy snake
+export function killEnemySnake(enemyId, gameState) {
+    const { scene, enemies, clock } = gameState;
+    if (!scene || !enemies?.list || !clock) return false;
+    
+    // Find the enemy by ID
+    const enemyIndex = enemies.list.findIndex(e => e.id === enemyId);
+    if (enemyIndex === -1) return false;
+    
+    const enemy = enemies.list[enemyIndex];
+    const meshes = enemyMeshes[enemyId];
+    
+    // Create explosion effect at each segment
+    if (meshes) {
+        meshes.forEach((mesh, index) => {
+            // Create explosion effect with the enemy's color
+            createExplosion(
+                scene, 
+                gameState.camera, 
+                mesh.position.clone(), 
+                CONFIG.PARTICLE_COUNT_KILL / meshes.length, // Distribute particles among segments
+                CONFIG.PARTICLE_COLOR_KILL
+            );
+            
+            // Remove mesh from scene
+            scene.remove(mesh);
+        });
+    }
+    
+    // Remove enemy from the list
+    enemies.list.splice(enemyIndex, 1);
+    delete enemyMeshes[enemyId];
+    
+    // Schedule respawn
+    const respawnTime = clock.getElapsedTime() + CONFIG.ENEMY_RESPAWN_TIME;
+    enemies.respawnQueue.push({ id: enemyId, respawnTime });
+    
+    console.log(`Enemy ${enemyId} killed. Scheduled to respawn in ${CONFIG.ENEMY_RESPAWN_TIME} seconds.`);
+    return true;
+}
+
+// Function to check and handle enemy respawns
+export function checkEnemyRespawns(gameState) {
+    const { enemies, clock } = gameState;
+    if (!enemies?.respawnQueue || !clock) return;
+    
+    const currentTime = clock.getElapsedTime();
+    const stillWaiting = [];
+    
+    for (const item of enemies.respawnQueue) {
+        if (currentTime >= item.respawnTime) {
+            // Time to respawn this enemy
+            initializeEnemy(item.id, gameState);
+            console.log(`Enemy ${item.id} respawned.`);
+        } else {
+            // Not yet time to respawn
+            stillWaiting.push(item);
+        }
+    }
+    
+    // Update the respawn queue
+    enemies.respawnQueue = stillWaiting;
 }
 
 function updateEnemySnakeTextures(enemy, gameState) {
@@ -487,17 +593,4 @@ function updateEnemySnakeTextures(enemy, gameState) {
             mesh.material = (enemy.animationFrame === 0 ? materials.enemy.body1 : materials.enemy.body2);
         }
     });
-}
-
-// --- Collision Check (External) ---
-export function checkEnemyCollision(position, gameState) {
-    const { enemies } = gameState;
-    if (!enemies?.list) return false;
-
-    for (const enemy of enemies.list) {
-        if (enemy.snake.some(segment => segment.x === position.x && segment.z === position.z)) {
-            return true; // Collision detected with any part of any enemy snake
-        }
-    }
-    return false;
 }

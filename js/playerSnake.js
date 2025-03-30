@@ -5,7 +5,7 @@ import { createSnakeSegmentMesh } from './utils.js';
 import { createExplosion } from './particleSystem.js';
 import { setGameOver } from './main.js'; // To trigger game over
 import { checkObstacleCollision } from './obstacles.js';
-import { checkEnemyCollision } from './enemySnake.js';
+import { checkEnemyCollision, killEnemySnake as killEnemy } from './enemySnake.js';
 import { checkAndEatFood } from './food.js';
 import * as UI from './ui.js'; // For power-up UI updates
 
@@ -22,7 +22,8 @@ let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/
 //     animationTimer: 0,
 //     scoreMultiplier: 1,
 //     ghostModeActive: false,
-//     activePowerUp: null // { type, endTime }
+//     activePowerUp: null, // { type, endTime }
+//     enlargedHeadUntil: 0 // New property for enlarged head effect
 // };
 
 export function initPlayerSnake(gameState) {
@@ -42,6 +43,7 @@ export function initPlayerSnake(gameState) {
     playerSnake.scoreMultiplier = 1;
     playerSnake.ghostModeActive = false;
     playerSnake.activePowerUp = null;
+    playerSnake.enlargedHeadUntil = 0; // Initialize enlarged head timer
 
     // Create initial meshes
     createPlayerMeshes(gameState);
@@ -117,6 +119,15 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
 
     // Update Power-up Timer
     updatePowerUpState(currentTime, gameState);
+    
+    // Update Enlarged Head Timer
+    if (playerSnake.enlargedHeadUntil > 0 && currentTime > playerSnake.enlargedHeadUntil) {
+        // Reset head size when timer expires
+        playerSnake.enlargedHeadUntil = 0;
+        if (playerSnakeMeshes.length > 0 && playerSnakeMeshes[0]) {
+            playerSnakeMeshes[0].scale.set(1, 1, 1);
+        }
+    }
 
     // Update Animation Frame
     playerSnake.animationTimer += deltaTime;
@@ -180,11 +191,38 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             }
          }
 
-         // 4. Enemy Collision (Always deadly?)
-         if (checkEnemyCollision(newHeadPos, gameState)) {
-             console.log("Collision: Enemy");
-             triggerPlayerDeath(gameState);
-             return;
+         // 4. Enemy Collision - Check if it's an edible tail
+         const enemyCollision = checkEnemyCollision(newHeadPos, gameState, true);
+         if (enemyCollision.collided) {
+             if (enemyCollision.isEdibleTail) {
+                 // Player ate an enemy's tail - kill the enemy
+                 console.log("Ate enemy tail! Killing enemy:", enemyCollision.enemyId);
+                 
+                 // Kill the enemy snake
+                 if (killEnemySnake(enemyCollision.enemyId, gameState)) {
+                     // Increase score
+                     gameState.score += CONFIG.ENEMY_KILL_SCORE;
+                     gameState.enemies.kills += 1;
+                     
+                     // Update UI
+                     UI.updateScore(gameState.score);
+                     UI.updateKills(gameState.enemies.kills);
+                     
+                     // Show kill message with particle effect color
+                     UI.showPowerUpTextEffect("SNAKE KILL!", CONFIG.PARTICLE_COLOR_KILL);
+                     
+                     // Trigger camera shake
+                     startCameraShake(gameState);
+                     
+                     // Enlarge player's head for a duration
+                     enlargePlayerHead(gameState, currentTime);
+                 }
+             } else {
+                 // Regular enemy collision - player dies
+                 console.log("Collision: Enemy");
+                 triggerPlayerDeath(gameState);
+                 return;
+             }
          }
 
         // --- Food Check ---
@@ -199,11 +237,10 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             if(foodTypeInfo){
                 applyPowerUp(foodTypeInfo.type, gameState); // Apply effects (speed, ghost, shrink etc.)
                 // Grow unless it was a shrink powerup
-                 if (eatenFood.type !== 'shrink') {
-                     growSnake = true;
-                 }
+                growSnake = foodTypeInfo.type !== 'shrink';
             } else {
-                growSnake = true; // Grow for normal food or unknown type
+                // Regular food always grows
+                growSnake = true;
             }
         }
 
@@ -244,49 +281,27 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
     }
 }
 
-
-function updatePlayerMaterialsAfterMove(gameState) {
-    const { playerSnake, materials } = gameState;
-    if (playerSnakeMeshes.length === 0 || !materials?.snake) return;
-
-    const headMaterial = (playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2);
-    const bodyMaterial = (playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2);
-
-    // Update head mesh
-    playerSnakeMeshes[0].material = headMaterial;
-     // Update opacity/transparency based on ghost mode for head
-    playerSnakeMeshes[0].material.transparent = playerSnake.ghostModeActive;
-    playerSnakeMeshes[0].material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
-    playerSnakeMeshes[0].material.needsUpdate = true; // Important if changing transparency
-
-
-    // Update the segment that was previously the head (now the first body segment)
-    if (playerSnakeMeshes.length > 1) {
-        playerSnakeMeshes[1].material = bodyMaterial;
-        // Update opacity/transparency based on ghost mode for body
-        playerSnakeMeshes[1].material.transparent = playerSnake.ghostModeActive;
-        playerSnakeMeshes[1].material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
-         playerSnakeMeshes[1].material.needsUpdate = true;
+// Function to enlarge the player's head
+function enlargePlayerHead(gameState, currentTime) {
+    const { playerSnake, clock } = gameState;
+    if (!playerSnake || !clock) return;
+    
+    // Set the timer for when the effect should end
+    playerSnake.enlargedHeadUntil = currentTime + CONFIG.ENLARGED_HEAD_DURATION;
+    
+    // Scale up the head mesh
+    if (playerSnakeMeshes.length > 0 && playerSnakeMeshes[0]) {
+        const scale = CONFIG.ENLARGED_HEAD_SCALE;
+        playerSnakeMeshes[0].scale.set(scale, scale, scale);
     }
+    
+    console.log(`Player head enlarged for ${CONFIG.ENLARGED_HEAD_DURATION} seconds`);
 }
 
-// Updates textures for the entire snake based on animation frame and ghost mode
-export function updatePlayerSnakeTextures(gameState) {
-    const { playerSnake, materials } = gameState;
-    if (!materials?.snake) return;
-
-    const headMaterial = (playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2);
-    const bodyMaterial = (playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2);
-
-    playerSnakeMeshes.forEach((mesh, index) => {
-        if (!mesh) return;
-        const targetMaterial = (index === 0) ? headMaterial : bodyMaterial;
-        mesh.material = targetMaterial;
-        // Apply ghost effect
-        mesh.material.transparent = playerSnake.ghostModeActive;
-        mesh.material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
-        mesh.material.needsUpdate = true; // Ensure changes apply
-    });
+// Function to kill an enemy snake
+function killEnemySnake(enemyId, gameState) {
+    // Use the imported killEnemy function
+    return killEnemy(enemyId, gameState);
 }
 
 // --- Camera ---

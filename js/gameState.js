@@ -25,11 +25,13 @@ export const gameState = {
         animationTimer: 0,
         scoreMultiplier: 1,
         ghostModeActive: false,
-        activePowerUp: null // { type, endTime }
+        activePowerUp: null, // { type, endTime }
+        enlargedHeadUntil: 0, // Timestamp when enlarged head effect ends
     },
     enemies: {
         list: [], // Array of enemy state objects
         // Note: Enemy meshes are stored separately in enemySnake.js `enemyMeshes` cache
+        kills: 0, // Track number of enemy snakes killed
     },
     food: {
         positions: [], // Array of { x, y, z, type }
@@ -62,6 +64,7 @@ export const gameState = {
 
     // Game Status
     score: 0,
+    highScore: 0,
     flags: {
         gameOver: false,
         gameRunning: false, // Indicate if the main loop is active
@@ -87,11 +90,14 @@ export function resetGameStateForNewGame() {
      gameState.playerSnake.scoreMultiplier = 1;
      gameState.playerSnake.ghostModeActive = false;
      gameState.playerSnake.activePowerUp = null;
+     gameState.playerSnake.enlargedHeadUntil = 0;
 
      // Enemies, Food, Obstacles will be reset by their respective modules calling their reset functions
 
      // Reset Status
      gameState.score = 0;
+     gameState.highScore = 0;
+     gameState.enemies.kills = 0;
      gameState.flags.gameOver = false;
      gameState.flags.gameRunning = true; // Mark as running after reset
      gameState.flags.restartRequested = false;
