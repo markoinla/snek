@@ -140,3 +140,158 @@ canvas { display: block; }
 #leftButton { left: 30px; }
 #rightButton { right: 30px; }
 @media (max-width: 767px) { .mobile-button { display: flex; } }
+
+/* Help Button */
+#helpButton {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background-color: #9C27B0; /* Alpha Mode purple color */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+#helpButton:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+#helpButton:active {
+    transform: scale(0.95);
+}
+
+/* Mobile responsiveness for help button */
+@media (max-width: 600px) {
+    #helpButton {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        top: 15px;
+        right: 15px;
+    }
+}
+
+/* Intro Screen Styles */
+#introScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Courier New', monospace;
+}
+
+.intro-content {
+    background-color: #222;
+    border: 3px solid #9C27B0; /* Alpha Mode purple color */
+    border-radius: 10px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    color: white;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(156, 39, 176, 0.6);
+}
+
+.intro-content h1 {
+    font-size: 3em;
+    margin-bottom: 20px;
+    color: #9C27B0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 3px;
+}
+
+.instructions {
+    text-align: left;
+    margin: 20px 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 5px;
+}
+
+.instructions h2 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #4CAF50; /* Green color */
+}
+
+.instructions ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.instructions li {
+    margin-bottom: 12px;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+}
+
+.instruction-label {
+    font-weight: bold;
+    color: #FF9800; /* Orange color */
+    margin-bottom: 3px;
+}
+
+#startButton {
+    background-color: #9C27B0;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.5em;
+    border-radius: 50px;
+    cursor: pointer;
+    margin-top: 20px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 2px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#startButton:hover {
+    background-color: #7B1FA2;
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+#startButton:active {
+    transform: scale(0.98);
+}
+
+/* Mobile Responsiveness for Intro Screen */
+@media (max-width: 600px) {
+    .intro-content {
+        padding: 20px;
+    }
+    
+    .intro-content h1 {
+        font-size: 2.2em;
+    }
+    
+    .instructions h2 {
+        font-size: 1.3em;
+    }
+    
+    #startButton {
+        padding: 12px 24px;
+        font-size: 1.3em;
+    }
+}

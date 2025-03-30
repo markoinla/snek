@@ -61,14 +61,33 @@ async function init() {
     // Setup Input Listeners (store cleanup function)
     gameState.cleanupInput = Input.setupInputListeners(gameState, UI.elements);
 
-    // Initial Game Reset (spawns player, food, obstacles, enemies)
-    resetGame(); // This now sets flags.gameRunning = true
-
-    // Start Animation Loop
-    animate();
-
+    // Set up game start event listener
+    window.addEventListener('gameStarted', startGameplay);
+    
+    // Show intro screen (only shown for first-time users)
+    UI.showIntroScreen();
+    
     // Event Listeners
     window.addEventListener('resize', onWindowResize);
+}
+
+// Function to start the actual gameplay after intro screen
+function startGameplay() {
+    console.log("Starting gameplay...");
+    
+    // Reset game state if needed
+    if (gameState.flags.gameOver) {
+        resetGame();
+    }
+    
+    // Start the game loop if not already running
+    if (!gameState.flags.gameRunning) {
+        // Initial Game Reset (spawns player, food, obstacles, enemies)
+        resetGame(); // This now sets flags.gameRunning = true
+
+        // Start Animation Loop
+        animate();
+    }
 }
 
 // --- Game Reset ---
@@ -146,11 +165,15 @@ export function setGameOver(state = gameState) { // Allow passing state for flex
 // Called by input handler when 'R' is pressed
 export function requestRestart() {
     if (gameState.flags.gameOver) { // Only allow restart if game is over
-         gameState.flags.restartRequested = true;
-         console.log("Restart requested.");
+        // Hide game over screen
+        UI.hideGameOver();
+        
+        // Start the game directly without showing intro screen
+        UI.startGame();
+        
+        console.log("Restart requested.");
     }
 }
-
 
 // --- Main Loop ---
 function animate() {

@@ -76,15 +76,15 @@ export const GAME_TEXT = {
         GHOST_MODE: "GHOST MODE!",
         SCORE_MULTIPLIER: "DOUBLE SNEK!",
         SHRINK: "SHRINKAAAGE!",
-        ENEMY_KILLED: "GOBBLE GOBBLE!"
+        ENEMY_KILLED: "SWALLOWED WHOLE!"
     },
     
     // Tutorial/Help Messages
     TUTORIAL: {
-        CONTROLS: "ARROW KEYS TO MOVE",
+        CONTROLS: "Left/Right Arrow Keys Move your Snek",
         MOBILE_CONTROLS: "SWIPE TO MOVE",
-        OBJECTIVE: "EAT FOOD TO GROW",
-        ALPHA_MODE_HINT: "REACH 25 POINTS FOR ALPHA MODE"
+        OBJECTIVE: "Eat food and other sneks to grow your anaconda",
+        ALPHA_MODE_HINT: "Fill up the alpha meter to become the ALPHA SNEK!"
     }
 };
 

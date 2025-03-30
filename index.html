@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Snake Refactored</title>
-    <link rel="stylesheet" href="styles.css"> <!-- Link to external CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALPHA SNEK</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Overlays -->
+    <!-- Game Info UI -->
     <div id="info">Score: 0</div>
     <div id="kills">Kills: 0</div>
     <div id="powerUpInfo"></div>
+    <div id="powerUpTextEffect"></div>
     <div id="gameOver">GAME OVER!<br>Score: <span id="finalScore">0</span><br>
         <small>(Press R to Restart)</small><br>
         <button id="restartButton">Restart Game</button>
     </div>
-    <div id="powerUpTextEffect"></div>
+    
+    <!-- Help Button -->
+    <div id="helpButton">?</div>
     
     <!-- Alpha Mode Progress Bar -->
     <div id="alphaModeContainer">
@@ -25,6 +28,24 @@
         </div>
     </div>
 
+    <!-- Intro Screen -->
+    <div id="introScreen">
+        <div class="intro-content">
+            <h1>ALPHA SNEK</h1>
+            
+            <div class="instructions">
+                <h2>How to Play</h2>
+                <ul>
+                    <li><span class="instruction-label">Controls:</span> <span id="controlsText"></span></li>
+                    <li><span class="instruction-label">Objective:</span> <span id="objectiveText"></span></li>
+                    <li><span class="instruction-label">Alpha Mode:</span> <span id="alphaModeText"></span></li>
+                </ul>
+            </div>
+            
+            <button id="startButton">START GAME</button>
+        </div>
+    </div>
+    
     <!-- Mobile Buttons -->
     <div id="leftButton" class="mobile-button">↶</div>
     <div id="rightButton" class="mobile-button">↷</div>

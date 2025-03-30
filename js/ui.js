@@ -15,44 +15,69 @@ const alphaModeContainer = document.getElementById('alphaModeContainer');
 const alphaModeLabel = document.getElementById('alphaModeLabel');
 const alphaModeProgress = document.getElementById('alphaModeProgress');
 
+// Intro screen elements
+const introScreen = document.getElementById('introScreen');
+const startButton = document.getElementById('startButton');
+const controlsText = document.getElementById('controlsText');
+const objectiveText = document.getElementById('objectiveText');
+const alphaModeText = document.getElementById('alphaModeText');
+
+// Help button
+const helpButton = document.getElementById('helpButton');
+
+// Game state variables
+let gameStarted = false;
+let firstTimeUser = true; // Track if this is the first time playing
+
 // Initialize UI elements with text from config - wrapped in a function to ensure DOM is ready
 function initializeUIText() {
     // Score label
     if (scoreElement) {
-        // Check if we already have a label span
-        let labelSpan = scoreElement.querySelector('.label');
-        if (!labelSpan) {
-            labelSpan = document.createElement('span');
-            labelSpan.classList.add('label');
-            scoreElement.prepend(labelSpan);
-        }
-        labelSpan.textContent = CONFIG.GAME_TEXT.UI.SCORE_LABEL + ': ';
+        const scoreLabel = document.createElement('span');
+        scoreLabel.classList.add('label');
+        scoreLabel.textContent = CONFIG.GAME_TEXT.UI.SCORE_LABEL + ': ';
+        scoreElement.innerHTML = '';
+        scoreElement.appendChild(scoreLabel);
+        scoreElement.appendChild(document.createTextNode('0'));
     }
 
     // Kills label
     if (killsElement) {
-        // Check if we already have a label span
-        let labelSpan = killsElement.querySelector('.label');
-        if (!labelSpan) {
-            labelSpan = document.createElement('span');
-            labelSpan.classList.add('label');
-            killsElement.prepend(labelSpan);
-        }
-        labelSpan.textContent = CONFIG.GAME_TEXT.UI.KILLS_LABEL + ': ';
-    }
-
-    // Game over text
-    if (gameOverElement) {
-        const heading = gameOverElement.querySelector('h2');
-        const button = gameOverElement.querySelector('button');
-        if (heading) heading.textContent = CONFIG.GAME_TEXT.UI.GAME_OVER;
-        if (button) button.textContent = CONFIG.GAME_TEXT.UI.RESTART_BUTTON;
+        const killsLabel = document.createElement('span');
+        killsLabel.classList.add('label');
+        killsLabel.textContent = CONFIG.GAME_TEXT.UI.KILLS_LABEL + ': ';
+        killsElement.innerHTML = '';
+        killsElement.appendChild(killsLabel);
+        killsElement.appendChild(document.createTextNode('0'));
     }
 
     // Alpha mode label
     if (alphaModeLabel) {
         alphaModeLabel.textContent = CONFIG.GAME_TEXT.ALPHA_MODE.PROGRESS_LABEL;
     }
+    
+    // Intro screen text
+    if (controlsText) {
+        controlsText.textContent = isMobileDevice() ? 
+            CONFIG.GAME_TEXT.TUTORIAL.MOBILE_CONTROLS : 
+            CONFIG.GAME_TEXT.TUTORIAL.CONTROLS;
+    }
+    
+    if (objectiveText) {
+        objectiveText.textContent = CONFIG.GAME_TEXT.TUTORIAL.OBJECTIVE;
+    }
+    
+    if (alphaModeText) {
+        alphaModeText.textContent = CONFIG.GAME_TEXT.TUTORIAL.ALPHA_MODE_HINT;
+    }
+}
+
+// Function to check if the user is on a mobile device
+function isMobileDevice() {
+    return (window.innerWidth <= 768) || 
+           ('ontouchstart' in window) || 
+           (navigator.maxTouchPoints > 0) || 
+           (navigator.msMaxTouchPoints > 0);
 }
 
 // Call the initialization function after the document is fully loaded
@@ -61,6 +86,73 @@ if (document.readyState === 'loading') {
 } else {
     // Document already loaded, run the function
     initializeUIText();
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    // Start button
+    if (startButton) {
+        startButton.addEventListener('click', startGame);
+    }
+    
+    // Restart button
+    if (restartButton) {
+        restartButton.addEventListener('click', function() {
+            // Hide game over screen
+            if (gameOverElement) {
+                gameOverElement.style.display = 'none';
+            }
+            // Skip intro screen on restart
+            startGame();
+        });
+    }
+    
+    // Help button
+    if (helpButton) {
+        helpButton.addEventListener('click', showHelpScreen);
+    }
+}
+
+// Call setup event listeners
+setupEventListeners();
+
+// Function to start the game
+export function startGame() {
+    if (introScreen) {
+        introScreen.style.display = 'none';
+    }
+    gameStarted = true;
+    firstTimeUser = false; // User has now played at least once
+    
+    // Dispatch a custom event to notify that the game has started
+    window.dispatchEvent(new CustomEvent('gameStarted'));
+}
+
+// Function to check if the game has started
+export function hasGameStarted() {
+    return gameStarted;
+}
+
+// Function to show the intro screen
+export function showIntroScreen() {
+    // Only show intro screen for first-time users
+    if (firstTimeUser) {
+        if (introScreen) {
+            introScreen.style.display = 'flex';
+        }
+        gameStarted = false;
+    } else {
+        // For returning players, just start the game directly
+        startGame();
+    }
+}
+
+// Function to show the help screen (reuses the intro screen)
+export function showHelpScreen() {
+    if (introScreen) {
+        introScreen.style.display = 'flex';
+    }
+    // Don't change gameStarted state - this is just a temporary overlay
 }
 
 let powerUpTextAnimationHandler = null;
