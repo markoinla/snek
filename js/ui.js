@@ -11,6 +11,25 @@ const restartButton = document.getElementById('restartButton');
 
 let powerUpTextAnimationHandler = null;
 
+// Add resize event listener to handle mobile buttons visibility
+window.addEventListener('resize', updateMobileControlsVisibility);
+
+// Function to update mobile controls visibility based on screen width
+function updateMobileControlsVisibility() {
+    if (!leftButton || !rightButton || gameOverElement?.style.display === 'block') return;
+    
+    if (window.innerWidth <= 767) {
+        leftButton.style.display = 'flex';
+        rightButton.style.display = 'flex';
+    } else {
+        leftButton.style.display = 'none';
+        rightButton.style.display = 'none';
+    }
+}
+
+// Initialize mobile controls on page load
+updateMobileControlsVisibility();
+
 export const elements = {
     scoreElement,
     killsElement,
@@ -49,9 +68,9 @@ export function hideGameOver() {
     if (gameOverElement) {
         gameOverElement.style.display = 'none';
     }
-    // Show mobile buttons if needed (handled by CSS media query)
-    if (leftButton) leftButton.style.display = ''; // Reset to default
-    if (rightButton) rightButton.style.display = ''; // Reset to default
+    
+    // Use the helper function to update mobile controls visibility
+    updateMobileControlsVisibility();
 }
 
 export function updatePowerUpInfo(text) {

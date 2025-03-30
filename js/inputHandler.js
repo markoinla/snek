@@ -44,7 +44,11 @@ export function setupInputListeners(gameState, uiElements) {
     };
     
     // Restart button handler
-    const handleRestartClick = () => {
+    const handleRestartClick = (e) => {
+        // Prevent default behavior for touch events
+        if (e && e.preventDefault) {
+            e.preventDefault();
+        }
         requestRestart();
     };
 
@@ -60,9 +64,10 @@ export function setupInputListeners(gameState, uiElements) {
         uiElements.rightButton.addEventListener('touchstart', handleTouchRight, { passive: false });
     }
     
-    // Add restart button event listener
+    // Add restart button event listeners - both click and touch for mobile
     if (uiElements.restartButton) {
         uiElements.restartButton.addEventListener('click', handleRestartClick);
+        uiElements.restartButton.addEventListener('touchstart', handleRestartClick, { passive: false });
     }
 
     // Return a cleanup function
@@ -77,6 +82,7 @@ export function setupInputListeners(gameState, uiElements) {
         }
         if (uiElements.restartButton) {
             uiElements.restartButton.removeEventListener('click', handleRestartClick);
+            uiElements.restartButton.removeEventListener('touchstart', handleRestartClick);
         }
     };
 }
