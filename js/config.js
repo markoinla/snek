@@ -92,7 +92,7 @@ export const GAME_TEXT = {
     TUTORIAL: {
         CONTROLS: "Left/Right keys to turn your Snek",
         MOBILE_CONTROLS: "Press left/right buttons to turn your Snek",
-        OBJECTIVE: "Eat food and other sneks to grow your anaconda",
+        OBJECTIVE: "Eat food and other sneks to grow your anaconda. You can eat a Snek by eating its tail.",
         ALPHA_MODE_HINT: "Fill up the alpha meter to become the ALPHA SNEK!"
     }
 };
