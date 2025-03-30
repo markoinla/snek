@@ -90,8 +90,8 @@ export const GAME_TEXT = {
     
     // Tutorial/Help Messages
     TUTORIAL: {
-        CONTROLS: "Left/Right Arrow Keys Move your Snek",
-        MOBILE_CONTROLS: "SWIPE TO MOVE",
+        CONTROLS: "Left/Right keys to turn your Snek",
+        MOBILE_CONTROLS: "Press left/right buttons to turn your Snek",
         OBJECTIVE: "Eat food and other sneks to grow your anaconda",
         ALPHA_MODE_HINT: "Fill up the alpha meter to become the ALPHA SNEK!"
     }
