@@ -7,6 +7,7 @@ const finalScoreElement = document.getElementById('finalScore');
 const powerUpTextElement = document.getElementById('powerUpTextEffect');
 const leftButton = document.getElementById('leftButton');
 const rightButton = document.getElementById('rightButton');
+const restartButton = document.getElementById('restartButton');
 
 let powerUpTextAnimationHandler = null;
 
@@ -19,6 +20,7 @@ export const elements = {
     powerUpTextElement,
     leftButton,
     rightButton,
+    restartButton,
 };
 
 export function updateScore(score) {

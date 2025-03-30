@@ -42,6 +42,11 @@ export function setupInputListeners(gameState, uiElements) {
          e.preventDefault(); // Prevent scrolling/zooming
         playerTurnRight(gameState);
     };
+    
+    // Restart button handler
+    const handleRestartClick = () => {
+        requestRestart();
+    };
 
     window.addEventListener('keydown', handleKeyDown);
 
@@ -54,6 +59,11 @@ export function setupInputListeners(gameState, uiElements) {
     if (uiElements.rightButton) {
         uiElements.rightButton.addEventListener('touchstart', handleTouchRight, { passive: false });
     }
+    
+    // Add restart button event listener
+    if (uiElements.restartButton) {
+        uiElements.restartButton.addEventListener('click', handleRestartClick);
+    }
 
     // Return a cleanup function
     return () => {
@@ -64,6 +74,9 @@ export function setupInputListeners(gameState, uiElements) {
         }
         if (uiElements.rightButton) {
             uiElements.rightButton.removeEventListener('touchstart', handleTouchRight);
+        }
+        if (uiElements.restartButton) {
+            uiElements.restartButton.removeEventListener('click', handleRestartClick);
         }
     };
 }
