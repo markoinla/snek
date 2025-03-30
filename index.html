@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Snake Refactored</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to external CSS -->
+</head>
+<body>
+    <!-- Overlays -->
+    <div id="info">Score: 0</div>
+    <div id="powerUpInfo"></div>
+    <div id="gameOver">GAME OVER!<br>Score: <span id="finalScore">0</span><br><small>(Press R to Restart)</small></div>
+    <div id="powerUpTextEffect"></div>
+
+    <!-- Mobile Buttons -->
+    <div id="leftButton" class="mobile-button">↶</div>
+    <div id="rightButton" class="mobile-button">↷</div>
+
+    <!-- Canvas Target -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Import map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- Main Game Logic Entry Point -->
+    <script type="module" src="js/main.js"></script>
+
+</body>
+</html>
