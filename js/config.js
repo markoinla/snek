@@ -57,9 +57,20 @@ export const GAME_TEXT = {
     UI: {
         SCORE_LABEL: "SCORE",
         KILLS_LABEL: "KILLS",
-        GAME_OVER: "GAME OVER",
-        RESTART_BUTTON: "RESTART",
-        HIGH_SCORE: "HIGH SCORE"
+        GAME_OVER: {
+            TITLE: "GAME OVER!",
+            SCORE_PREFIX: "FINAL SCORE: ",
+            RESTART_BUTTON: "RESTART",
+            HIGH_SCORE: "HIGH SCORE",
+            // Death reason messages
+            DEATH_REASONS: {
+                WALL_COLLISION: "YOU HIT A WALL!",
+                SELF_COLLISION: "YOU ATE YOURSELF!",
+                OBSTACLE_COLLISION: "YOU HIT A TREE OR BUSH!",
+                ENEMY_COLLISION: "YOU GOT EATEN!",
+                DEFAULT: "GAME OVER!"
+            }
+        },
     },
     
     // Alpha Mode Text
@@ -84,7 +95,9 @@ export const GAME_TEXT = {
             "TASTY SNEK!",
             "DEVOURED!",
             "GULP!",
-            "YOU ATE YOUR COUSIN!"
+            "YOU ATE YOUR COUSIN!",
+            "GROWING BOY!",
+            "BIG SNEK!"
         ]
     },
     

@@ -161,15 +161,15 @@ function resetGame() {
 }
 
 // --- Game Over ---
-export function setGameOver(state = gameState) { // Allow passing state for flexibility
+export function setGameOver(state = gameState, deathReason = 'DEFAULT') { // Allow passing state for flexibility
     if (state.flags.gameOver) return; // Prevent multiple triggers
 
-    console.log("Game Over! Final Score:", state.score);
+    console.log("Game Over! Final Score:", state.score, "Reason:", deathReason);
     state.flags.gameOver = true;
     state.flags.gameRunning = false; // Stop game logic updates
 
-    // Show UI
-    UI.showGameOver(state.score);
+    // Show UI with death reason
+    UI.showGameOver(state.score, deathReason);
     UI.updatePowerUpInfo(''); // Clear any active power-up display
     UI.hidePowerUpTextEffect();
 

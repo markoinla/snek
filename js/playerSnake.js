@@ -203,7 +203,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         if (newHeadPos.x >= halfGrid || newHeadPos.x < -halfGrid ||
             newHeadPos.z >= halfGrid || newHeadPos.z < -halfGrid) {
             console.log("Collision: Wall");
-            triggerPlayerDeath(gameState);
+            triggerPlayerDeath(gameState, 'WALL_COLLISION');
             return;
         }
 
@@ -213,7 +213,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             for (let i = 0; i < playerSnake.segments.length - 1; i++) {
                 if (playerSnake.segments[i].x === newHeadPos.x && playerSnake.segments[i].z === newHeadPos.z) {
                     console.log("Collision: Self");
-                    triggerPlayerDeath(gameState);
+                    triggerPlayerDeath(gameState, 'SELF_COLLISION');
                     return;
                 }
             }
@@ -223,7 +223,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
          if (!playerSnake.ghostModeActive) {
             if (checkObstacleCollision(newHeadPos, gameState)) {
                 console.log("Collision: Obstacle");
-                triggerPlayerDeath(gameState);
+                triggerPlayerDeath(gameState, 'OBSTACLE_COLLISION');
                 return;
             }
          }
@@ -710,7 +710,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
     
     // If not in Alpha Mode and hit the body/head, player dies
     if (!playerSnake.ghostModeActive) {
-        triggerPlayerDeath(gameState);
+        triggerPlayerDeath(gameState, 'ENEMY_COLLISION');
         return false;
     }
     
@@ -719,7 +719,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
 }
 
 // --- Death ---
-function triggerPlayerDeath(gameState) {
+function triggerPlayerDeath(gameState, reason) {
      // *** Destructure camera here ***
      const { scene, playerSnake, camera } = gameState;
      if (!scene || !playerSnake || !camera) return; // Check camera
@@ -735,7 +735,7 @@ function triggerPlayerDeath(gameState) {
          );
      }
      // Call the main game over handler
-     setGameOver(gameState);
+     setGameOver(gameState, reason);
 }
 
 // Update Alpha Mode progress based on score

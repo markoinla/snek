@@ -8,6 +8,7 @@ const powerUpInfoElement = document.getElementById('powerUpInfo');
 const powerUpTextElement = document.getElementById('powerUpTextEffect');
 const gameOverElement = document.getElementById('gameOver');
 const finalScoreElement = document.getElementById('finalScore');
+const deathReasonElement = document.getElementById('deathReason');
 const restartButton = document.getElementById('restartButton');
 const leftButton = document.getElementById('leftButton');
 const rightButton = document.getElementById('rightButton');
@@ -231,6 +232,7 @@ export const elements = {
     alphaModeContainer,
     alphaModeLabel,
     alphaModeProgress,
+    deathReasonElement,
 };
 
 export function updateScore(score) {
@@ -283,12 +285,29 @@ export function updateKills(kills) {
     }
 }
 
-export function showGameOver(score) {
+/**
+ * Shows the game over screen with death reason and score
+ * @param {number} score - The final score
+ * @param {string} deathReason - The reason for death (wall, self, obstacle, enemy)
+ */
+export function showGameOver(score, deathReason = 'DEFAULT') {
     if (gameOverElement && finalScoreElement) {
+        // Set the final score
         finalScoreElement.textContent = score;
+        
+        // Set the death reason message based on the provided reason
+        if (deathReasonElement) {
+            // Get the appropriate message from config based on the death reason
+            const deathMessages = CONFIG.GAME_TEXT.UI.GAME_OVER.DEATH_REASONS;
+            const message = deathMessages[deathReason] || deathMessages.DEFAULT;
+            deathReasonElement.textContent = message;
+        }
+        
+        // Show the game over screen
         gameOverElement.style.display = 'block';
     }
-     // Hide mobile buttons on game over
+    
+    // Hide mobile buttons on game over
     if (leftButton) leftButton.style.display = 'none';
     if (rightButton) rightButton.style.display = 'none';
 }
