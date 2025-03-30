@@ -27,6 +27,13 @@ export const gameState = {
         ghostModeActive: false,
         activePowerUp: null, // { type, endTime }
         enlargedHeadUntil: 0, // Timestamp when enlarged head effect ends
+        // Alpha Mode properties
+        alphaMode: {
+            active: false,
+            startTime: 0,
+            endTime: 0,
+            lastScoreThreshold: 0, // Last score threshold that triggered Alpha Mode
+        },
     },
     enemies: {
         list: [], // Array of enemy state objects
@@ -91,6 +98,12 @@ export function resetGameStateForNewGame() {
      gameState.playerSnake.ghostModeActive = false;
      gameState.playerSnake.activePowerUp = null;
      gameState.playerSnake.enlargedHeadUntil = 0;
+     gameState.playerSnake.alphaMode = {
+        active: false,
+        startTime: 0,
+        endTime: 0,
+        lastScoreThreshold: 0, // Last score threshold that triggered Alpha Mode
+     };
 
      // Enemies, Food, Obstacles will be reset by their respective modules calling their reset functions
 

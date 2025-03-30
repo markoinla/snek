@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import * as CONFIG from './config.js';
 
 // Asset Paths
 export const PATHS = {
@@ -17,10 +18,10 @@ export const PATHS = {
 // Food Types Definition
 export const FOOD_TYPES = [
     { type: 'normal', svgPath: PATHS.foodNormal, colorHint: new THREE.Color(0xDD2C00), powerUpDuration: 0, description: "Normal Food", effectText: "+1" },
-    { type: 'speed', svgPath: PATHS.foodSpeed, colorHint: new THREE.Color(0xFFEB3B), powerUpDuration: 8, description: "Speed Boost!", effectText: "Fast Snek!" },
-    { type: 'shrink', svgPath: PATHS.foodShrink, colorHint: new THREE.Color(0xAB47BC), powerUpDuration: 0, description: "Shrink!", effectText: "Shrinkaaage!" },
-    { type: 'score_x2', svgPath: PATHS.foodScore, colorHint: new THREE.Color(0xFFEE58), powerUpDuration: 10, description: "Score x2!", effectText: "Score x2!" },
-    { type: 'ghost', svgPath: PATHS.foodGhost, colorHint: new THREE.Color(0xE0E0E0), powerUpDuration: 6, description: "Ghost Mode!", effectText: "Ghost Mode!" }
+    { type: 'speed', svgPath: PATHS.foodSpeed, colorHint: new THREE.Color(0xFFEB3B), powerUpDuration: 8, description: "Speed Boost", effectText: CONFIG.GAME_TEXT.POWERUPS.SPEED_BOOST },
+    { type: 'shrink', svgPath: PATHS.foodShrink, colorHint: new THREE.Color(0xAB47BC), powerUpDuration: 0, description: "Shrink", effectText: CONFIG.GAME_TEXT.POWERUPS.SHRINK },
+    { type: 'score_x2', svgPath: PATHS.foodScore, colorHint: new THREE.Color(0xFFEE58), powerUpDuration: 10, description: "Score Multiplier", effectText: CONFIG.GAME_TEXT.POWERUPS.SCORE_MULTIPLIER },
+    { type: 'ghost', svgPath: PATHS.foodGhost, colorHint: new THREE.Color(0xE0E0E0), powerUpDuration: 6, description: "Ghost Mode", effectText: CONFIG.GAME_TEXT.POWERUPS.GHOST_MODE }
 ];
 
 // Obstacle Types Definition

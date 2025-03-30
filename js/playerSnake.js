@@ -23,7 +23,13 @@ let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/
 //     scoreMultiplier: 1,
 //     ghostModeActive: false,
 //     activePowerUp: null, // { type, endTime }
-//     enlargedHeadUntil: 0 // New property for enlarged head effect
+//     enlargedHeadUntil: 0, // New property for enlarged head effect
+//     alphaMode: {
+//         active: false,
+//         startTime: 0,
+//         endTime: 0,
+//         lastScoreThreshold: 0
+//     }
 // };
 
 export function initPlayerSnake(gameState) {
@@ -44,6 +50,13 @@ export function initPlayerSnake(gameState) {
     playerSnake.ghostModeActive = false;
     playerSnake.activePowerUp = null;
     playerSnake.enlargedHeadUntil = 0; // Initialize enlarged head timer
+    playerSnake.alphaMode = {
+        active: false,
+        startTime: 0,
+        endTime: 0,
+        lastScoreThreshold: 0
+    };
+    playerSnake.lastTextureUpdateFrame = 0; // Initialize last texture update frame
 
     // Create initial meshes
     createPlayerMeshes(gameState);
@@ -114,9 +127,22 @@ export function turnRight(gameState) {
 // --- Update Functions ---
 
 export function updatePlayer(deltaTime, currentTime, gameState) {
-    const { playerSnake, flags, clock, scene, materials } = gameState;
-    if (flags.gameOver || !playerSnake || !clock) return;
-
+    const { playerSnake, score, flags, scene, materials } = gameState;
+    
+    // Exit early if game is over
+    if (flags.gameOver || !playerSnake) return;
+    
+    // Update progress toward Alpha Mode
+    updateAlphaModeProgress(score, gameState);
+    
+    // Check if we should enter Alpha Mode based on score
+    checkAlphaModeActivation(score, currentTime, gameState);
+    
+    // Update Alpha Mode progress if active
+    if (playerSnake.alphaMode.active) {
+        updateAlphaMode(currentTime, gameState);
+    }
+    
     // Update Power-up Timer
     updatePowerUpState(currentTime, gameState);
     
@@ -131,17 +157,28 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
 
     // Update Animation Frame
     playerSnake.animationTimer += deltaTime;
-    if (playerSnake.animationTimer > 0.2) { // Animation speed
-        playerSnake.animationFrame = (playerSnake.animationFrame + 1) % 2;
+    if (playerSnake.animationTimer >= 0.25) { // Animation frame change every 0.25 seconds
         playerSnake.animationTimer = 0;
+        playerSnake.animationFrame = playerSnake.animationFrame === 0 ? 1 : 0;
         updatePlayerSnakeTextures(gameState);
     }
 
-    // Update Movement
+    // Movement timer
     playerSnake.moveTimer += deltaTime;
-    if (playerSnake.moveTimer >= playerSnake.speed) {
-        playerSnake.moveTimer = 0; // Reset timer accurately
-
+    
+    // Calculate actual speed based on power-ups and Alpha Mode
+    let actualSpeed = playerSnake.speed;
+    
+    // Apply Alpha Mode speed boost if active
+    if (playerSnake.alphaMode.active) {
+        // FIXED: Lower speed value = faster movement (since it's the time between moves)
+        // We need to divide by the multiplier, not multiply
+        actualSpeed /= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER; // Faster in Alpha Mode
+    }
+    
+    if (playerSnake.moveTimer >= actualSpeed) {
+        playerSnake.moveTimer = 0;
+        
         // Update direction based on queued input
         playerSnake.direction = playerSnake.nextDirection;
 
@@ -194,33 +231,10 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
          // 4. Enemy Collision - Check if it's an edible tail
          const enemyCollision = checkEnemyCollision(newHeadPos, gameState, true);
          if (enemyCollision.collided) {
-             if (enemyCollision.isEdibleTail) {
-                 // Player ate an enemy's tail - kill the enemy
-                 console.log("Ate enemy tail! Killing enemy:", enemyCollision.enemyId);
-                 
-                 // Kill the enemy snake
-                 if (killEnemySnake(enemyCollision.enemyId, gameState)) {
-                     // Increase score
-                     gameState.score += CONFIG.ENEMY_KILL_SCORE;
-                     gameState.enemies.kills += 1;
-                     
-                     // Update UI
-                     UI.updateScore(gameState.score);
-                     UI.updateKills(gameState.enemies.kills);
-                     
-                     // Show kill message with particle effect color
-                     UI.showPowerUpTextEffect("SNAKE KILL!", CONFIG.PARTICLE_COLOR_KILL);
-                     
-                     // Trigger camera shake
-                     startCameraShake(gameState);
-                     
-                     // Enlarge player's head for a duration
-                     enlargePlayerHead(gameState, currentTime);
-                 }
+             if (handleEnemyCollision(enemyCollision, gameState, currentTime)) {
+                 // Player survived the collision
              } else {
-                 // Regular enemy collision - player dies
-                 console.log("Collision: Enemy");
-                 triggerPlayerDeath(gameState);
+                 // Player died
                  return;
              }
          }
@@ -299,9 +313,31 @@ function enlargePlayerHead(gameState, currentTime) {
 }
 
 // Function to kill an enemy snake
-function killEnemySnake(enemyId, gameState) {
-    // Use the imported killEnemy function
-    return killEnemy(enemyId, gameState);
+export function killEnemySnake(enemyId, gameState) {
+    const { currentTime } = gameState.clock;
+    
+    // Call the enemy module's kill function
+    if (killEnemy(enemyId, gameState)) {
+        // Increase score
+        gameState.score += CONFIG.ENEMY_KILL_SCORE;
+        gameState.enemies.kills += 1;
+        
+        // Update UI
+        UI.updateScore(gameState.score);
+        UI.updateKills(gameState.enemies.kills);
+        
+        // Show kill message with particle effect color
+        UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.POWERUPS.ENEMY_KILLED, CONFIG.PARTICLE_COLOR_KILL);
+        
+        // Trigger camera shake
+        startCameraShake(gameState);
+        
+        // Enlarge player's head for a duration
+        enlargePlayerHead(gameState, currentTime);
+        
+        return true;
+    }
+    return false;
 }
 
 // --- Camera ---
@@ -488,21 +524,54 @@ function updatePowerUpState(currentTime, gameState) {
 }
 
 // Updates textures for the entire snake based on animation frame and ghost mode
-export function updatePlayerSnakeTextures(gameState) {
+export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
     const { playerSnake, materials } = gameState;
-    if (!materials?.snake) return;
+    if (!materials?.snake || playerSnakeMeshes.length === 0) return;
 
-    const headMaterial = (playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2);
-    const bodyMaterial = (playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2);
+    // Only update if animation frame changed or forced update
+    if (!forceUpdate && playerSnake.lastTextureUpdateFrame === playerSnake.animationFrame) return;
+    
+    // Store current frame to avoid unnecessary updates
+    playerSnake.lastTextureUpdateFrame = playerSnake.animationFrame;
 
+    // Determine which materials to use based on state
+    let headMaterial, bodyMaterial;
+    
+    if (playerSnake.alphaMode.active) {
+        // In Alpha Mode, use purple-tinted materials
+        headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
+        bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
+        
+        // Apply Alpha Mode color (purple)
+        headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+        bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+    } else if (playerSnake.ghostModeActive) {
+        // In Ghost Mode, use standard materials but make them transparent
+        headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
+        bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
+        
+        // Make materials transparent
+        headMaterial.transparent = true;
+        headMaterial.opacity = 0.6;
+        bodyMaterial.transparent = true;
+        bodyMaterial.opacity = 0.6;
+    } else {
+        // Normal state
+        headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2;
+        bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2;
+    }
+
+    // Apply materials to meshes
     playerSnakeMeshes.forEach((mesh, index) => {
-        if (!mesh) return;
-        const targetMaterial = (index === 0) ? headMaterial : bodyMaterial;
-        mesh.material = targetMaterial;
-        // Apply ghost effect
-        mesh.material.transparent = playerSnake.ghostModeActive;
-        mesh.material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
-        mesh.material.needsUpdate = true; // Ensure changes apply
+        if (!mesh) return; // Skip if mesh is undefined
+        
+        if (index === 0) {
+            // Head
+            mesh.material = headMaterial;
+        } else {
+            // Body
+            mesh.material = bodyMaterial;
+        }
     });
 }
 
@@ -511,24 +580,142 @@ function updatePlayerMaterialsAfterMove(gameState) {
     const { playerSnake, materials } = gameState;
     if (playerSnakeMeshes.length === 0 || !materials?.snake) return;
 
-    const headMaterial = (playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2);
-    const bodyMaterial = (playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2);
+    // Skip if no head mesh
+    if (!playerSnakeMeshes[0]) return;
+
+    let headMaterial, bodyMaterial;
+    
+    if (playerSnake.alphaMode.active) {
+        // In Alpha Mode, use purple-tinted materials
+        headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
+        bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
+        
+        // Apply Alpha Mode color (purple)
+        headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+        bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+    } else if (playerSnake.ghostModeActive) {
+        // In Ghost Mode, use standard materials but make them transparent
+        headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
+        bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
+        
+        // Make materials transparent
+        headMaterial.transparent = true;
+        headMaterial.opacity = 0.6;
+        bodyMaterial.transparent = true;
+        bodyMaterial.opacity = 0.6;
+    } else {
+        // Normal state
+        headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1 : materials.snake.head2;
+        bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2;
+    }
 
     // Update head mesh
     playerSnakeMeshes[0].material = headMaterial;
-     // Update opacity/transparency based on ghost mode for head
-    playerSnakeMeshes[0].material.transparent = playerSnake.ghostModeActive;
-    playerSnakeMeshes[0].material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
-    playerSnakeMeshes[0].material.needsUpdate = true; // Important if changing transparency
 
     // Update the segment that was previously the head (now the first body segment)
-    if (playerSnakeMeshes.length > 1) {
+    if (playerSnakeMeshes.length > 1 && playerSnakeMeshes[1]) {
         playerSnakeMeshes[1].material = bodyMaterial;
-        // Update opacity/transparency based on ghost mode for body
-        playerSnakeMeshes[1].material.transparent = playerSnake.ghostModeActive;
-        playerSnakeMeshes[1].material.opacity = playerSnake.ghostModeActive ? 0.6 : 1.0;
-         playerSnakeMeshes[1].material.needsUpdate = true;
     }
+}
+
+// --- Alpha Mode ---
+
+/**
+ * Checks if Alpha Mode should be activated based on score
+ */
+function checkAlphaModeActivation(score, currentTime, gameState) {
+    const { playerSnake } = gameState;
+    const scoreThreshold = CONFIG.ALPHA_MODE_SCORE_THRESHOLD;
+    
+    // Calculate which threshold we're at
+    const currentThreshold = Math.floor(score / scoreThreshold);
+    
+    // If we've reached a new threshold and we're not already in Alpha Mode
+    if (currentThreshold > playerSnake.alphaMode.lastScoreThreshold && !playerSnake.alphaMode.active) {
+        // Activate Alpha Mode
+        playerSnake.alphaMode.active = true;
+        playerSnake.alphaMode.startTime = currentTime;
+        playerSnake.alphaMode.endTime = currentTime + CONFIG.ALPHA_MODE_DURATION;
+        playerSnake.alphaMode.lastScoreThreshold = currentThreshold;
+        
+        // Update the UI
+        UI.showAlphaModeBar();
+        UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
+        
+        // Update player speed for Alpha Mode
+        // NOTE: In our game, speed is the time between moves, so a lower value means faster movement
+        // BASE_SNAKE_SPEED is 0.10, and with multiplier of 1.5, we should set it to 0.10 / 1.5 = 0.067
+        // This makes the snake move every 0.067 seconds instead of every 0.10 seconds
+        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
+        
+        console.log("Alpha Mode activated! Threshold:", currentThreshold);
+    }
+}
+
+/**
+ * Updates Alpha Mode state
+ */
+function updateAlphaMode(currentTime, gameState) {
+    const { playerSnake } = gameState;
+    
+    // Check if Alpha Mode has expired
+    if (currentTime >= playerSnake.alphaMode.endTime) {
+        // Deactivate Alpha Mode
+        playerSnake.alphaMode.active = false;
+        
+        // Reset player speed to normal
+        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
+        
+        // Show deactivation message
+        UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.DEACTIVATED_MESSAGE);
+        
+        // Reset the label but keep the progress bar visible with 0% progress
+        if (document.getElementById('alphaModeLabel')) {
+            document.getElementById('alphaModeLabel').textContent = CONFIG.GAME_TEXT.ALPHA_MODE.PROGRESS_LABEL;
+            document.getElementById('alphaModeLabel').classList.remove('alpha-mode-active');
+        }
+        
+        // Reset progress bar to 0%
+        UI.updateAlphaModeProgress(0);
+        
+        console.log("Alpha Mode deactivated");
+        return;
+    }
+    
+    // Calculate remaining time percentage
+    const totalDuration = CONFIG.ALPHA_MODE_DURATION;
+    const remaining = playerSnake.alphaMode.endTime - currentTime;
+    const percentage = (remaining / totalDuration) * 100;
+    
+    // Update the UI
+    UI.updateAlphaModeProgress(percentage);
+}
+
+/**
+ * Handles collision with enemy snakes based on Alpha Mode status
+ * @param {object} collision - Collision data from checkEnemyCollision
+ * @param {object} gameState - Game state object
+ * @param {number} currentTime - Current game time
+ * @returns {boolean} - True if player survived, false if player died
+ */
+function handleEnemyCollision(collision, gameState, currentTime) {
+    const { playerSnake } = gameState;
+    
+    // If in Alpha Mode or hit the tail (which is always edible), kill the enemy
+    if (playerSnake.alphaMode.active || collision.isTail) {
+        // Kill the enemy snake
+        killEnemySnake(collision.enemyId, gameState);
+        return true;
+    }
+    
+    // If not in Alpha Mode and hit the body/head, player dies
+    if (!playerSnake.ghostModeActive) {
+        triggerPlayerDeath(gameState);
+        return false;
+    }
+    
+    // Ghost mode active but not Alpha Mode, just pass through
+    return true;
 }
 
 // --- Death ---
@@ -549,4 +736,26 @@ function triggerPlayerDeath(gameState) {
      }
      // Call the main game over handler
      setGameOver(gameState);
+}
+
+// Update Alpha Mode progress based on score
+function updateAlphaModeProgress(score, gameState) {
+    const { playerSnake } = gameState;
+    const scoreThreshold = CONFIG.ALPHA_MODE_SCORE_THRESHOLD;
+    
+    // If Alpha Mode is active, don't update the progress bar here
+    // (it's handled by updateAlphaMode function)
+    if (playerSnake.alphaMode.active) return;
+    
+    // After Alpha Mode deactivates, we want to start from 0 and build up again
+    // to the next threshold, so we'll calculate progress differently
+    const nextThreshold = (playerSnake.alphaMode.lastScoreThreshold + 1) * scoreThreshold;
+    const scoreProgress = score - (playerSnake.alphaMode.lastScoreThreshold * scoreThreshold);
+    const progressNeeded = scoreThreshold; // Always need to gain THRESHOLD points for next activation
+    
+    // Calculate percentage (0-100)
+    const percentage = Math.min(100, Math.floor((scoreProgress / progressNeeded) * 100));
+    
+    // Update the UI
+    UI.updateAlphaModeProgress(percentage);
 }

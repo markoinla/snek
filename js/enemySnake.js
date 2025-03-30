@@ -514,25 +514,22 @@ export function checkEnemyCollision(position, gameState, isPlayerHead = false) {
             
             // Check if positions match
             if (segment.x === position.x && segment.z === position.z) {
-                // If it's the player's head and this is one of the last N segments of the enemy
-                if (isPlayerHead && j >= enemy.snake.length - CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS) {
-                    return { 
-                        collided: true, 
-                        isEdibleTail: true,
-                        enemyId: enemy.id,
-                        segmentIndex: j
-                    };
-                }
+                // Determine if this is a tail segment (always edible)
+                const isTail = j >= enemy.snake.length - CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
                 
-                // Regular collision
+                // Return collision info with more details
                 return { 
-                    collided: true,
-                    isEdibleTail: false
+                    collided: true, 
+                    isTail: isTail,
+                    isHead: j === 0,
+                    enemyId: enemy.id,
+                    segmentIndex: j
                 };
             }
         }
     }
     
+    // No collision
     return { collided: false };
 }
 

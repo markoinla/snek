@@ -41,8 +41,53 @@ export const FOG_DENSITY = 0.018;
 
 export const START_SAFE_ZONE = 5; // Player start area free of obstacles
 
+// Alpha Mode settings
+export const ALPHA_MODE_SCORE_THRESHOLD = 25; // Score needed to trigger Alpha Mode
+export const ALPHA_MODE_DURATION = 7; // Duration in seconds
+export const ALPHA_MODE_SPEED_MULTIPLIER = 1.5; // How much faster the snake moves in Alpha Mode
+export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
+
 export const GRASS_COUNT = 15000;
 export const PARTICLE_COUNT_EAT = 25;
+
+// Game Text Configuration
+// This section allows you to customize all text messages in the game
+export const GAME_TEXT = {
+    // UI Elements
+    UI: {
+        SCORE_LABEL: "SCORE",
+        KILLS_LABEL: "KILLS",
+        GAME_OVER: "GAME OVER",
+        RESTART_BUTTON: "RESTART",
+        HIGH_SCORE: "HIGH SCORE"
+    },
+    
+    // Alpha Mode Text
+    ALPHA_MODE: {
+        PROGRESS_LABEL: "ALPHA METER",
+        ACTIVE_LABEL: "ALPHA SNEK!",
+        ACTIVATED_MESSAGE: "YOU\'RE THE ALPHA SNEK!",
+        DEACTIVATED_MESSAGE: "BETA SNEK :("
+    },
+    
+    // Power-up Messages
+    POWERUPS: {
+        SPEED_BOOST: "TURBO SNEK!",
+        GHOST_MODE: "GHOST MODE!",
+        SCORE_MULTIPLIER: "DOUBLE SNEK!",
+        SHRINK: "SHRINKAAAGE!",
+        ENEMY_KILLED: "GOBBLE GOBBLE!"
+    },
+    
+    // Tutorial/Help Messages
+    TUTORIAL: {
+        CONTROLS: "ARROW KEYS TO MOVE",
+        MOBILE_CONTROLS: "SWIPE TO MOVE",
+        OBJECTIVE: "EAT FOOD TO GROW",
+        ALPHA_MODE_HINT: "REACH 25 POINTS FOR ALPHA MODE"
+    }
+};
+
 export const PARTICLE_COUNT_DEATH = 60;
 export const PARTICLE_SIZE = 5;
 export const PARTICLE_LIFESPAN = 0.8;
