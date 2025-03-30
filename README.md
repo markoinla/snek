@@ -2,6 +2,8 @@
 
 A classic snake game implementation built with HTML, CSS, and JavaScript.
 
+[Play here](https://markoinla.github.io/snek/)
+
 ## Features
 - Classic snake movement and gameplay
 - Score tracking
