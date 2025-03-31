@@ -329,8 +329,10 @@ export function killEnemySnake(enemyId, gameState) {
     
     // Call the enemy module's kill function
     if (killEnemy(enemyId, gameState)) {
-        // Increase score
-        gameState.score += CONFIG.ENEMY_KILL_SCORE;
+        // Increase score - apply the player's score multiplier
+        const baseScore = CONFIG.ENEMY_KILL_SCORE;
+        const scoreToAdd = baseScore * playerSnake.scoreMultiplier;
+        gameState.score += scoreToAdd;
         gameState.enemies.kills += 1;
         
         // Update UI

@@ -222,7 +222,7 @@ function initAlphaModeUI() {
         // Show the container but with 0% progress
         alphaModeContainer.style.display = 'flex';
         if (alphaModeProgress) {
-            alphaModeProgress.style.width = '0%';
+            alphaModeProgress.style.height = '0%';
         }
         // No flashing animation until Alpha Mode is active
         if (alphaModeLabel) {
@@ -450,7 +450,7 @@ export function resetUI(initialScore = 0, gameState) {
     if (alphaModeContainer) {
         alphaModeContainer.style.display = 'flex';
         if (alphaModeProgress) {
-            alphaModeProgress.style.width = '0%';
+            alphaModeProgress.style.height = '0%';
         }
         if (alphaModeLabel) {
             alphaModeLabel.classList.remove('alpha-mode-active');
@@ -493,7 +493,7 @@ export function showAlphaModeBar() {
         
         // Make sure the progress bar is visible and fully filled
         if (alphaModeProgress) {
-            alphaModeProgress.style.width = '100%';
+            alphaModeProgress.style.height = '100%';
         }
     }
 }
@@ -520,7 +520,8 @@ export function updateAlphaModeProgress(percentage) {
     if (alphaModeProgress) {
         // Ensure percentage is between 0-100
         const clampedPercentage = Math.max(0, Math.min(100, percentage));
-        alphaModeProgress.style.width = `${clampedPercentage}%`;
+        // For vertical progress bar, we update height instead of width
+        alphaModeProgress.style.height = `${clampedPercentage}%`;
         
         // If we're showing progress toward Alpha Mode (not during active Alpha Mode)
         // make sure the container is visible

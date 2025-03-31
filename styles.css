@@ -47,9 +47,9 @@ canvas { display: block; }
 /* Alpha Mode Styles */
 #alphaModeContainer {
     position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
     display: none; /* Hidden by default */
     flex-direction: column;
     align-items: center;
@@ -57,6 +57,7 @@ canvas { display: block; }
 }
 
 #alphaModeLabel {
+    display: none;
     color: #9C27B0; /* Purple color matching Alpha Mode */
     font-family: 'Courier New', monospace; /* Pixelated-style font */
     font-weight: bold;
@@ -65,11 +66,15 @@ canvas { display: block; }
     letter-spacing: 2px;
     margin-bottom: 5px;
     text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+    /* Rotate the text for vertical display */
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    margin-bottom: 10px;
 }
 
 #alphaModeBar {
-    width: 200px;
-    height: 20px;
+    width: 20px;
+    height: 200px;
     background-color: rgba(0, 0, 0, 0.5);
     border: 3px solid #9C27B0;
     position: relative;
@@ -80,14 +85,14 @@ canvas { display: block; }
 
 #alphaModeProgress {
     position: absolute;
-    top: 0;
+    bottom: 0;
     left: 0;
-    height: 100%;
-    width: 0%; /* Start at 0% */
+    width: 100%;
+    height: 0%; /* Start at 0% */
     background-color: #9C27B0;
     /* Create pixelated effect with a gradient */
     background-image: linear-gradient(
-        to right,
+        to top,
         rgba(255, 255, 255, 0.3) 25%,
         rgba(255, 255, 255, 0) 25%,
         rgba(255, 255, 255, 0) 50%,
@@ -97,7 +102,7 @@ canvas { display: block; }
     );
     background-size: 8px 8px; /* 8-bit style pixel size */
     image-rendering: pixelated;
-    transition: width 0.3s ease; /* Smooth transition for progress changes */
+    transition: height 0.3s ease; /* Smooth transition for progress changes */
 }
 
 /* Alpha Mode Animation */
