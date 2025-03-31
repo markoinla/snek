@@ -221,9 +221,19 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
 
          // 3. Obstacle Collision (Ignore if ghost mode)
          if (!playerSnake.ghostModeActive) {
-            if (checkObstacleCollision(newHeadPos, gameState)) {
-                console.log("Collision: Obstacle");
-                triggerPlayerDeath(gameState, 'OBSTACLE_COLLISION');
+            const obstacleCollision = checkObstacleCollision(newHeadPos, gameState);
+            if (obstacleCollision) {
+                console.log("Collision: Obstacle type:", obstacleCollision);
+                
+                // Use specific death message based on obstacle type
+                let deathReason = 'OBSTACLE_COLLISION';
+                if (obstacleCollision === 'tree') {
+                    deathReason = 'TREE_COLLISION';
+                } else if (obstacleCollision === 'bush') {
+                    deathReason = 'BUSH_COLLISION';
+                }
+                
+                triggerPlayerDeath(gameState, deathReason);
                 return;
             }
          }

@@ -266,7 +266,8 @@ export function checkObstacleCollision(position, gameState) {
 
      for (const obs of obstacles.list) {
          if (obs.occupiedCells.some(cell => cell.x === position.x && cell.z === position.z)) {
-             return true;
+             // Return the type of obstacle that was hit
+             return obs.type || 'obstacle';
          }
      }
      return false;

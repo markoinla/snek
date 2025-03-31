@@ -1,12 +1,12 @@
 // --- Configuration Constants ---
-export const GRID_SIZE = 80;
+export const GRID_SIZE = 60;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.18;
+export const BASE_SNAKE_SPEED = 0.2;
 export const CAMERA_DISTANCE = 11;
 export const CAMERA_HEIGHT = 9;
 export const CAMERA_LAG = 0.18;
 export const SPRITE_SHEET_DIM = 2;
-export const NUM_INITIAL_FOOD = 35;
+export const NUM_INITIAL_FOOD = 50;
 export const MIN_SNAKE_LENGTH = 3;
 export const NUM_OBSTACLES = 17;
 export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if needed
@@ -14,7 +14,7 @@ export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if nee
 // Enemy snake settings
 export const NUM_ENEMIES = 6;
 export const ENEMY_START_LENGTH = 5;
-export const ENEMY_SNAKE_SPEED = 0.25; // Time between moves in seconds
+export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
 export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
@@ -36,7 +36,7 @@ export const PARTICLE_COLOR_NORMAL_FOOD = 0x4CAF50; // Green color for regular f
 export const WALL_HEIGHT = 3;
 export const WALL_THICKNESS = 1;
 
-export const FOG_COLOR = 0x050508;
+export const FOG_COLOR = 0xFFFFFF;
 export const FOG_DENSITY = 0.018;
 
 export const START_SAFE_ZONE = 5; // Player start area free of obstacles
@@ -64,10 +64,11 @@ export const GAME_TEXT = {
             HIGH_SCORE: "HIGH SCORE",
             // Death reason messages
             DEATH_REASONS: {
-                WALL_COLLISION: "YOU HIT A WALL!",
-                SELF_COLLISION: "YOU ATE YOURSELF!",
-                OBSTACLE_COLLISION: "YOU HIT A TREE OR BUSH!",
-                ENEMY_COLLISION: "YOU GOT EATEN!",
+                WALL_COLLISION: "You tried to eat a wall",
+                SELF_COLLISION: "You ate yourself",
+                TREE_COLLISION: "You tried to eat a tree",
+                BUSH_COLLISION: "You got tangled in a bush",
+                ENEMY_COLLISION: "You choked on a snek",
                 DEFAULT: "GAME OVER!"
             }
         },
@@ -77,7 +78,7 @@ export const GAME_TEXT = {
     ALPHA_MODE: {
         PROGRESS_LABEL: "ALPHA METER",
         ACTIVE_LABEL: "ALPHA SNEK!",
-        ACTIVATED_MESSAGE: "YOU\'RE THE ALPHA SNEK!",
+        ACTIVATED_MESSAGE: "You're the alpha snek!",
         DEACTIVATED_MESSAGE: "BETA SNEK :("
     },
     
@@ -125,9 +126,9 @@ export const CAMERA_SHAKE_INTENSITY = 3; // maximum displacement
 
 // Food type spawn ratios (must add up to 100)
 export const FOOD_SPAWN_RATIOS = {
-    normal: 75,    // Regular food (60% chance)
-    speed: 10,     // Speed boost (10% chance)
-    shrink: 5,    // Shrink snake (10% chance)
-    score_x2: 5,  // Score multiplier (10% chance)
-    ghost: 5      // Ghost mode (10% chance)
+    normal: 80,    // Regular food (60% chance)
+    speed: 5,     // Speed boost (10% chance)
+    shrink: 2,    // Shrink snake (10% chance)
+    score_x2: 10,  // Score multiplier (10% chance)
+    ghost: 3      // Ghost mode (10% chance)
 };
