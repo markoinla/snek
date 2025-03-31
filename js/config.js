@@ -64,30 +64,41 @@ export const GAME_TEXT = {
             HIGH_SCORE: "HIGH SCORE",
             // Death reason messages
             DEATH_REASONS: {
-                WALL_COLLISION: "You tried to eat a wall",
-                SELF_COLLISION: "You ate yourself",
-                TREE_COLLISION: "You tried to eat a tree",
-                BUSH_COLLISION: "You got tangled in a bush",
-                ENEMY_COLLISION: "You choked on a snek",
-                DEFAULT: "GAME OVER!"
+                WALL_COLLISION: "You crashed into a wall!",
+                SELF_COLLISION: "You ate yourself!",
+                ENEMY_COLLISION: "You were eaten by another snek!",
+                OBSTACLE_COLLISION: "You crashed into an obstacle!",
+                TREE_COLLISION: "You tried to eat a tree!",
+                BUSH_COLLISION: "You got tangled in a bush!"
             }
         },
     },
     
     // Alpha Mode Text
     ALPHA_MODE: {
-        PROGRESS_LABEL: "ALPHA METER",
-        ACTIVE_LABEL: "ALPHA SNEK!",
-        ACTIVATED_MESSAGE: "You're the alpha snek!",
-        DEACTIVATED_MESSAGE: "BETA SNEK :("
+        PROGRESS_LABEL: "Alpha meter",
+        ACTIVE_LABEL: "Alpha SNEK!",
+        ACTIVATED_MESSAGE: "ALPHA SNEK ACTIVATED!",
+        DEACTIVATED_MESSAGE: "ALPHA SNEK DEACTIVATED",
+        KILL_MESSAGE: "ALPHA KILL!",
+        // Array of possible alpha mode kill messages - one will be randomly selected
+        ALPHA_KILL_MESSAGES: [
+            "ALPHA KILL!",
+            "DOUBLE KILL!",
+            "TRIPLE KILL!",
+            "M-M-M-MONSTER KILL!",
+            "UNSTOPPABLE!",
+            "GODLIKE!",
+            "SNEK EMPORER!"
+        ]
     },
     
     // Power-up Messages
     POWERUPS: {
-        SPEED_BOOST: "TURBO SNEK!",
-        GHOST_MODE: "GHOST MODE!",
-        SCORE_MULTIPLIER: "DOUBLE FOOD!",
-        SHRINK: "SHRINKAAAGE!",
+        SPEED_BOOST: "Speed boost!",
+        GHOST_MODE: "Ghost mode!",
+        SHRINK: "Shrinkaaage!",
+        SCORE_MULTIPLIER: "2x points!",
         // Array of possible enemy kill messages - one will be randomly selected
         ENEMY_KILLED_MESSAGES: [
             "SWALLOWED WHOLE!",
@@ -111,6 +122,40 @@ export const GAME_TEXT = {
     }
 };
 
+// Frog Movement Settings
+// These settings control how the frog powerups move around
+export const FROG_MOVEMENT = {
+    // Base speed multiplier for all frogs (higher = faster)
+    BASE_SPEED: 2,
+    
+    // Random speed variation (adds/subtracts from base speed)
+    SPEED_VARIATION: 0.5,
+    
+    // How high frogs hop (in grid units)
+    HOP_HEIGHT: 0.3,
+    
+    // Base frequency of hopping (higher = more frequent hops)
+    HOP_FREQUENCY: 2.0,
+    
+    // Random hop frequency variation
+    HOP_FREQUENCY_VARIATION: 0.5,
+    
+    // Maximum distance frogs can move from their original position (in grid units)
+    MAX_DISTANCE: 3,
+    
+    // Random distance variation
+    DISTANCE_VARIATION: 1.0,
+    
+    // Probability of changing direction (0-1, checked each frame)
+    DIRECTION_CHANGE_PROBABILITY: 0.005,
+    
+    // Movement style: 'hop' or 'crawl'
+    MOVEMENT_STYLE: 'crawl',
+    
+    // Time between movement steps (in seconds)
+    MOVE_INTERVAL: 0.5
+};
+
 export const PARTICLE_COUNT_DEATH = 60;
 export const PARTICLE_SIZE = 5;
 export const PARTICLE_LIFESPAN = 0.8;
@@ -126,9 +171,9 @@ export const CAMERA_SHAKE_INTENSITY = 3; // maximum displacement
 
 // Food type spawn ratios (must add up to 100)
 export const FOOD_SPAWN_RATIOS = {
-    normal: 80,    // Regular food (60% chance)
+    normal: 88,    // Regular food (60% chance)
     speed: 5,     // Speed boost (10% chance)
     shrink: 2,    // Shrink snake (10% chance)
-    score_x2: 10,  // Score multiplier (10% chance)
-    ghost: 3      // Ghost mode (10% chance)
+    score_x2: 3,  // Score multiplier (10% chance)
+    ghost: 2      // Ghost mode (10% chance)
 };

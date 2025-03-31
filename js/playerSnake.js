@@ -589,6 +589,9 @@ function updatePowerUpState(currentTime, gameState) {
     // Update the UI if any power-ups changed
     if (powerUpsChanged) {
         updatePowerUpInfoDisplay(gameState);
+    } else {
+        // Even if no power-ups expired, we should update the display to show the countdown
+        updatePowerUpInfoDisplay(gameState);
     }
 }
 
@@ -607,9 +610,15 @@ function updatePowerUpInfoDisplay(gameState, message = '') {
     if (playerSnake.activePowerUps.length > 0) {
         // Create a combined message of all active power-ups
         const powerUpMessages = playerSnake.activePowerUps.map(powerUp => {
-            const remainingTime = Math.max(0, powerUp.endTime - currentTime).toFixed(1);
+            // Calculate remaining time and round to 1 decimal place
+            const remainingSeconds = Math.max(0, powerUp.endTime - currentTime);
+            // Format to show only one decimal place
+            const remainingTime = remainingSeconds.toFixed(1);
+            
+            // Get the power-up description
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === powerUp.type);
             const description = foodTypeInfo ? foodTypeInfo.description : powerUp.type;
+            
             return `${description}: ${remainingTime}s`;
         });
         
@@ -618,6 +627,59 @@ function updatePowerUpInfoDisplay(gameState, message = '') {
     } else {
         // No active power-ups
         UI.updatePowerUpInfo('');
+    }
+}
+
+// Function to check and update active power-ups
+export function updatePowerUps(gameState) {
+    const { playerSnake, clock } = gameState;
+    if (!playerSnake?.activePowerUps || !clock) return;
+    
+    const currentTime = clock.getElapsedTime();
+    let powerUpStateChanged = false;
+    
+    // Check each active power-up
+    for (let i = playerSnake.activePowerUps.length - 1; i >= 0; i--) {
+        const powerUp = playerSnake.activePowerUps[i];
+        
+        // If power-up has expired
+        if (currentTime >= powerUp.endTime) {
+            // Remove from active power-ups
+            playerSnake.activePowerUps.splice(i, 1);
+            powerUpStateChanged = true;
+            
+            // Reset effects based on type
+            switch (powerUp.type) {
+                case 'speed':
+                    // Reset speed to normal (or alpha mode speed if active)
+                    if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
+                        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
+                    } else {
+                        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
+                    }
+                    UI.showPowerUpTextEffect("Speed boost ended");
+                    break;
+                    
+                case 'ghost':
+                    playerSnake.ghostModeActive = false;
+                    updatePlayerSnakeTextures(gameState); // Update visuals immediately
+                    UI.showPowerUpTextEffect("Ghost mode ended");
+                    break;
+                    
+                case 'score_x2':
+                    playerSnake.scoreMultiplier = 1;
+                    UI.showPowerUpTextEffect("Score multiplier ended");
+                    break;
+            }
+        }
+    }
+    
+    // Update the power-up info display if any changes occurred
+    if (powerUpStateChanged) {
+        updatePowerUpInfoDisplay(gameState);
+    } else {
+        // Even if no power-ups expired, we should update the display to show the countdown
+        updatePowerUpInfoDisplay(gameState);
     }
 }
 
@@ -736,6 +798,9 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
         playerSnake.alphaMode.endTime = currentTime + CONFIG.ALPHA_MODE_DURATION;
         playerSnake.alphaMode.lastScoreThreshold = currentThreshold;
         
+        // Reset the alpha kill message counter to start from the first message
+        alphaKillMessageIndex = 0;
+        
         // Update the UI
         UI.showAlphaModeBar();
         UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
@@ -789,6 +854,28 @@ function updateAlphaMode(currentTime, gameState) {
     UI.updateAlphaModeProgress(percentage);
 }
 
+// Global counter to track which alpha kill message to display next
+let alphaKillMessageIndex = 0;
+
+/**
+ * Get the next alpha kill message in sequence
+ * @returns {string} The next message in the cycle
+ */
+function getNextAlphaKillMessage() {
+    const messages = CONFIG.GAME_TEXT.ALPHA_MODE.ALPHA_KILL_MESSAGES;
+    if (!messages || messages.length === 0) {
+        return CONFIG.GAME_TEXT.ALPHA_MODE.KILL_MESSAGE || "ALPHA KILL!";
+    }
+    
+    // Get the current message
+    const message = messages[alphaKillMessageIndex];
+    
+    // Increment the counter for next time, wrapping around if needed
+    alphaKillMessageIndex = (alphaKillMessageIndex + 1) % messages.length;
+    
+    return message;
+}
+
 /**
  * Handles collision with enemy snakes based on Alpha Mode status
  * @param {object} collision - Collision data from checkEnemyCollision
@@ -800,19 +887,31 @@ function handleEnemyCollision(collision, gameState, currentTime) {
     const { playerSnake } = gameState;
     
     // If in Alpha Mode or hit the tail (which is always edible), kill the enemy
-    if (playerSnake.alphaMode.active || collision.isTail) {
-        // Kill the enemy snake
+    if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
+        // In Alpha Mode, always kill the enemy snake regardless of collision point
+        console.log("Alpha Mode active - killing enemy snake regardless of collision point");
+        killEnemySnake(collision.enemyId, gameState);
+        
+        // Show the next message in the sequence for Alpha Mode kills
+        UI.showPowerUpTextEffect(getNextAlphaKillMessage(), CONFIG.ALPHA_MODE_COLOR);
+        
+        return true;
+    } else if (collision.isTail) {
+        // Not in Alpha Mode but hit the tail (which is always edible)
+        console.log("Hit enemy tail - killing enemy snake");
         killEnemySnake(collision.enemyId, gameState);
         return true;
     }
     
     // If not in Alpha Mode and hit the body/head, player dies
     if (!playerSnake.ghostModeActive) {
+        console.log("Hit enemy body/head without Alpha Mode or Ghost Mode - player dies");
         triggerPlayerDeath(gameState, 'ENEMY_COLLISION');
         return false;
     }
     
     // Ghost mode active but not Alpha Mode, just pass through
+    console.log("Ghost Mode active - passing through enemy");
     return true;
 }
 

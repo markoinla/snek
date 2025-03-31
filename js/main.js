@@ -226,12 +226,22 @@ function render() {
     // Update game state only if running
     if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
         Player.updatePlayer(deltaTime, currentTime, gameState);
+        
+        // Update power-up timers and UI display
+        Player.updatePowerUps(gameState);
+        
         Enemy.updateEnemies(deltaTime, currentTime, gameState);
         Enemy.checkEnemyRespawns(gameState); // Check if any enemies need to respawn
         Particles.updateParticles(deltaTime, gameState.scene); // Update particles regardless of game over? Your choice.
+        
+        // Update frog animations
+        Food.updateFoodAnimations(gameState, deltaTime);
     } else {
         // Still update particles even if game is over?
         Particles.updateParticles(deltaTime, gameState.scene);
+        
+        // Continue animating frogs even when game is paused for visual appeal
+        Food.updateFoodAnimations(gameState, deltaTime);
     }
 
     // Update camera (even slightly after game over for effect?)

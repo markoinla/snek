@@ -141,20 +141,32 @@ export async function loadAndCreateMaterials() {
         // Food Materials
         FOOD_TYPES.forEach((foodType, index) => {
             const texture = foodTextures[index];
-            if (texture) {
-                 materials.food[foodType.type] = new THREE.MeshStandardMaterial({
-                    map: texture,
-                    side: THREE.FrontSide,
-                    roughness: 0.5,
-                    metalness: 0.1,
-                    transparent: foodType.type === 'ghost', // Ghost food needs transparency
-                    opacity: foodType.type === 'ghost' ? 0.8 : 1.0, // Ghost food opacity
-                });
+            if (foodType.type === 'normal') {
+                // Normal food keeps the same appearance with texture
+                if (texture) {
+                    materials.food[foodType.type] = new THREE.MeshStandardMaterial({
+                        map: texture,
+                        side: THREE.FrontSide,
+                        roughness: 0.5,
+                        metalness: 0.1
+                    });
+                } else {
+                    // Fallback if texture failed
+                    materials.food[foodType.type] = new THREE.MeshStandardMaterial({
+                        color: foodType.colorHint || 0xff00ff,
+                        roughness: 0.5,
+                        metalness: 0.1
+                    });
+                }
             } else {
-                // Fallback if texture failed
+                // Frog powerups use solid colors instead of textures for a blocky look
                 materials.food[foodType.type] = new THREE.MeshStandardMaterial({
-                    color: foodType.colorHint || 0xff00ff,
-                    roughness: 0.5, metalness: 0.1
+                    color: foodType.colorHint,
+                    side: THREE.FrontSide,
+                    roughness: 0.3,  // Smoother surface for frogs
+                    metalness: 0.2,  // Slightly more metallic for a vibrant look
+                    transparent: foodType.type === 'ghost', // Ghost frog needs transparency
+                    opacity: foodType.type === 'ghost' ? 0.7 : 1.0 // Ghost frog opacity
                 });
             }
         });
