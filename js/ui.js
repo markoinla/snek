@@ -96,14 +96,13 @@ function setupEventListeners() {
         startButton.addEventListener('click', function() {
             // If this is the first time, start the game
             // If this is from the help screen, resume the game
-            if (introScreen.style.display === 'flex') {
-                if (gameStarted) {
-                    // This is the help screen, resume the game
-                    resumeGameFromHelp();
-                } else {
-                    // This is the first-time intro screen, start the game
-                    startGame();
-                }
+            // No need to check display style since the button is only visible when intro screen is shown
+            if (gameStarted) {
+                // This is the help screen, resume the game
+                resumeGameFromHelp();
+            } else {
+                // This is the first-time intro screen, start the game
+                startGame();
             }
         });
     }
@@ -113,7 +112,7 @@ function setupEventListeners() {
         restartButton.addEventListener('click', function() {
             // Hide game over screen
             if (gameOverElement) {
-                gameOverElement.style.display = 'none';
+                gameOverElement.classList.remove('active');
             }
             // Skip intro screen on restart
             startGame();
@@ -187,7 +186,7 @@ window.addEventListener('resize', updateMobileControlsVisibility);
 
 // Function to update mobile controls visibility based on screen width
 function updateMobileControlsVisibility() {
-    if (!leftButton || !rightButton || gameOverElement?.style.display === 'block') return;
+    if (!leftButton || !rightButton || gameOverElement?.classList.contains('active')) return;
     
     if (window.innerWidth <= 767) {
         leftButton.style.display = 'flex';
@@ -303,8 +302,8 @@ export function showGameOver(score, deathReason = 'DEFAULT') {
             deathReasonElement.textContent = message;
         }
         
-        // Show the game over screen
-        gameOverElement.style.display = 'block';
+        // Show the game over screen using the active class
+        gameOverElement.classList.add('active');
     }
     
     // Hide mobile buttons on game over
@@ -314,7 +313,8 @@ export function showGameOver(score, deathReason = 'DEFAULT') {
 
 export function hideGameOver() {
     if (gameOverElement) {
-        gameOverElement.style.display = 'none';
+        // Hide the game over screen by removing the active class
+        gameOverElement.classList.remove('active');
     }
     
     // Use the helper function to update mobile controls visibility

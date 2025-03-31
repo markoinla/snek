@@ -34,6 +34,8 @@ export async function loadAndCreateMaterials() {
         // Load textures concurrently
         const [
             snakeSheetTex, particleTex, skyboxTex, groundTileTex, wallBrickTex,
+            treeLeavesTexture, treeTrunkTexture, flowerBushTexture,
+            pinkFlowerTexture, whiteDaisyTexture, whiteTulipTexture, yellowFlowerTexture,
             ...foodTextures
         ] = await Promise.all([
             loadTexture(loader, PATHS.snakeSheet, true, (t) => {
@@ -49,7 +51,7 @@ export async function loadAndCreateMaterials() {
             loadTexture(loader, PATHS.groundTile, true, (t) => {
                 t.wrapS = THREE.RepeatWrapping;
                 t.wrapT = THREE.RepeatWrapping;
-                t.repeat.set(CONFIG.GRID_SIZE / 1.5, CONFIG.GRID_SIZE / 1.5);
+                t.repeat.set(CONFIG.GRID_SIZE / 4, CONFIG.GRID_SIZE / 4); // Adjusted repeat scale for grass pattern
                 t.magFilter = THREE.LinearFilter;
                 t.minFilter = THREE.LinearMipmapLinearFilter; // Use mipmaps for ground
             }),
@@ -58,6 +60,37 @@ export async function loadAndCreateMaterials() {
                 t.wrapT = THREE.RepeatWrapping;
                  // Adjust repeat based on geometry aspect ratio if needed
                 t.repeat.set(CONFIG.GRID_SIZE / 3, CONFIG.WALL_HEIGHT * 1);
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.treeLeaves, true, (t) => {
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.treeTrunk, true, (t) => {
+                t.wrapS = THREE.RepeatWrapping;
+                t.wrapT = THREE.RepeatWrapping;
+                t.repeat.set(1, 1); // Default repeat
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.flowerBush, true, (t) => {
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.pinkFlower, true, (t) => {
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.whiteDaisy, true, (t) => {
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.whiteTulip, true, (t) => {
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.yellowFlower, true, (t) => {
                 t.magFilter = THREE.LinearFilter;
                 t.minFilter = THREE.LinearMipmapLinearFilter;
             }),
@@ -127,15 +160,73 @@ export async function loadAndCreateMaterials() {
         });
 
         // Obstacle Materials
-        materials.obstacle.tree_trunk = new THREE.MeshStandardMaterial({ color: 0x966F33, roughness: 0.9, metalness: 0.0 });
-        materials.obstacle.tree_leaves = new THREE.MeshStandardMaterial({ color: 0x388E3C, roughness: 0.8, metalness: 0.0 });
+        materials.obstacle.tree_trunk = new THREE.MeshStandardMaterial({ 
+            map: treeTrunkTexture, 
+            color: 0x966F33, 
+            roughness: 0.9, 
+            metalness: 0.0
+        });
+        materials.obstacle.tree_leaves = new THREE.MeshStandardMaterial({ 
+            map: treeLeavesTexture, 
+            color: 0x388E3C, 
+            roughness: 0.8, 
+            metalness: 0.0,
+            transparent: true, // Enable transparency for the leaves
+            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
+            side: THREE.DoubleSide // Render both sides of the leaves
+        });
         materials.obstacle.bush = new THREE.MeshStandardMaterial({ color: 0x689F38, roughness: 0.85, metalness: 0.0 });
+        materials.obstacle.flower_bush = new THREE.MeshStandardMaterial({ 
+            map: flowerBushTexture, 
+            color: 0xFFFFFF, // Use white to not tint the texture
+            roughness: 0.85, 
+            metalness: 0.0,
+            transparent: true, // Enable transparency
+            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
+            side: THREE.DoubleSide // Render both sides of the bush
+        });
+        materials.obstacle.pink_flower = new THREE.MeshStandardMaterial({ 
+            map: pinkFlowerTexture, 
+            color: 0xFFFFFF, // Use white to not tint the texture
+            roughness: 0.85, 
+            metalness: 0.0,
+            transparent: true, // Enable transparency
+            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
+            side: THREE.DoubleSide // Render both sides of the flower
+        });
+        materials.obstacle.white_daisy = new THREE.MeshStandardMaterial({ 
+            map: whiteDaisyTexture, 
+            color: 0xFFFFFF, // Use white to not tint the texture
+            roughness: 0.85, 
+            metalness: 0.0,
+            transparent: true, // Enable transparency
+            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
+            side: THREE.DoubleSide // Render both sides of the flower
+        });
+        materials.obstacle.white_tulip = new THREE.MeshStandardMaterial({ 
+            map: whiteTulipTexture, 
+            color: 0xFFFFFF, // Use white to not tint the texture
+            roughness: 0.85, 
+            metalness: 0.0,
+            transparent: true, // Enable transparency
+            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
+            side: THREE.DoubleSide // Render both sides of the flower
+        });
+        materials.obstacle.yellow_flower = new THREE.MeshStandardMaterial({ 
+            map: yellowFlowerTexture, 
+            color: 0xFFFFFF, // Use white to not tint the texture
+            roughness: 0.85, 
+            metalness: 0.0,
+            transparent: true, // Enable transparency
+            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
+            side: THREE.DoubleSide // Render both sides of the flower
+        });
 
         // Environment Materials
         materials.ground = new THREE.MeshStandardMaterial({ 
             map: groundTileTex, 
             side: THREE.FrontSide, 
-            roughness: 0.9, 
+            roughness: 0.8, // Slightly reduced roughness for grass
             metalness: 0.0,
             // Apply color tint if configured
             color: CONFIG.GROUND_COLOR || 0xFFFFFF // Use white (no tint) if GROUND_COLOR is null

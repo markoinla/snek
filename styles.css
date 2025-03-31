@@ -4,7 +4,6 @@ canvas { display: block; }
 #info { top: 10px; }
 #kills { top: 50px; color: #E91E63; } /* Pink color matching the edible tail */
 #powerUpInfo { top: 90px; display: none; color: #ffff99; }
-#gameOver { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.8em; background-color: rgba(200, 0, 0, 0.8); padding: 20px 30px; border-radius: 10px; display: none; text-align: center; z-index: 10; }
 
 /* Restart button styling */
 #restartButton {
@@ -183,115 +182,468 @@ canvas { display: block; }
     }
 }
 
-/* Intro Screen Styles */
-#introScreen {
+/* Common Modal Screen Styles - Material Design */
+.modal-screen {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.85);
+    background-color: rgba(0, 0, 0, 0.6); /* Lighter overlay for Material Design */
     z-index: 100;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-family: 'Courier New', monospace;
+    font-family: 'Roboto', 'Arial', sans-serif; /* Material Design font */
+    backdrop-filter: blur(3px); /* Subtle blur effect */
 }
 
-.intro-content {
-    background-color: #222;
-    border: 3px solid #9C27B0; /* Alpha Mode purple color */
-    border-radius: 10px;
-    padding: 30px;
+.modal-content {
+    background-color: #303030; /* Material dark theme background */
+    border: none; /* No border in Material Design */
+    border-radius: 8px; /* Material Design uses smaller border radius */
+    padding: 24px; /* Material Design standard padding */
     max-width: 600px;
     width: 90%;
     color: white;
     text-align: center;
-    box-shadow: 0 0 20px rgba(156, 39, 176, 0.6);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* Material Design elevation shadow */
+    animation: modalAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Material Design animation curve */
+    overflow: hidden; /* For ripple effects */
 }
 
-.intro-content h1 {
-    font-size: 3em;
-    margin-bottom: 20px;
-    color: #9C27B0;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    letter-spacing: 3px;
+@keyframes modalAppear {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
-.instructions {
-    text-align: left;
-    margin: 20px 0;
-    background-color: rgba(0, 0, 0, 0.3);
-    padding: 15px;
-    border-radius: 5px;
+/* Intro Screen Styles - Material Design */
+#introScreen {
+    background-color: rgba(0, 0, 0, 0.85);
 }
 
-.instructions h2 {
-    text-align: center;
-    margin-bottom: 15px;
-    color: #4CAF50; /* Green color */
-}
-
-.instructions ul {
-    list-style-type: none;
+/* Login-style layout for intro screen */
+.login-style {
+    max-width: 900px;
+    width: 90%;
     padding: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.instructions li {
-    margin-bottom: 12px;
-    line-height: 1.4;
+.intro-split-layout {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+}
+
+.intro-image-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    min-height: 500px;
+}
+
+.intro-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.intro-content-container {
+    flex: 1;
+    padding: 40px;
+    background-color: #1E1E1E;
     display: flex;
     flex-direction: column;
 }
 
-.instruction-label {
-    font-weight: bold;
-    color: #FF9800; /* Orange color */
-    margin-bottom: 3px;
+.intro-content-container h1 {
+    font-size: 2.5em;
+    margin-bottom: 24px;
+    color: #BB86FC; /* Material Design purple */
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-align: center;
 }
 
-#startButton {
-    background-color: #9C27B0;
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 1.5em;
-    border-radius: 50px;
-    cursor: pointer;
-    margin-top: 20px;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    letter-spacing: 2px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+/* Responsive adjustments for login style */
+@media (max-width: 768px) {
+    .intro-split-layout {
+        flex-direction: column;
+    }
+    
+    .intro-image-container {
+        min-height: 200px;
+        position: relative;
+        width: 100%;
+    }
+    
+    .intro-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top center; /* Position from the top */
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    
+    .intro-content-container {
+        padding: 30px;
+    }
+    
+    .login-style {
+        max-width: 95%;
+    }
 }
 
-#startButton:hover {
-    background-color: #7B1FA2;
-    transform: scale(1.05);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-}
-
-#startButton:active {
-    transform: scale(0.98);
-}
-
-/* Mobile Responsiveness for Intro Screen */
-@media (max-width: 600px) {
-    .intro-content {
+/* For very small screens */
+@media (max-width: 480px) {
+    .intro-image-container {
+        min-height: 150px;
+    }
+    
+    .intro-image {
+        object-position: top center; /* Ensure it's positioned from the top */
+    }
+    
+    .intro-content-container {
         padding: 20px;
     }
     
+    .intro-content-container h1 {
+        font-size: 2em;
+        margin-bottom: 16px;
+    }
+}
+
+.instructions {
+    text-align: left;
+    margin: 16px 0 24px 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 16px;
+    border-radius: 4px;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    flex-grow: 1;
+}
+
+.instructions h2 {
+    text-align: center;
+    margin-bottom: 16px;
+    color: #03DAC6; /* Material Design teal */
+    font-size: 1.4em;
+    font-weight: 500;
+}
+
+.instruction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.instruction-item {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.instruction-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.instruction-label {
+    font-weight: 500;
+    color: #FF7597; /* Material Design pink */
+    margin-bottom: 8px;
+    font-size: 1em;
+}
+
+.instruction-text {
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.87); /* Material Design primary text */
+}
+
+/* Login-style start button */
+#startButton {
+    background-color: #BB86FC; /* Material Design primary */
+    color: #000; /* Dark text on light button */
+    border: none;
+    padding: 0 24px;
+    height: 48px; /* Fixed height for Material buttons */
+    font-size: 1.1em;
+    border-radius: 24px; /* Pill shape */
+    cursor: pointer;
+    margin-top: auto; /* Push to bottom of flex container */
+    font-family: 'Roboto', 'Arial', sans-serif;
+    font-weight: 500;
+    letter-spacing: 1.25px;
+    text-transform: uppercase; /* Material buttons use uppercase */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    width: 100%; /* Full width for login style */
+    margin-bottom: 8px;
+}
+
+#startButton:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+#startButton:focus:not(:active)::after {
+    animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+    }
+    20% {
+        transform: scale(25, 25);
+        opacity: 0.3;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40, 40);
+    }
+}
+
+#startButton:hover {
+    background-color: #CBB2FF; /* Lighter variant */
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+#startButton:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Responsiveness for Modal Screens */
+@media (max-width: 600px) {
+    .modal-content {
+        padding: 16px;
+        width: 95%;
+        border-radius: 4px; /* Smaller radius on mobile */
+    }
+    
     .intro-content h1 {
-        font-size: 2.2em;
+        font-size: 2em;
+        margin-bottom: 16px;
+    }
+    
+    .instructions {
+        padding: 12px;
+        margin: 16px 0;
     }
     
     .instructions h2 {
-        font-size: 1.3em;
+        font-size: 1.2em;
+        margin-bottom: 12px;
     }
     
-    #startButton {
-        padding: 12px 24px;
+    .instruction-item {
+        padding: 8px;
+    }
+    
+    .instruction-label {
+        font-size: 0.9em;
+    }
+    
+    #startButton, #restartButton {
+        height: 40px;
+        padding: 0 16px;
+        font-size: 0.9em;
+        margin-top: 16px;
+    }
+    
+    #deathReason {
+        font-size: 1.6em;
+        margin-bottom: 16px;
+    }
+    
+    .score-container {
+        margin: 16px 0;
+        padding: 12px;
+    }
+    
+    .score-value {
         font-size: 1.3em;
     }
+}
+
+/* For very small screens */
+@media (max-width: 400px) {
+    .modal-content {
+        padding: 12px;
+    }
+    
+    .intro-content h1 {
+        font-size: 1.6em;
+    }
+    
+    .instructions {
+        padding: 10px;
+    }
+    
+    .instructions h2 {
+        font-size: 1em;
+    }
+    
+    .instruction-label {
+        font-size: 0.85em;
+    }
+    
+    #startButton, #restartButton {
+        height: 36px;
+        padding: 0 12px;
+        font-size: 0.85em;
+        border-radius: 18px;
+    }
+    
+    #deathReason {
+        font-size: 1.4em;
+    }
+    
+    .score-container {
+        padding: 8px;
+    }
+}
+
+/* Game Over Screen Styles - Material Design */
+#gameOver {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000; /* Ensure it's above everything */
+}
+
+#gameOver.active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#gameOver .modal-content {
+    background-color: #1F1F1F; /* Slightly darker background for game over */
+    box-shadow: 0 8px 24px rgba(244, 67, 54, 0.3); /* Red shadow */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Perfect centering */
+    margin: 0; /* Remove any margin that might affect centering */
+}
+
+#deathReason {
+    display: block;
+    font-size: 2em;
+    font-weight: 500; /* Material Design medium weight */
+    margin-bottom: 24px;
+    color: #CF6679; /* Material Design error color for dark theme */
+    letter-spacing: 0.5px;
+}
+
+.score-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 24px 0;
+    padding: 16px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.score-label {
+    margin-right: 16px;
+    font-size: 1.2em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.score-value {
+    font-weight: 500;
+    font-size: 1.5em;
+    color: #03DAC6; /* Material Design secondary */
+}
+
+.keyboard-hint {
+    display: block;
+    margin: 16px 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9em;
+}
+
+/* Restart button styling - Material Design */
+#restartButton {
+    margin-top: 24px;
+    padding: 0 24px;
+    height: 48px; /* Fixed height for Material buttons */
+    background-color: #03DAC6; /* Material Design secondary */
+    color: #000; /* Dark text on light button */
+    border: none;
+    border-radius: 24px; /* Pill shape */
+    font-size: 1.1em;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.25px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+    font-family: 'Roboto', 'Arial', sans-serif;
+    position: relative;
+    overflow: hidden;
+}
+
+#restartButton:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+#restartButton:focus:not(:active)::after {
+    animation: ripple 1s ease-out;
+}
+
+#restartButton:hover {
+    background-color: #66FFF8; /* Lighter variant */
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+#restartButton:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }

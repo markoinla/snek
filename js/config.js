@@ -1,7 +1,7 @@
 // --- Configuration Constants ---
 export const GRID_SIZE = 80;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.15;
+export const BASE_SNAKE_SPEED = 0.18;
 export const CAMERA_DISTANCE = 11;
 export const CAMERA_HEIGHT = 9;
 export const CAMERA_LAG = 0.18;

@@ -6,13 +6,20 @@ export const PATHS = {
     snakeSheet: 'assets/svg/snake_spritesheet_improved.svg', // Using the improved spritesheet
     particle: 'assets/svg/particle.svg',
     skybox: 'assets/svg/skybox_blocky.svg',
-    groundTile: 'assets/svg/ground_tile_grass_dirt.svg',
+    groundTile: 'assets/svg/grass.svg', // Changed to use the grass.svg file
     wallStone: 'assets/svg/wall_stone.svg',
     foodNormal: 'assets/svg/food_normal.svg',
     foodSpeed: 'assets/svg/food_speed.svg',
     foodShrink: 'assets/svg/food_shrink.svg',
     foodScore: 'assets/svg/food_score.svg',
     foodGhost: 'assets/svg/food_ghost.svg',
+    treeLeaves: 'assets/svg/leaves.png', // Added path for the semi-transparent leaves texture
+    treeTrunk: 'assets/textures/tree.png', // Added path for the tree trunk texture
+    flowerBush: 'assets/textures/flower_bush.png', // Added path for the flower bush texture
+    pinkFlower: 'assets/textures/pink_flow.png', // Pink flower texture
+    whiteDaisy: 'assets/textures/white_daisy.png', // White daisy texture
+    whiteTulip: 'assets/textures/white_tulip.png', // White tulip texture
+    yellowFlower: 'assets/textures/yellow_flower.png', // Yellow flower texture
 };
 
 // Food Types Definition

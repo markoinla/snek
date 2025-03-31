@@ -47,7 +47,7 @@ async function init() {
     } catch (error) {
         console.error("Fatal Error: Could not load/create materials.", error);
         // Display error to user?
-        UI.showGameOver("Loading Error"); // Show game over screen with error
+        alert("Error loading game materials. Please refresh the page and try again.");
         return; // Stop initialization
     }
 

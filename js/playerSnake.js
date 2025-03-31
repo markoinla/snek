@@ -335,9 +335,43 @@ export function killEnemySnake(enemyId, gameState) {
         // Enlarge player's head for a duration
         enlargePlayerHead(gameState, currentTime);
         
+        // Make the snake grow by 3 segments when eating an enemy
+        growSnakeSegments(gameState, 3);
+        
         return true;
     }
     return false;
+}
+
+/**
+ * Grows the player snake by the specified number of segments
+ * @param {Object} gameState - The game state object
+ * @param {number} numSegments - Number of segments to grow
+ */
+function growSnakeSegments(gameState, numSegments) {
+    const { playerSnake, scene, materials } = gameState;
+    if (!playerSnake || !scene || !materials) return;
+    
+    // Get the last segment position
+    const lastSegment = playerSnake.segments[playerSnake.segments.length - 1];
+    if (!lastSegment) return;
+    
+    // Add new segments at the tail position
+    for (let i = 0; i < numSegments; i++) {
+        // Add a new segment to the snake
+        const newSegment = { ...lastSegment }; // Clone the last segment position
+        playerSnake.segments.push(newSegment);
+        
+        // Create a mesh for the new segment
+        const newMesh = createSnakeSegmentMesh(newSegment, false, materials, false);
+        if (newMesh) {
+            scene.add(newMesh);
+            playerSnakeMeshes.push(newMesh);
+        }
+    }
+    
+    // Update the snake's appearance
+    updatePlayerMaterialsAfterMove(gameState);
 }
 
 // --- Camera ---
