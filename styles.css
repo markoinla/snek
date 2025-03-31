@@ -1,9 +1,10 @@
 body { margin: 0; overflow: hidden; background-color: #000; color: white; font-family: sans-serif; touch-action: none; }
 canvas { display: block; }
-#info, #powerUpInfo, #kills { position: absolute; left: 10px; background-color: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px; color: white; z-index: 5; font-size: 0.9em; }
-#info { top: 10px; }
-#kills { top: 50px; color: #E91E63; } /* Pink color matching the edible tail */
-#powerUpInfo { top: 90px; display: none; color: #ffff99; }
+#info, #powerUpInfo, #kills, #highScoreInfo { position: absolute; left: 10px; background-color: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px; color: white; z-index: 5; font-size: 0.9em; }
+#info { top: 50px; }
+#highScoreInfo { top: 10px; color: #BB86FC; } /* Material Design primary color for high score */
+#kills { top: 90px; color: #E91E63; } /* Pink color matching the edible tail */
+#powerUpInfo { top: 130px; display: none; color: #ffff99; }
 
 /* Restart button styling */
 #restartButton {
@@ -210,6 +211,45 @@ canvas { display: block; }
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* Material Design elevation shadow */
     animation: modalAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Material Design animation curve */
     overflow: hidden; /* For ripple effects */
+}
+
+/* Game Stats Styling */
+.game-stats {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    text-align: left;
+}
+
+.game-stats h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #BB86FC; /* Material Design primary color */
+    font-size: 1.2em;
+    text-align: center;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #03DAC6; /* Material Design secondary color */
 }
 
 @keyframes modalAppear {
@@ -630,19 +670,26 @@ canvas { display: block; }
 }
 
 .score-container {
+    margin: 10px 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 24px 0;
-    padding: 16px;
-    background-color: transparent; /* No background */
-    border-radius: 0;
+    gap: 10px;
 }
 
 .score-label {
-    margin-right: 16px;
     font-size: 1.2em;
-    color: white;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.score-value {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: #03DAC6; /* Material Design secondary color */
+}
+
+#highScore {
+    color: #BB86FC; /* Material Design primary color for high score */
 }
 
 /* Mobile Responsiveness for Modal Screens */

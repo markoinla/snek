@@ -64,12 +64,12 @@ export const GAME_TEXT = {
             HIGH_SCORE: "HIGH SCORE",
             // Death reason messages
             DEATH_REASONS: {
-                WALL_COLLISION: "You crashed into a wall!",
-                SELF_COLLISION: "You ate yourself!",
-                ENEMY_COLLISION: "You were eaten by another snek!",
-                OBSTACLE_COLLISION: "You crashed into an obstacle!",
-                TREE_COLLISION: "You tried to eat a tree!",
-                BUSH_COLLISION: "You got tangled in a bush!"
+                WALL_COLLISION: "You crashed into a wall",
+                SELF_COLLISION: "You ate yourself",
+                ENEMY_COLLISION: "You were eaten by another snek",
+                OBSTACLE_COLLISION: "You crashed into an obstacle",
+                TREE_COLLISION: "You tried to eat a tree",
+                BUSH_COLLISION: "You got tangled in a bush"
             }
         },
     },
@@ -83,13 +83,17 @@ export const GAME_TEXT = {
         KILL_MESSAGE: "ALPHA KILL!",
         // Array of possible alpha mode kill messages - one will be randomly selected
         ALPHA_KILL_MESSAGES: [
-            "ALPHA KILL!",
-            "DOUBLE KILL!",
-            "TRIPLE KILL!",
-            "M-M-M-MONSTER KILL!",
-            "UNSTOPPABLE!",
-            "GODLIKE!",
-            "SNEK EMPORER!"
+            "ALPHA KILL",
+            "DOUBLE KILL",
+            "TRIPLE KILL",
+            "M-M-M-MONSTER KILL",
+            "UNSTOPPABLE",
+            "GODLIKE",
+            "SNEK KING",
+            "SNEK EMPORER",
+            "SNEK GOD",
+            "THE ONE SNEK TO RULE THEM ALL",
+            "YOU ARE THE OMEGA SNEK"
         ]
     },
     
@@ -101,15 +105,19 @@ export const GAME_TEXT = {
         SCORE_MULTIPLIER: "2x points!",
         // Array of possible enemy kill messages - one will be randomly selected
         ENEMY_KILLED_MESSAGES: [
-            "SWALLOWED WHOLE!",
-            "GOBBLE GOBBLE!",
-            "SNEK SNACK!",
-            "TASTY SNEK!",
-            "DEVOURED!",
-            "GULP!",
-            "YOU ATE YOUR COUSIN!",
-            "GROWING BOY!",
-            "BIG SNEK!"
+            "SWALLOWED WHOLE",
+            "SNEK SNACK",
+            "TASTY SNEK",
+            "DEVOURED",
+            "GULP",
+            "YOU ATE YOUR COUSIN",
+            "GROWING BOY",
+            "HOW DOES THAT FIT IN THERE",
+            "BIG SNEK",
+            "YOUR MOM WOULD BE PROUD",
+            "YOUR DAD WOULD BE PROUD",
+            "SNEK JOB",
+            "JUST THE TAIL"
         ]
     },
     
@@ -171,9 +179,9 @@ export const CAMERA_SHAKE_INTENSITY = 3; // maximum displacement
 
 // Food type spawn ratios (must add up to 100)
 export const FOOD_SPAWN_RATIOS = {
-    normal: 88,    // Regular food (60% chance)
+    normal: 89,    // Regular food (60% chance)
     speed: 5,     // Speed boost (10% chance)
-    shrink: 2,    // Shrink snake (10% chance)
+    shrink: 1,    // Shrink snake (10% chance)
     score_x2: 3,  // Score multiplier (10% chance)
     ghost: 2      // Ghost mode (10% chance)
 };

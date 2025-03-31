@@ -49,7 +49,7 @@ export const gameState = {
         group: null,   // THREE.Group containing all obstacle meshes
     },
     particles: {
-         // Active particles are managed within particleSystem.js
+        // Active particles are managed within particleSystem.js
     },
     environment: {
         groundMesh: null,
@@ -71,7 +71,11 @@ export const gameState = {
 
     // Game Status
     score: 0,
-    highScore: 0,
+    highScore: loadHighScore(), // Load high score from localStorage
+    stats: {
+        applesEaten: 0,   // Track normal food (apples) eaten
+        frogsEaten: 0,    // Track power-up frogs eaten
+    },
     flags: {
         gameOver: false,
         gameRunning: false, // Indicate if the main loop is active
@@ -82,6 +86,27 @@ export const gameState = {
     // Input cleanup function
     cleanupInput: null,
 };
+
+// Function to load high score from localStorage
+function loadHighScore() {
+    try {
+        const savedHighScore = localStorage.getItem('alphaSnek_highScore');
+        return savedHighScore ? parseInt(savedHighScore, 10) : 0;
+    } catch (error) {
+        console.warn('Could not load high score from localStorage:', error);
+        return 0;
+    }
+}
+
+// Function to save high score to localStorage
+export function saveHighScore(score) {
+    try {
+        localStorage.setItem('alphaSnek_highScore', score.toString());
+        console.log('High score saved:', score);
+    } catch (error) {
+        console.warn('Could not save high score to localStorage:', error);
+    }
+}
 
 // Function to safely reset parts of the state, preserving essential refs like scene, camera, renderer
 export function resetGameStateForNewGame() {
@@ -110,8 +135,11 @@ export function resetGameStateForNewGame() {
 
      // Reset Status
      gameState.score = 0;
-     gameState.highScore = 0;
+     // Don't reset high score between games
+     // gameState.highScore = 0;
      gameState.enemies.kills = 0;
+     gameState.stats.applesEaten = 0;
+     gameState.stats.frogsEaten = 0;
      gameState.flags.gameOver = false;
      gameState.flags.gameRunning = true; // Mark as running after reset
      gameState.flags.restartRequested = false;

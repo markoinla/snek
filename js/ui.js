@@ -1,13 +1,16 @@
 // --- DOM Element References ---
 import * as CONFIG from './config.js';
+import { gameState } from './gameState.js';
 
 // Get DOM elements
 const scoreElement = document.getElementById('info');
 const killsElement = document.getElementById('kills');
+const highScoreInfoElement = document.getElementById('highScoreInfo');
 const powerUpInfoElement = document.getElementById('powerUpInfo');
 const powerUpTextElement = document.getElementById('powerUpTextEffect');
 const gameOverElement = document.getElementById('gameOver');
 const finalScoreElement = document.getElementById('finalScore');
+const highScoreElement = document.getElementById('highScore');
 const deathReasonElement = document.getElementById('deathReason');
 const restartButton = document.getElementById('restartButton');
 const leftButton = document.getElementById('leftButton');
@@ -15,6 +18,9 @@ const rightButton = document.getElementById('rightButton');
 const alphaModeContainer = document.getElementById('alphaModeContainer');
 const alphaModeLabel = document.getElementById('alphaModeLabel');
 const alphaModeProgress = document.getElementById('alphaModeProgress');
+const applesEatenElement = document.getElementById('applesEaten');
+const frogsEatenElement = document.getElementById('frogsEaten');
+const snakesEatenElement = document.getElementById('snakesEaten');
 
 // Intro screen elements
 const introScreen = document.getElementById('introScreen');
@@ -32,6 +38,16 @@ let firstTimeUser = true; // Track if this is the first time playing
 
 // Initialize UI elements with text from config - wrapped in a function to ensure DOM is ready
 function initializeUIText() {
+    // High Score label
+    if (highScoreInfoElement) {
+        const highScoreLabel = document.createElement('span');
+        highScoreLabel.classList.add('label');
+        highScoreLabel.textContent = 'High Score: ';
+        highScoreInfoElement.innerHTML = '';
+        highScoreInfoElement.appendChild(highScoreLabel);
+        highScoreInfoElement.appendChild(document.createTextNode('0'));
+    }
+
     // Score label
     if (scoreElement) {
         const scoreLabel = document.createElement('span');
@@ -221,9 +237,11 @@ initAlphaModeUI();
 export const elements = {
     scoreElement,
     killsElement,
+    highScoreInfoElement,
     powerUpInfoElement,
     gameOverElement,
     finalScoreElement,
+    highScoreElement,
     powerUpTextElement,
     leftButton,
     rightButton,
@@ -232,6 +250,9 @@ export const elements = {
     alphaModeLabel,
     alphaModeProgress,
     deathReasonElement,
+    applesEatenElement,
+    frogsEatenElement,
+    snakesEatenElement,
 };
 
 export function updateScore(score) {
@@ -285,14 +306,39 @@ export function updateKills(kills) {
 }
 
 /**
- * Shows the game over screen with death reason and score
- * @param {number} score - The final score
- * @param {string} deathReason - The reason for death (wall, self, obstacle, enemy)
+ * Updates the high score display in the game UI
+ * @param {number} highScore - The high score to display
  */
-export function showGameOver(score, deathReason = 'DEFAULT') {
+export function updateHighScore(highScore) {
+    if (highScoreInfoElement) {
+        // Keep the label, update only the score value
+        const label = highScoreInfoElement.querySelector('.label');
+        if (label) {
+            highScoreInfoElement.innerHTML = '';
+            highScoreInfoElement.appendChild(label);
+            highScoreInfoElement.appendChild(document.createTextNode(highScore));
+        } else {
+            // Fallback if label not found
+            highScoreInfoElement.textContent = 'High Score: ' + highScore;
+        }
+    }
+}
+
+/**
+ * Shows the game over screen with the final score and death reason
+ * @param {number} score - The final score to display
+ * @param {string} deathReason - The reason for death (used to look up message in config)
+ * @param {Object} gameState - The game state object containing stats
+ */
+export function showGameOver(score, deathReason = 'DEFAULT', gameState) {
     if (gameOverElement && finalScoreElement) {
         // Set the final score
         finalScoreElement.textContent = score;
+        
+        // Set the high score
+        if (highScoreElement && gameState) {
+            highScoreElement.textContent = gameState.highScore;
+        }
         
         // Set the death reason message based on the provided reason
         if (deathReasonElement) {
@@ -300,6 +346,24 @@ export function showGameOver(score, deathReason = 'DEFAULT') {
             const deathMessages = CONFIG.GAME_TEXT.UI.GAME_OVER.DEATH_REASONS;
             const message = deathMessages[deathReason] || deathMessages.DEFAULT;
             deathReasonElement.textContent = message;
+        }
+        
+        // Update game stats
+        if (gameState) {
+            // Update apples eaten
+            if (applesEatenElement) {
+                applesEatenElement.textContent = gameState.stats.applesEaten || 0;
+            }
+            
+            // Update frogs eaten
+            if (frogsEatenElement) {
+                frogsEatenElement.textContent = gameState.stats.frogsEaten || 0;
+            }
+            
+            // Update snakes eaten
+            if (snakesEatenElement) {
+                snakesEatenElement.textContent = gameState.enemies.kills || 0;
+            }
         }
         
         // Show the game over screen using the active class
@@ -368,12 +432,19 @@ export function hidePowerUpTextEffect() {
      powerUpTextElement.classList.remove('powerup-text-animate');
 }
 
-export function resetUI(initialScore = 0) {
+export function resetUI(initialScore = 0, gameState) {
     updateScore(initialScore);
     updateKills(0);
     updatePowerUpInfo('');
     hideGameOver();
     hidePowerUpTextEffect();
+    
+    // Update high score display (don't reset the actual high score value)
+    if (gameState && gameState.highScore !== undefined) {
+        updateHighScore(gameState.highScore);
+    } else {
+        updateHighScore(0);
+    }
     
     // Reset Alpha Mode UI to initial state (visible but empty)
     if (alphaModeContainer) {

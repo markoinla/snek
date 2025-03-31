@@ -85,19 +85,19 @@ function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
         collisionCells.push({ x: pos.x, z: pos.z }); // Bush occupies the base cell
         
         // Create a more natural-looking bush with the flower texture
-        const bushCount = 8 + Math.floor(Math.random() * 8);
+        const bushCount = 12 + Math.floor(Math.random() * 8); // Increased number of planes
         
         for (let i = 0; i < bushCount; i++) {
             // Create a plane for each part of the bush
-            const bushPlane = new THREE.PlaneGeometry(CONFIG.UNIT_SIZE * 1.2, CONFIG.UNIT_SIZE * 1.2);
+            const bushPlane = new THREE.PlaneGeometry(CONFIG.UNIT_SIZE * 1.5, CONFIG.UNIT_SIZE * 1.5); // Larger planes
             const bushMesh = new THREE.Mesh(bushPlane, flowerBushMat);
             
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * 1.0 * CONFIG.UNIT_SIZE; // Slightly smaller radius for a more compact bush
-            const yOff = Math.random() * 0.6 * CONFIG.UNIT_SIZE; // Lower height for bushes
+            const radius = Math.random() * 1.5 * CONFIG.UNIT_SIZE; // Increased radius for a larger bush
+            const yOff = Math.random() * 0.8 * CONFIG.UNIT_SIZE; // Higher height for bushes
             
-            // Randomize the bush size
-            const bushScale = (0.7 + Math.random() * 0.5) * CONFIG.UNIT_SIZE;
+            // Randomize the bush size with larger scale
+            const bushScale = (0.9 + Math.random() * 0.6) * CONFIG.UNIT_SIZE;
             bushMesh.scale.set(bushScale, bushScale, bushScale);
             
             bushMesh.position.set(

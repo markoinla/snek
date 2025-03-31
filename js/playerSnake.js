@@ -92,7 +92,7 @@ function resetPlayerMeshes(gameState) {
 export function resetPlayer(gameState) {
      resetPlayerMeshes(gameState); // Remove meshes
      initPlayerSnake(gameState); // Reinitialize state and meshes
-     UI.resetUI(0); // Reset score display etc.
+     UI.resetUI(0, gameState); // Reset score display etc.
      console.log("Player reset complete.");
 }
 

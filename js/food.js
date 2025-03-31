@@ -354,6 +354,15 @@ export function checkAndEatFood(position, gameState) {
         const eatenFoodMesh = food.meshes[eatenFoodIndex];
         const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === eatenFoodType);
 
+        // Track stats based on food type
+        if (eatenFoodType === 'normal') {
+            // Increment apples eaten count
+            gameState.stats.applesEaten++;
+        } else {
+            // Increment frogs eaten count
+            gameState.stats.frogsEaten++;
+        }
+
         // Trigger effects (particles, sound?, UI text)
         if (eatenFoodMesh) {
             // Different particle effects based on food type

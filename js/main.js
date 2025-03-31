@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as CONFIG from './config.js';
-import { gameState, resetGameStateForNewGame } from './gameState.js';
+import { gameState, resetGameStateForNewGame, saveHighScore } from './gameState.js';
 import * as Utils from './utils.js';
 import * as SceneSetup from './sceneSetup.js';
 import * as Materials from './materials.js';
@@ -148,7 +148,7 @@ function resetGame() {
     Enemy.spawnInitialEnemies(gameState); // Spawn enemies last
 
     // Reset UI elements
-    UI.resetUI(0); // Reset score display, hide game over, etc.
+    UI.resetUI(0, gameState); // Reset score display, hide game over, etc.
     UI.updateKills(0); // Initialize kill counter
 
     // Reset camera position/focus? (Optional, updateCamera handles it)
@@ -167,9 +167,19 @@ export function setGameOver(state = gameState, deathReason = 'DEFAULT') { // All
     console.log("Game Over! Final Score:", state.score, "Reason:", deathReason);
     state.flags.gameOver = true;
     state.flags.gameRunning = false; // Stop game logic updates
+    
+    // Update high score if current score is higher
+    if (state.score > state.highScore) {
+        state.highScore = state.score;
+        console.log("New High Score:", state.highScore);
+        // Save high score to localStorage for persistence between sessions
+        saveHighScore(state.highScore);
+        // Update the high score display in the game UI
+        UI.updateHighScore(state.highScore);
+    }
 
-    // Show UI with death reason
-    UI.showGameOver(state.score, deathReason);
+    // Show UI with death reason and game stats
+    UI.showGameOver(state.score, deathReason, state);
     UI.updatePowerUpInfo(''); // Clear any active power-up display
     UI.hidePowerUpTextEffect();
 
