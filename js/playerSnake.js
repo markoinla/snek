@@ -314,7 +314,8 @@ function enlargePlayerHead(gameState, currentTime) {
 
 // Function to kill an enemy snake
 export function killEnemySnake(enemyId, gameState) {
-    const { currentTime } = gameState.clock;
+    const { playerSnake, clock } = gameState;
+    const currentTime = clock.getElapsedTime();
     
     // Call the enemy module's kill function
     if (killEnemy(enemyId, gameState)) {
@@ -337,6 +338,17 @@ export function killEnemySnake(enemyId, gameState) {
         
         // Make the snake grow by 3 segments when eating an enemy
         growSnakeSegments(gameState, 3);
+        
+        // If in alpha mode, extend the alpha mode duration by 1 second
+        if (playerSnake.alphaMode.active) {
+            // Extend alpha mode duration by 1 second
+            playerSnake.alphaMode.endTime += 1;
+            
+            // Show a message indicating the alpha mode extension
+            UI.showPowerUpTextEffect("+1s ALPHA TIME", CONFIG.ALPHA_MODE_COLOR);
+            
+            console.log("Alpha mode extended by 1 second! New end time:", playerSnake.alphaMode.endTime);
+        }
         
         return true;
     }
