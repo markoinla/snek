@@ -22,7 +22,7 @@ let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/
 //     animationTimer: 0,
 //     scoreMultiplier: 1,
 //     ghostModeActive: false,
-//     activePowerUp: null, // { type, endTime }
+//     activePowerUps: [], // { type, endTime }
 //     enlargedHeadUntil: 0, // New property for enlarged head effect
 //     alphaMode: {
 //         active: false,
@@ -48,7 +48,7 @@ export function initPlayerSnake(gameState) {
     playerSnake.animationTimer = 0;
     playerSnake.scoreMultiplier = 1;
     playerSnake.ghostModeActive = false;
-    playerSnake.activePowerUp = null;
+    playerSnake.activePowerUps = []; // Initialize activePowerUps array
     playerSnake.enlargedHeadUntil = 0; // Initialize enlarged head timer
     playerSnake.alphaMode = {
         active: false,
@@ -143,7 +143,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         updateAlphaMode(currentTime, gameState);
     }
     
-    // Update Power-up Timer
+    // Update Power-up Timers
     updatePowerUpState(currentTime, gameState);
     
     // Update Enlarged Head Timer
@@ -383,8 +383,10 @@ export function applyPowerUp(type, gameState) {
     const { playerSnake, clock } = gameState;
     if (!playerSnake || !clock) return;
 
-    // Clear any existing power-up first
-    clearPowerUpEffects(gameState);
+    // Initialize activePowerUps array if it doesn't exist
+    if (!playerSnake.activePowerUps) {
+        playerSnake.activePowerUps = [];
+    }
 
     const currentTime = clock.getElapsedTime();
     const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === type);
@@ -405,30 +407,33 @@ export function applyPowerUp(type, gameState) {
     switch (type) {
         case 'speed':
             playerSnake.speed = CONFIG.BASE_SNAKE_SPEED * 0.6; // 40% faster
-            playerSnake.activePowerUp = {
+            // Add to active power-ups array instead of replacing
+            playerSnake.activePowerUps.push({
                 type: type,
                 endTime: currentTime + foodTypeInfo.powerUpDuration
-            };
-            UI.updatePowerUpInfo(`Speed Boost! (${Math.round(foodTypeInfo.powerUpDuration)}s)`);
+            });
+            updatePowerUpInfoDisplay(gameState);
             break;
         
         case 'ghost':
             playerSnake.ghostModeActive = true;
-            playerSnake.activePowerUp = {
+            // Add to active power-ups array
+            playerSnake.activePowerUps.push({
                 type: type,
                 endTime: currentTime + foodTypeInfo.powerUpDuration
-            };
+            });
             updatePlayerSnakeTextures(gameState); // Update visuals immediately
-            UI.updatePowerUpInfo(`Ghost Mode! (${Math.round(foodTypeInfo.powerUpDuration)}s)`);
+            updatePowerUpInfoDisplay(gameState);
             break;
         
         case 'score_x2':
             playerSnake.scoreMultiplier = 2;
-            playerSnake.activePowerUp = {
+            // Add to active power-ups array
+            playerSnake.activePowerUps.push({
                 type: type,
                 endTime: currentTime + foodTypeInfo.powerUpDuration
-            };
-            UI.updatePowerUpInfo(`Score x2! (${Math.round(foodTypeInfo.powerUpDuration)}s)`);
+            });
+            updatePowerUpInfoDisplay(gameState);
             break;
         
         case 'shrink':
@@ -450,20 +455,8 @@ export function applyPowerUp(type, gameState) {
                 }
                 
                 // No need to set activePowerUp since this is an immediate effect
-                UI.updatePowerUpInfo(`Shrunk by ${segmentsToRemove} segments!`);
-                
-                // Clear info after a few seconds
-                setTimeout(() => {
-                    if (playerSnake.activePowerUp === null) { // Only clear if no other power-up is active
-                        UI.updatePowerUpInfo('');
-                    }
-                }, 3000);
+                updatePowerUpInfoDisplay(gameState, `Shrunk by ${segmentsToRemove} segments!`);
             }
-            break;
-            
-        case 'normal':
-        default:
-            // Regular food has no special effect
             break;
     }
 }
@@ -487,39 +480,88 @@ function clearPowerUpEffects(gameState, clearUIDisplay = true) {
     const { playerSnake } = gameState;
     if (!playerSnake) return;
 
-    // Reset effects to default values
+    // Reset all power-up effects
     playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
     playerSnake.scoreMultiplier = 1;
-    const wasGhost = playerSnake.ghostModeActive;
-    playerSnake.ghostModeActive = false;
+    
+    if (playerSnake.ghostModeActive) {
+        playerSnake.ghostModeActive = false;
+        updatePlayerSnakeTextures(gameState); // Update visuals immediately
+    }
 
-     // If ghost mode was active, update textures to remove transparency
-     if (wasGhost) {
-         updatePlayerSnakeTextures(gameState);
-     }
-
-     // Clear UI display only if requested (e.g., when powerup expires)
-     if (clearUIDisplay) {
-         playerSnake.activePowerUp = null; // Clear the timer state
-         UI.updatePowerUpInfo('');
-     }
+    // Clear UI display only if requested (e.g., when powerup expires)
+    if (clearUIDisplay) {
+        playerSnake.activePowerUps = []; // Clear all power-ups
+        UI.updatePowerUpInfo('');
+    }
 }
 
 function updatePowerUpState(currentTime, gameState) {
     const { playerSnake } = gameState;
-    if (!playerSnake?.activePowerUp) return;
+    if (!playerSnake?.activePowerUps) return;
 
-    if (currentTime >= playerSnake.activePowerUp.endTime) {
-        // Power-up expired
-        console.log(`Power-up expired: ${playerSnake.activePowerUp.type}`);
-        clearPowerUpEffects(gameState, true); // Clear effects AND UI display
-        // No need to set activePowerUp = null here, clearPowerUpEffects does it
+    let powerUpsChanged = false;
+    let i = playerSnake.activePowerUps.length;
+    
+    // Check each power-up from end to start (to safely remove items)
+    while (i--) {
+        const powerUp = playerSnake.activePowerUps[i];
+        if (currentTime >= powerUp.endTime) {
+            // Power-up expired
+            console.log(`Power-up expired: ${powerUp.type}`);
+            
+            // Handle specific power-up expiration
+            switch (powerUp.type) {
+                case 'speed':
+                    playerSnake.speed = CONFIG.BASE_SNAKE_SPEED; // Reset speed
+                    break;
+                case 'ghost':
+                    playerSnake.ghostModeActive = false;
+                    updatePlayerSnakeTextures(gameState); // Update visuals
+                    break;
+                case 'score_x2':
+                    playerSnake.scoreMultiplier = 1; // Reset multiplier
+                    break;
+            }
+            
+            // Remove expired power-up from array
+            playerSnake.activePowerUps.splice(i, 1);
+            powerUpsChanged = true;
+        }
+    }
+    
+    // Update the UI if any power-ups changed
+    if (powerUpsChanged) {
+        updatePowerUpInfoDisplay(gameState);
+    }
+}
+
+function updatePowerUpInfoDisplay(gameState, message = '') {
+    const { playerSnake, clock } = gameState;
+    if (!playerSnake?.activePowerUps || !clock) return;
+    
+    const currentTime = clock.getElapsedTime();
+
+    if (message) {
+        UI.updatePowerUpInfo(message);
+        return;
+    }
+    
+    // If we have active power-ups, display them
+    if (playerSnake.activePowerUps.length > 0) {
+        // Create a combined message of all active power-ups
+        const powerUpMessages = playerSnake.activePowerUps.map(powerUp => {
+            const remainingTime = Math.max(0, powerUp.endTime - currentTime).toFixed(1);
+            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === powerUp.type);
+            const description = foodTypeInfo ? foodTypeInfo.description : powerUp.type;
+            return `${description}: ${remainingTime}s`;
+        });
+        
+        // Join the messages with a separator
+        UI.updatePowerUpInfo(powerUpMessages.join(' | '));
     } else {
-        // Update UI timer display
-        const remainingTime = playerSnake.activePowerUp.endTime - currentTime;
-        const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === playerSnake.activePowerUp.type);
-        const description = foodTypeInfo ? foodTypeInfo.description : playerSnake.activePowerUp.type;
-        UI.updatePowerUpInfo(`${description}: ${remainingTime.toFixed(1)}s`);
+        // No active power-ups
+        UI.updatePowerUpInfo('');
     }
 }
 

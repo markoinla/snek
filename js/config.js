@@ -1,10 +1,10 @@
 // --- Configuration Constants ---
 export const GRID_SIZE = 80;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.10;
+export const BASE_SNAKE_SPEED = 0.15;
 export const CAMERA_DISTANCE = 11;
 export const CAMERA_HEIGHT = 9;
-export const CAMERA_LAG = 0.2;
+export const CAMERA_LAG = 0.18;
 export const SPRITE_SHEET_DIM = 2;
 export const NUM_INITIAL_FOOD = 35;
 export const MIN_SNAKE_LENGTH = 3;
@@ -14,7 +14,7 @@ export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if nee
 // Enemy snake settings
 export const NUM_ENEMIES = 6;
 export const ENEMY_START_LENGTH = 5;
-export const ENEMY_SNAKE_SPEED = 0.2; // Time between moves in seconds
+export const ENEMY_SNAKE_SPEED = 0.25; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
 export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
@@ -105,7 +105,7 @@ export const GAME_TEXT = {
     TUTORIAL: {
         CONTROLS: "Left/Right keys to turn your Snek",
         MOBILE_CONTROLS: "Press left/right buttons to turn your Snek",
-        OBJECTIVE: "Eat food and other sneks to grow your anaconda. You can eat a Snek by eating its tail.",
+        OBJECTIVE: "Eat food and other sneks to grow your anaconda. Eat a Snek by eating its tail.",
         ALPHA_MODE_HINT: "Fill up the alpha meter to become the ALPHA SNEK!"
     }
 };

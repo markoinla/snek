@@ -135,7 +135,7 @@ canvas { display: block; }
 /* Power Up Animation */
 @keyframes powerUpAnimate { 0% { opacity: 0; transform: translateX(-50%) scale(0.5) translateY(20px); } 20% { opacity: 1; transform: translateX(-50%) scale(1.2) translateY(0px); } 70% { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(0px); } 100% { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(-30px); } }
 .powerup-text-animate { display: block !important; animation: powerUpAnimate 2s ease-out forwards; }
-.mobile-button { position: absolute; bottom: 30px; width: 75px; height: 75px; background-color: rgba(120, 120, 120, 0.4); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; display: none; justify-content: center; align-items: center; font-size: 2.5em; color: rgba(255, 255, 255, 0.6); user-select: none; -webkit-user-select: none; z-index: 6; cursor: pointer; transition: background-color 0.1s ease; }
+.mobile-button { position: absolute; bottom: 30px; width: 120px; height: 120px; background-color: rgba(120, 120, 120, 0.4); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; display: none; justify-content: center; align-items: center; font-size: 2.5em; color: rgba(255, 255, 255, 0.6); user-select: none; -webkit-user-select: none; z-index: 6; cursor: pointer; transition: background-color 0.1s ease; }
 .mobile-button:active { background-color: rgba(160, 160, 160, 0.6); }
 #leftButton { left: 30px; }
 #rightButton { right: 30px; }
