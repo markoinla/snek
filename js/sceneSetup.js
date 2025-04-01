@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CONFIG from './config.js';
 import { PATHS, GEOMETRIES } from './constants.js';
+import { performanceSettings } from './deviceUtils.js';
 
 export function createScene() {
     const scene = new THREE.Scene();
@@ -18,8 +19,15 @@ export function createRenderer(canvas) {
     const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Use performance settings to conditionally enable shadows
+    renderer.shadowMap.enabled = performanceSettings.shadows;
+    
+    // Only set shadow map type if shadows are enabled
+    if (performanceSettings.shadows) {
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
+    
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     return renderer;
 }
@@ -30,17 +38,24 @@ export function createLights(scene) {
 
     const directionalLight = new THREE.DirectionalLight(0xffeedd, 0.8);
     directionalLight.position.set(CONFIG.GRID_SIZE * 0.15, CONFIG.GRID_SIZE * 0.25, CONFIG.GRID_SIZE * 0.1);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.8; // Adjusted far plane
-    const shadowCamSize = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.6;
-    directionalLight.shadow.camera.left = -shadowCamSize;
-    directionalLight.shadow.camera.right = shadowCamSize;
-    directionalLight.shadow.camera.top = shadowCamSize;
-    directionalLight.shadow.camera.bottom = -shadowCamSize;
-    directionalLight.shadow.bias = -0.001;
+    
+    // Only enable shadows if performance settings allow
+    directionalLight.castShadow = performanceSettings.shadows;
+    
+    // Only configure shadow properties if shadows are enabled
+    if (performanceSettings.shadows) {
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.8; // Adjusted far plane
+        const shadowCamSize = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.6;
+        directionalLight.shadow.camera.left = -shadowCamSize;
+        directionalLight.shadow.camera.right = shadowCamSize;
+        directionalLight.shadow.camera.top = shadowCamSize;
+        directionalLight.shadow.camera.bottom = -shadowCamSize;
+        directionalLight.shadow.bias = -0.001;
+    }
+    
     scene.add(directionalLight);
     scene.add(directionalLight.target); // Important: Target needs to be added too
 
@@ -72,7 +87,10 @@ export function createGround(scene, material) {
     const groundMesh = new THREE.Mesh(GEOMETRIES.groundPlane, material);
     groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.position.y = 0; // Place ground exactly at y=0
-    groundMesh.receiveShadow = true;
+    
+    // Only enable shadow receiving if shadows are enabled in performance settings
+    groundMesh.receiveShadow = performanceSettings.shadows;
+    
     scene.add(groundMesh);
     return groundMesh;
 }
@@ -94,28 +112,51 @@ export function createWalls(scene, material) {
 
     const wallNorth = new THREE.Mesh(wallGeoX, material);
     wallNorth.position.set(0, wallYPos, -halfGridW - (wallThickness / 2)); // Adjust position based on thickness
-    wallNorth.castShadow = true; wallNorth.receiveShadow = true;
+    
+    // Only enable shadows if they are enabled in performance settings
+    if (performanceSettings.shadows) {
+        wallNorth.castShadow = true; 
+        wallNorth.receiveShadow = true;
+    }
+    
     wallGroup.add(wallNorth);
 
     const wallSouth = new THREE.Mesh(wallGeoX, material);
     wallSouth.position.set(0, wallYPos, halfGridW + (wallThickness / 2));
-    wallSouth.castShadow = true; wallSouth.receiveShadow = true;
+    
+    // Only enable shadows if they are enabled in performance settings
+    if (performanceSettings.shadows) {
+        wallSouth.castShadow = true; 
+        wallSouth.receiveShadow = true;
+    }
+    
     wallGroup.add(wallSouth);
-
-    const wallWest = new THREE.Mesh(wallGeoZ, material);
-    wallWest.position.set(-halfGridW - (wallThickness / 2), wallYPos, 0);
-    wallWest.castShadow = true; wallWest.receiveShadow = true;
-    wallGroup.add(wallWest);
 
     const wallEast = new THREE.Mesh(wallGeoZ, material);
     wallEast.position.set(halfGridW + (wallThickness / 2), wallYPos, 0);
-    wallEast.castShadow = true; wallEast.receiveShadow = true;
+    
+    // Only enable shadows if they are enabled in performance settings
+    if (performanceSettings.shadows) {
+        wallEast.castShadow = true; 
+        wallEast.receiveShadow = true;
+    }
+    
     wallGroup.add(wallEast);
+
+    const wallWest = new THREE.Mesh(wallGeoZ, material);
+    wallWest.position.set(-halfGridW - (wallThickness / 2), wallYPos, 0);
+    
+    // Only enable shadows if they are enabled in performance settings
+    if (performanceSettings.shadows) {
+        wallWest.castShadow = true; 
+        wallWest.receiveShadow = true;
+    }
+    
+    wallGroup.add(wallWest);
 
     scene.add(wallGroup);
     return wallGroup;
 }
-
 
 export function createGrass(scene, material) {
     if (!material) {

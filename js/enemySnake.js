@@ -5,6 +5,7 @@ import { createSnakeSegmentMesh, generateUniquePosition, isPositionOccupied } fr
 import { findClosestFood, addNewFoodItem } from './food.js';
 import { createExplosion, createKillEffect } from './particleSystem.js';
 import { checkObstacleCollision } from './obstacles.js'; // Make sure this import exists
+import { Logger, isLoggingEnabled } from './debugLogger.js';
 
 let enemyMeshes = {}; // Store meshes keyed by enemy ID: { id: [mesh1, mesh2,...] }
 
@@ -33,7 +34,7 @@ export function spawnInitialEnemies(gameState) {
     // Clear existing first
     resetEnemies(gameState);
 
-    console.log(`Creating ${CONFIG.NUM_ENEMIES} enemies...`);
+    Logger.gameplay.info(`Creating ${CONFIG.NUM_ENEMIES} enemies...`);
     for (let i = 0; i < CONFIG.NUM_ENEMIES; i++) {
         initializeEnemy(i, gameState);
     }
@@ -54,7 +55,7 @@ function initializeEnemy(id, gameState) {
     );
 
     if (!startPos) {
-        console.warn(`Could not find start position for enemy ${id}. Skipping.`);
+        Logger.gameplay.warn(`Could not find start position for enemy ${id}. Skipping.`);
         return;
     }
 
@@ -101,7 +102,7 @@ function initializeEnemy(id, gameState) {
 
     enemies.list.push(newEnemy);
     updateEnemySnakeTextures(newEnemy, gameState); // Set initial textures
-    console.log(`Enemy ${id} initialized.`);
+    Logger.gameplay.info(`Enemy ${id} initialized.`);
 }
 
 export function resetEnemies(gameState) {
@@ -165,7 +166,7 @@ export function resetEnemies(gameState) {
     // Clear the mesh cache
     enemyMeshes = {}; 
     
-    console.log("Enemies reset completely.");
+    Logger.gameplay.info("Enemies reset completely.");
 }
 
 
@@ -449,7 +450,7 @@ function moveEnemy(enemy, gameState) {
     // Double-check for invalid move before executing (AI might have lagged)
     if (isMoveInvalid(newHeadPos, enemy, gameState)) {
          // AI decided on an invalid move, maybe recalculate or idle?
-         console.warn(`Enemy ${enemy.id} attempted invalid move to`, newHeadPos);
+         Logger.gameplay.warn(`Enemy ${enemy.id} attempted invalid move to`, newHeadPos);
          enemy.state = 'idle'; // Force idle to re-evaluate next frame
          // Don't move this frame
          return;
@@ -468,7 +469,7 @@ function moveEnemy(enemy, gameState) {
 
     const meshes = enemyMeshes[enemy.id];
     if (!meshes) {
-        console.error(`Meshes not found for enemy ${enemy.id}`);
+        Logger.gameplay.error(`Meshes not found for enemy ${enemy.id}`);
         return; // Cannot proceed without meshes
     }
 
@@ -501,7 +502,7 @@ function moveEnemy(enemy, gameState) {
          enemy.state = 'seeking';
 
          // Did enemy eat a power-up? AI doesn't benefit yet, but remove it.
-         console.log(`Enemy ${enemy.id} ate ${eatenFoodType}`);
+         Logger.gameplay.info(`Enemy ${enemy.id} ate ${eatenFoodType}`);
 
     }
 
@@ -520,7 +521,7 @@ function moveEnemy(enemy, gameState) {
             );
             meshes.unshift(tailMesh);
         } else {
-             console.error(`Enemy ${enemy.id} missing tail mesh!`);
+             Logger.gameplay.error(`Enemy ${enemy.id} missing tail mesh!`);
               const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, false, enemy.id); // Pass the enemy ID
               if (newMesh) {
                   scene.add(newMesh);
@@ -592,7 +593,7 @@ export function updateEnemyMaterialsAfterMove(enemy, gameState) {
     });
     
     // Log for debugging
-    console.log(`Updated enemy ${enemy.id} materials. Tail segments colored: ${CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS}`);
+    Logger.gameplay.info(`Updated enemy ${enemy.id} materials. Tail segments colored: ${CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS}`);
 }
 
 // --- Collision Check (External) ---
@@ -685,7 +686,7 @@ export function killEnemySnake(enemyId, gameState) {
     }
     enemies.respawnQueue.push({ id: enemyId, respawnTime });
     
-    console.log(`Enemy ${enemyId} killed. Scheduled to respawn in ${CONFIG.ENEMY_RESPAWN_TIME} seconds.`);
+    Logger.gameplay.info(`Enemy ${enemyId} killed. Scheduled to respawn in ${CONFIG.ENEMY_RESPAWN_TIME} seconds.`);
     return true;
 }
 
@@ -701,7 +702,7 @@ export function checkEnemyRespawns(gameState) {
         if (currentTime >= item.respawnTime) {
             // Time to respawn this enemy
             initializeEnemy(item.id, gameState);
-            console.log(`Enemy ${item.id} respawned.`);
+            Logger.gameplay.info(`Enemy ${item.id} respawned.`);
         } else {
             // Not yet time to respawn
             stillWaiting.push(item);

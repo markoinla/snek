@@ -5,13 +5,13 @@ export const BASE_SNAKE_SPEED = 0.22;
 export const CAMERA_DISTANCE = 9;
 export const CAMERA_HEIGHT = 12;
 export const CAMERA_LAG = 0.25;
-export const CAMERA_POSITION_SMOOTHNESS = 0.03; // Lower = smoother camera position movement
-export const CAMERA_ROTATION_SMOOTHNESS = 0.05; // Lower = smoother camera rotation
+export const CAMERA_POSITION_SMOOTHNESS = 0.02; // Lower = smoother camera position movement
+export const CAMERA_ROTATION_SMOOTHNESS = 0.06; // Lower = smoother camera rotation
 export const SPRITE_SHEET_DIM = 2;
 export const NUM_INITIAL_FOOD = 50;
 export const MIN_SNAKE_LENGTH = 3;
 export const NUM_OBSTACLES = 17;
-export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if needed
+export const POWERUP_TEXT_ANIMATION_DURATION = 1500; // Keep for CSS sync if needed
 
 // Food speed boost settings
 export const FOOD_SPEED_BOOST_DURATION = 7.0; // Duration of speed boost in seconds
@@ -48,9 +48,9 @@ export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
 export const AUDIO_VOLUME = {
     MUSIC: 0.3,               // Background music volume (0.0 to 1.0)
     MOVEMENT_SOUNDS: 0.4,     // Snake movement sound effects volume
-    EATING_SOUNDS: 0.6,       // Food eating sound effects volume
-    ALPHA_MODE_SOUNDS: 0.7,   // Alpha Mode sound effects volume (explosions, voice lines)
-    DEATH_SOUND: 0.9          // Player death sound volume
+    EATING_SOUNDS: 0.5,       // Food eating sound effects volume
+    ALPHA_MODE_SOUNDS: 0.6,   // Alpha Mode sound effects volume (explosions, voice lines)
+    DEATH_SOUND: 0.6          // Player death sound volume
 };
 
 // Default audio states
@@ -70,15 +70,15 @@ export const ENEMY_KILL_SCORE = 7; // Points awarded for killing an enemy
 export const ENEMY_RESPAWN_TIME = 15; // Seconds before a new enemy spawns after being killed
 
 // Player powerup settings
-export const ENLARGED_HEAD_DURATION = 5; // Seconds the player's head stays enlarged after killing an enemy
-export const ENLARGED_HEAD_SCALE = 1.5; // How much larger the head becomes
+export const ENLARGED_HEAD_DURATION = 0; // Seconds the player's head stays enlarged after killing an enemy
+export const ENLARGED_HEAD_SCALE = 1; // How much larger the head becomes
 
 // Particle effect for killing an enemy
-export const PARTICLE_COUNT_KILL = 30; // Number of particles when killing an enemy
+export const PARTICLE_COUNT_KILL = 10; // Number of particles when killing an enemy
 export const PARTICLE_COLOR_KILL = 0xFF5722; // Orange color for kill particles
 
 // Regular food particle settings (smaller, green effect)
-export const PARTICLE_COUNT_NORMAL_FOOD = 10; // Fewer particles for regular food
+export const PARTICLE_COUNT_NORMAL_FOOD = 2; // Fewer particles for regular food
 export const PARTICLE_COLOR_NORMAL_FOOD = 0x4CAF50; // Green color for regular food particles
 
 export const WALL_HEIGHT = 3;
@@ -200,10 +200,10 @@ export const FROG_MOVEMENT = {
     MOVE_INTERVAL: 0.5
 };
 
-export const PARTICLE_COUNT_DEATH = 60;
-export const PARTICLE_SIZE = 5;
-export const PARTICLE_LIFESPAN = 0.8;
-export const PARTICLE_SPEED = 5.0;
+export const PARTICLE_COUNT_DEATH = 10;
+export const PARTICLE_SIZE = 2;
+export const PARTICLE_LIFESPAN = 0.2;
+export const PARTICLE_SPEED = 3.0;
 
 // Ground color (set to null to use texture without tint)
 export const GROUND_COLOR = 0x4682B4; // Light blue tint

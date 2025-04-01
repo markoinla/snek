@@ -12,6 +12,8 @@ import * as Obstacles from './obstacles.js';
 import * as Player from './playerSnake.js';
 import * as Enemy from './enemySnake.js';
 import * as Audio from './audioSystem.js';
+import { performanceSettings } from './deviceUtils.js';
+import { initLogger, Logger, isLoggingEnabled } from './debugLogger.js';
 import Stats from '../lib/stats.module.js';
 
 // FPS counter
@@ -19,8 +21,16 @@ let stats;
 
 // --- Initialization ---
 async function init() {
-    console.log("Initializing game...");
+    // Initialize debug logger
+    const debugEnabled = initLogger();
+    
+    Logger.system.info("Initializing game...");
     gameState.flags.gameRunning = false; // Not running until setup is complete
+
+    // Initialize performance settings based on device
+    const isMobile = performanceSettings.initializeForCurrentDevice();
+    Logger.system.info(`Device type: ${isMobile ? 'Mobile' : 'Desktop'}`);
+    Logger.system.info(`Performance settings: Shadows=${performanceSettings.shadows}, Detail=${performanceSettings.detailLevel}`);
 
     // Validate configuration
     validateConfig();
@@ -28,7 +38,7 @@ async function init() {
     // Basic Setup
     const canvas = document.getElementById('gameCanvas');
     if (!canvas) {
-        console.error("Canvas element #gameCanvas not found!");
+        Logger.system.error("Canvas element #gameCanvas not found!");
         return;
     }
     gameState.scene = SceneSetup.createScene();
@@ -42,7 +52,7 @@ async function init() {
     // Load Materials (async)
     try {
         gameState.materials = await Materials.loadAndCreateMaterials();
-        console.log("Materials loaded and created.");
+        Logger.system.info("Materials loaded and created.");
 
         // Check if essential materials exist
         if (!gameState.materials?.snake?.head1 || !gameState.materials?.ground || !gameState.materials.particle) {
@@ -50,7 +60,7 @@ async function init() {
         }
 
     } catch (error) {
-        console.error("Fatal Error: Could not load/create materials.", error);
+        Logger.system.error("Fatal Error: Could not load/create materials.", error);
         // Display error to user?
         alert("Error loading game materials. Please refresh the page and try again.");
         return; // Stop initialization
@@ -96,7 +106,7 @@ async function init() {
         // Show a message to the player
         UI.showPowerUpTextEffect("Alpha Mode cooldown reset!");
         
-        console.log("Alpha Mode cooldown reset button clicked");
+        Logger.system.info("Alpha Mode cooldown reset button clicked");
     });
     
     // Add stats display if query string parameter is set
@@ -118,7 +128,7 @@ async function init() {
  * Function to start the actual gameplay after intro screen
  */
 function startGameplay() {
-    console.log("Starting gameplay...");
+    Logger.system.info("Starting gameplay...");
     
     // Reset game state if needed
     if (gameState.flags.gameOver) {
@@ -142,7 +152,7 @@ function startGameplay() {
 
 // Function to pause the game (when help screen is opened)
 function pauseGame() {
-    console.log("Game paused");
+    Logger.system.info("Game paused");
     gameState.flags.gameRunning = false;
     
     // Pause background music
@@ -151,7 +161,7 @@ function pauseGame() {
 
 // Function to resume the game (when help screen is closed)
 function resumeGame() {
-    console.log("Game resumed");
+    Logger.system.info("Game resumed");
     if (!gameState.flags.gameOver) {
         gameState.flags.gameRunning = true;
         
@@ -168,7 +178,7 @@ function resumeGame() {
 
 // Game start handler
 function onGameStart() {
-    console.log("Game started");
+    Logger.system.info("Game started");
     gameState.flags.gameOver = false;
     gameState.flags.gamePaused = false;
     
@@ -181,7 +191,7 @@ function onGameStart() {
 
 // Game over handler
 function onGameOver() {
-    console.log("Game over handler called");
+    Logger.system.info("Game over handler called");
     
     // Don't pause background music on game over
     // Audio.pauseBackgroundMusic();
@@ -189,7 +199,7 @@ function onGameOver() {
 
 // Game paused handler
 function onGamePaused() {
-    console.log("Game paused");
+    Logger.system.info("Game paused");
     gameState.flags.gamePaused = true;
     
     // Pause background music
@@ -198,7 +208,7 @@ function onGamePaused() {
 
 // Game resumed handler
 function onGameResumed() {
-    console.log("Game resumed");
+    Logger.system.info("Game resumed");
     
     // Only resume if the game was previously running (not game over)
     if (!gameState.flags.gameOver) {
@@ -211,7 +221,7 @@ function onGameResumed() {
 
 // --- Game Reset ---
 function resetGame() {
-    console.log("--- RESETTING GAME ---");
+    Logger.system.info("--- RESETTING GAME ---");
     gameState.flags.gameRunning = false; // Pause updates during reset
 
     // Reset core game state variables (score, flags)
@@ -250,7 +260,7 @@ function resetGame() {
     // gameState.camera.position.set(0, CONFIG.CAMERA_HEIGHT, CONFIG.CAMERA_DISTANCE);
     // Player.updateCamera(gameState); // Force immediate camera update
 
-    console.log("--- GAME RESET COMPLETE ---");
+    Logger.system.info("--- GAME RESET COMPLETE ---");
     gameState.flags.gameRunning = true; // Resume updates
     gameState.flags.gameOver = false; // Ensure game over is false
 }
@@ -259,14 +269,14 @@ function resetGame() {
 export function setGameOver(state = gameState, deathReason = 'DEFAULT') { // Allow passing state for flexibility
     if (state.flags.gameOver) return; // Prevent multiple triggers
 
-    console.log("Game Over! Final Score:", state.score.current, "Reason:", deathReason);
+    Logger.system.info("Game Over! Final Score:", state.score.current, "Reason:", deathReason);
     state.flags.gameOver = true;
     state.flags.gameRunning = false; // Stop game logic updates
     
     // Update high score if current score is higher
     if (state.score.current > state.highScore) {
         state.highScore = state.score.current;
-        console.log("New High Score:", state.highScore);
+        Logger.system.info("New High Score:", state.highScore);
         // Save high score to localStorage for persistence between sessions
         saveHighScore(state.highScore);
         // Update the high score display in the game UI
@@ -308,7 +318,7 @@ export function requestRestart() {
         // Start the game directly without showing intro screen
         UI.startGame();
         
-        console.log("Restart requested.");
+        Logger.system.info("Restart requested.");
     }
 }
 
@@ -428,7 +438,7 @@ function validateConfig() {
     
     // Check if ratios add up to 100
     if (Math.abs(totalRatio - 100) > 0.001) { // Allow for tiny floating point errors
-        console.warn(`Food spawn ratios do not add up to 100! Current total: ${totalRatio}`);
+        Logger.system.warn(`Food spawn ratios do not add up to 100! Current total: ${totalRatio}`);
         
         // Normalize ratios to ensure they add up to 100
         const normalizationFactor = 100 / totalRatio;
@@ -438,13 +448,13 @@ function validateConfig() {
             }
         }
         
-        console.log("Food spawn ratios have been normalized:", foodRatios);
+        Logger.system.info("Food spawn ratios have been normalized:", foodRatios);
     }
     
     // Apply ground color from config
     updateGroundColor();
     
-    console.log("Configuration validated.");
+    Logger.system.info("Configuration validated.");
 }
 
 // Function to update ground color from config
@@ -455,7 +465,7 @@ function updateGroundColor() {
             // Update the color directly
             groundMesh.material.color.set(CONFIG.GROUND_COLOR || 0xFFFFFF);
             groundMesh.material.needsUpdate = true;
-            console.log("Ground color updated to:", CONFIG.GROUND_COLOR ? 
+            Logger.system.info("Ground color updated to:", CONFIG.GROUND_COLOR ? 
                 "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
         }
     }
@@ -463,7 +473,7 @@ function updateGroundColor() {
 
 // --- Start Game ---
 init().catch(error => {
-    console.error("Initialization failed:", error);
+    Logger.system.error("Initialization failed:", error);
     // Display a user-friendly error message on the page
     const body = document.querySelector('body');
     if (body) {

@@ -9,6 +9,7 @@ import { checkEnemyCollision, killEnemySnake as killEnemy } from './enemySnake.j
 import { checkAndEatFood } from './food.js';
 import * as UI from './ui.js'; // For power-up UI updates
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
+import { Logger, isLoggingEnabled } from './debugLogger.js';
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 
@@ -86,7 +87,7 @@ export function initPlayerSnake(gameState) {
     
     // Create initial meshes
     createPlayerMeshes(gameState);
-    console.log("Player snake initialized.");
+    Logger.gameplay.info("Player snake initialized.");
 }
 
 function createPlayerMeshes(gameState) {
@@ -119,7 +120,7 @@ export function resetPlayer(gameState) {
      resetPlayerMeshes(gameState); // Remove meshes
      initPlayerSnake(gameState); // Reinitialize state and meshes
      UI.resetUI(0, gameState); // Reset score display etc.
-     console.log("Player reset complete.");
+     Logger.gameplay.info("Player reset complete.");
 }
 
 
@@ -299,7 +300,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
 
         // Check if direction became zero (shouldn't happen with turn logic)
         if (playerSnake.direction.x === 0 && playerSnake.direction.z === 0) {
-            console.warn("Player direction became zero. Reverting to previous.");
+            Logger.gameplay.warn("Player direction became zero. Reverting to previous.");
             // Attempt to revert - requires storing previous direction or guessing
              // For now, just stop moving this frame to prevent errors
              return;
@@ -317,7 +318,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         const halfGrid = CONFIG.GRID_SIZE / 2;
         if (newHeadPos.x >= halfGrid || newHeadPos.x < -halfGrid ||
             newHeadPos.z >= halfGrid || newHeadPos.z < -halfGrid) {
-            console.log("Collision: Wall");
+            Logger.gameplay.info("Collision: Wall");
             triggerPlayerDeath(gameState, 'WALL_COLLISION');
             return;
         }
@@ -327,7 +328,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             // Check against segments *excluding* the tail tip that will move
             for (let i = 0; i < playerSnake.segments.length - 1; i++) {
                 if (playerSnake.segments[i].x === newHeadPos.x && playerSnake.segments[i].z === newHeadPos.z) {
-                    console.log("Collision: Self");
+                    Logger.gameplay.info("Collision: Self");
                     triggerPlayerDeath(gameState, 'SELF_COLLISION');
                     return;
                 }
@@ -338,7 +339,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
          if (!playerSnake.ghostModeActive) {
             const obstacleCollision = checkObstacleCollision(newHeadPos, gameState);
             if (obstacleCollision) {
-                console.log("Collision: Obstacle type:", obstacleCollision);
+                Logger.gameplay.info("Collision: Obstacle type:", obstacleCollision);
                 
                 // Use specific death message based on obstacle type
                 let deathReason = 'OBSTACLE_COLLISION';
@@ -369,7 +370,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         let growSnake = false;
 
         if (eatenFood) {
-            console.log("Food eaten in playerSnake.js:", eatenFood.type, "Alpha Mode active:", playerSnake.alphaMode?.active);
+            Logger.gameplay.info("Food eaten in playerSnake.js:", eatenFood.type, "Alpha Mode active:", playerSnake.alphaMode?.active);
             
             // Calculate score with multiplier
             let scoreMultiplier = 1.0; // Default multiplier
@@ -377,7 +378,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             // Apply Alpha Mode score multiplier if active
             if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
                 scoreMultiplier = playerSnake.alphaMode.scoreMultiplier;
-                console.log(`Applying Alpha Mode score multiplier: x${scoreMultiplier}`);
+                Logger.gameplay.info(`Applying Alpha Mode score multiplier: x${scoreMultiplier}`);
             }
             
             // Apply the multiplier to the base score value
@@ -421,7 +422,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
                 );
                 playerSnakeMeshes.unshift(tailMesh); // Add to the front of mesh array
             } else {
-                console.error("Tail mesh missing during move!");
+                Logger.gameplay.error("Tail mesh missing during move!");
                  // Attempt recovery: Create a new mesh for the head
                  const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true); // Fix: Set isPlayer to true
                  if (newMesh) {
@@ -463,7 +464,7 @@ function enlargePlayerHead(gameState, currentTime) {
         playerSnakeMeshes[0].scale.set(scale, scale, scale);
     }
     
-    console.log(`Player head enlarged for ${CONFIG.ENLARGED_HEAD_DURATION} seconds`);
+    Logger.gameplay.info(`Player head enlarged for ${CONFIG.ENLARGED_HEAD_DURATION} seconds`);
 }
 
 // Function to kill an enemy snake
@@ -483,7 +484,7 @@ export function killEnemySnake(enemyId, gameState) {
             // Add a new score multiplier to the stack for killing a snake in Alpha Mode
             addScoreMultiplier(currentTime, gameState);
             
-            console.log(`Applied Alpha Mode score multiplier: x${scoreMultiplier} and added new multiplier`);
+            Logger.gameplay.info(`Applied Alpha Mode score multiplier: x${scoreMultiplier} and added new multiplier`);
         }
         
         // Apply the multiplier to the base score value
@@ -527,7 +528,7 @@ export function killEnemySnake(enemyId, gameState) {
             // Show a message indicating the alpha mode extension
             UI.showPowerUpTextEffect("+1s ALPHA TIME", CONFIG.ALPHA_MODE_COLOR);
             
-            console.log("Alpha mode extended by 1 second! New end time:", playerSnake.alphaMode.endTime);
+            Logger.gameplay.info("Alpha mode extended by 1 second! New end time:", playerSnake.alphaMode.endTime);
         }
         
         return true;
@@ -621,11 +622,11 @@ export function applyPowerUp(type, gameState) {
     const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === type);
     
     if (!foodTypeInfo) {
-        console.error(`Unknown power-up type: ${type}`);
+        Logger.gameplay.error(`Unknown power-up type: ${type}`);
         return;
     }
 
-    console.log(`Applying power-up: ${foodTypeInfo.description}`);
+    Logger.gameplay.info(`Applying power-up: ${foodTypeInfo.description}`);
 
     // Start camera shake effect if enabled AND it's not regular food
     if (CONFIG.CAMERA_SHAKE_ENABLED && type !== 'normal') {
@@ -742,7 +743,7 @@ function updatePowerUpState(currentTime, gameState) {
         // If power-up has expired
         if (currentTime >= powerUp.endTime) {
             // Power-up expired
-            console.log(`Power-up expired: ${powerUp.type}`);
+            Logger.gameplay.info(`Power-up expired: ${powerUp.type}`);
             
             // Handle specific power-up expiration
             switch (powerUp.type) {
@@ -828,7 +829,7 @@ export function updatePowerUps(gameState) {
         // If power-up has expired
         if (currentTime >= powerUp.endTime) {
             // Power-up expired
-            console.log(`Power-up expired: ${powerUp.type}`);
+            Logger.gameplay.info(`Power-up expired: ${powerUp.type}`);
             
             // Handle specific power-up expiration
             switch (powerUp.type) {
@@ -978,7 +979,7 @@ export function resetAlphaModeCooldown(gameState) {
     const currentThreshold = Math.floor(currentScore / scoreThreshold) - 1;
     playerSnake.alphaMode.lastScoreThreshold = currentThreshold;
     
-    console.log("Alpha Mode cooldown reset. lastScoreThreshold set to:", currentThreshold);
+    Logger.gameplay.info("Alpha Mode cooldown reset. lastScoreThreshold set to:", currentThreshold);
 }
 
 /**
@@ -992,8 +993,8 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
     const currentThreshold = Math.floor(score / scoreThreshold);
     
     // Debug logging to understand the current state
-    console.log(`Alpha Mode Check - Current Threshold: ${currentThreshold}, Last Threshold: ${playerSnake.alphaMode.lastScoreThreshold}`);
-    console.log(`Alpha Mode Active: ${playerSnake.alphaMode.active}, Cooldown Active: ${playerSnake.alphaMode.cooldownActive}`);
+    Logger.gameplay.debug(`Alpha Mode Check - Current Threshold: ${currentThreshold}, Last Threshold: ${playerSnake.alphaMode.lastScoreThreshold}`);
+    Logger.gameplay.debug(`Alpha Mode Active: ${playerSnake.alphaMode.active}, Cooldown Active: ${playerSnake.alphaMode.cooldownActive}`);
     
     // If we've reached a new threshold and we're not already in Alpha Mode
     if (currentThreshold > playerSnake.alphaMode.lastScoreThreshold && !playerSnake.alphaMode.active) {
@@ -1019,16 +1020,16 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
         // Increment consecutive activations counter
         playerSnake.alphaMode.consecutiveActivations++;
         
-        console.log("Alpha Mode activated! Threshold:", currentThreshold);
-        console.log("Consecutive Alpha Mode activations:", playerSnake.alphaMode.consecutiveActivations, 
+        Logger.gameplay.info("Alpha Mode activated! Threshold:", currentThreshold);
+        Logger.gameplay.info("Consecutive Alpha Mode activations:", playerSnake.alphaMode.consecutiveActivations, 
                    "Max allowed:", CONFIG.ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS);
     } else {
         // Debug why Alpha Mode is not activating
         if (currentThreshold <= playerSnake.alphaMode.lastScoreThreshold) {
-            console.log("Alpha Mode not activated: Current threshold not greater than last threshold");
+            Logger.gameplay.debug("Alpha Mode not activated: Current threshold not greater than last threshold");
         }
         if (playerSnake.alphaMode.active) {
-            console.log("Alpha Mode not activated: Alpha Mode is already active");
+            Logger.gameplay.debug("Alpha Mode not activated: Alpha Mode is already active");
         }
     }
 }
@@ -1063,7 +1064,7 @@ export function updateAlphaMode(currentTime, gameState) {
         const currentScore = gameState.score.current;
         updateAlphaModeProgress(currentScore, gameState);
         
-        console.log("Alpha Mode deactivated");
+        Logger.gameplay.info("Alpha Mode deactivated");
         return;
     }
     
@@ -1128,7 +1129,7 @@ export function addScoreMultiplier(currentTime, gameState) {
     // Show notification with current multiplier
     UI.showPowerUpTextEffect(`Score x${playerSnake.alphaMode.scoreMultiplier.toFixed(1)}!`);
     
-    console.log(`Added score multiplier. Current total: x${playerSnake.alphaMode.scoreMultiplier}`);
+    Logger.gameplay.info(`Added score multiplier. Current total: x${playerSnake.alphaMode.scoreMultiplier}`);
 }
 
 // Global counter to track which alpha kill message to display next
@@ -1166,7 +1167,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
     // If in Alpha Mode or hit the tail (which is always edible), kill the enemy
     if (playerSnake.alphaMode.active) {
         // In Alpha Mode, always kill the enemy snake regardless of collision point
-        console.log("Alpha Mode active - killing enemy snake regardless of collision point");
+        Logger.gameplay.info("Alpha Mode active - killing enemy snake regardless of collision point");
         killEnemySnake(collision.enemyId, gameState);
         
         // Play explosion sound effect for Alpha Mode kill
@@ -1181,20 +1182,20 @@ function handleEnemyCollision(collision, gameState, currentTime) {
         return true;
     } else if (collision.isTail) {
         // Not in Alpha Mode but hit the tail (which is always edible)
-        console.log("Hit enemy tail - killing enemy snake");
+        Logger.gameplay.info("Hit enemy tail - killing enemy snake");
         killEnemySnake(collision.enemyId, gameState);
         return true;
     }
     
     // If not in Alpha Mode and hit the body/head, player dies
     if (!playerSnake.ghostModeActive) {
-        console.log("Hit enemy body/head without Alpha Mode or Ghost Mode - player dies");
+        Logger.gameplay.info("Hit enemy body/head without Alpha Mode or Ghost Mode - player dies");
         triggerPlayerDeath(gameState, 'ENEMY_COLLISION');
         return false;
     }
     
     // Ghost mode active but not Alpha Mode, just pass through
-    console.log("Ghost Mode active - passing through enemy");
+    Logger.gameplay.info("Ghost Mode active - passing through enemy");
     return true;
 }
 
@@ -1233,7 +1234,7 @@ function updateAlphaModeProgress(score, gameState) {
     // Safety check - ensure lastScoreThreshold is a valid number
     if (typeof playerSnake.alphaMode.lastScoreThreshold !== 'number' || 
         isNaN(playerSnake.alphaMode.lastScoreThreshold)) {
-        console.log("Fixing invalid lastScoreThreshold value:", playerSnake.alphaMode.lastScoreThreshold);
+        Logger.gameplay.info("Fixing invalid lastScoreThreshold value:", playerSnake.alphaMode.lastScoreThreshold);
         playerSnake.alphaMode.lastScoreThreshold = Math.max(0, Math.floor(score / scoreThreshold) - 1);
     }
     
@@ -1260,11 +1261,11 @@ function updateAlphaModeProgress(score, gameState) {
     }
     
     // Debug logging
-    console.log(`Alpha Mode Progress: ${percentage}% (Score: ${score}, Next Threshold: ${nextThreshold})`);
+    Logger.gameplay.info(`Alpha Mode Progress: ${percentage}% (Score: ${score}, Next Threshold: ${nextThreshold})`);
     
     // If we've reached 100% progress but Alpha Mode isn't activating, check why
     if (percentage >= 100 && !playerSnake.alphaMode.cooldownActive) {
-        console.log("Alpha Mode at 100% - Checking activation state:", {
+        Logger.gameplay.info("Alpha Mode at 100% - Checking activation state:", {
             lastScoreThreshold: playerSnake.alphaMode.lastScoreThreshold,
             currentThreshold: Math.floor(score / scoreThreshold),
             cooldownActive: playerSnake.alphaMode.cooldownActive

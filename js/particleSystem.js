@@ -4,6 +4,13 @@ import { GEOMETRIES } from './constants.js';
 
 let activeParticles = [];
 let particleMaterialRef = null; // Hold reference to the material
+let isMobileDevice = false;     // Flag to track if we're on a mobile device
+
+// Function to detect if the user is on a mobile device
+function detectMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (window.innerWidth <= 800 && window.innerHeight <= 600);
+}
 
 export function initParticles(material) {
     if (!material) {
@@ -12,12 +19,30 @@ export function initParticles(material) {
     }
     particleMaterialRef = material;
     activeParticles = []; // Clear any previous particles
+    
+    // Detect mobile device once during initialization
+    isMobileDevice = detectMobileDevice();
+    console.log(`Device detected as: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
+}
+
+// Helper function to adjust particle count based on device
+function adjustParticleCount(count) {
+    if (!isMobileDevice) return count;
+    
+    // Reduce particles by 75% on mobile devices
+    const reducedCount = Math.max(2, Math.floor(count * 0.25));
+    return reducedCount;
 }
 
 // Regular food particle effect (smaller, green particles)
 export function createNormalFoodEffect(scene, camera, position) {
     if (!particleMaterialRef || !scene || !camera) {
         console.warn("Cannot create food effect - material, scene or camera missing.");
+        return;
+    }
+
+    // Skip normal food particles entirely on mobile
+    if (isMobileDevice) {
         return;
     }
 
@@ -65,9 +90,17 @@ export function createExplosion(scene, camera, position, count, color = 0xffffff
          return;
     }
 
+    // Adjust particle count for mobile
+    const adjustedCount = adjustParticleCount(count);
+    
+    // Skip if reduced to 0 particles
+    if (adjustedCount <= 0) {
+        return;
+    }
+
     const baseColor = new THREE.Color(color);
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < adjustedCount; i++) {
         // Clone material for potential individual color tints if desired
         const pMat = particleMaterialRef.clone();
         const tint = new THREE.Color(0xffdd88).lerp(new THREE.Color(0xffaa44), Math.random()); // Example tint
@@ -108,7 +141,16 @@ export function createKillEffect(scene, camera, position) {
     }
     
     // Create a more dramatic explosion with larger particles and longer lifespan
-    const particleCount = CONFIG.PARTICLE_COUNT_KILL;
+    let particleCount = CONFIG.PARTICLE_COUNT_KILL;
+    
+    // Adjust particle count for mobile devices
+    particleCount = adjustParticleCount(particleCount);
+    
+    // Skip if count is too low
+    if (particleCount <= 0) {
+        return;
+    }
+    
     const color = new THREE.Color(CONFIG.PARTICLE_COLOR_KILL);
     const size = CONFIG.PARTICLE_SIZE * 1.5; // Larger particles
     const lifespan = CONFIG.PARTICLE_LIFESPAN * 1.5; // Longer lifespan
@@ -160,7 +202,18 @@ export function createFrogEffect(scene, camera, position, color = 0x8BC34A) {
     }
     
     // Create a more playful, bouncy particle effect for frogs
-    const particleCount = 30; // More particles for frogs
+    let particleCount = 30; // More particles for frogs
+    
+    // Simplify on mobile devices - reduce particles
+    if (isMobileDevice) {
+        particleCount = Math.max(5, Math.floor(particleCount * 0.25));
+    }
+    
+    // Skip if too few particles
+    if (particleCount <= 0) {
+        return;
+    }
+    
     const baseColor = new THREE.Color(color);
     
     for (let i = 0; i < particleCount; i++) {

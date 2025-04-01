@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CONFIG from './config.js';
+import { Logger, isLoggingEnabled } from './debugLogger.js';
 
 // Audio variables
 let audioListener;
@@ -25,7 +26,7 @@ let alphaKillVoiceIndex = 0;
  * @param {THREE.Camera} camera - The main camera to attach the audio listener to
  */
 export function initAudioSystem(camera) {
-    console.log("Initializing audio system...");
+    Logger.audio.info("Initializing audio system...");
     
     // Create an AudioListener and add it to the camera
     audioListener = new THREE.AudioListener();
@@ -43,7 +44,7 @@ export function initAudioSystem(camera) {
     // Initialize sound effects
     initSoundEffects();
     
-    console.log("Audio system initialized");
+    Logger.audio.info("Audio system initialized");
     
     // Add a click event listener to the document to enable audio
     document.addEventListener('click', handleFirstUserInteraction, { once: true });
@@ -55,7 +56,7 @@ export function initAudioSystem(camera) {
  * This is needed to work around browser autoplay restrictions
  */
 function handleFirstUserInteraction() {
-    console.log("First user interaction detected, enabling audio");
+    Logger.audio.info("First user interaction detected, enabling audio");
     if (musicLoaded && isMusicEnabled) {
         playBackgroundMusic();
     }
@@ -65,7 +66,7 @@ function handleFirstUserInteraction() {
  * Load the background music
  */
 function loadBackgroundMusic() {
-    console.log("Loading background music...");
+    Logger.audio.info("Loading background music...");
     
     // Load the background music file
     audioLoader.load(
@@ -85,15 +86,15 @@ function loadBackgroundMusic() {
                 playBackgroundMusic();
             }
             
-            console.log("Background music loaded successfully");
+            Logger.audio.info("Background music loaded successfully");
         },
         (xhr) => {
             // Loading progress
-            console.log(`Background music loading: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+            Logger.audio.debug(`Background music loading: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
         },
         (error) => {
             // Error callback
-            console.error("Error loading background music:", error);
+            Logger.audio.error("Error loading background music:", error);
         }
     );
 }
@@ -144,7 +145,7 @@ function initSoundEffects() {
         loadSoundEffect(effect.name, effect.path);
     });
     
-    console.log("Sound effects initialization started");
+    Logger.audio.info("Sound effects initialization started");
 }
 
 /**
@@ -153,7 +154,7 @@ function initSoundEffects() {
  * @param {string} path - The file path to the sound effect
  */
 function loadSoundEffect(name, path) {
-    console.log(`Loading sound effect: ${name}`);
+    Logger.audio.info(`Loading sound effect: ${name}`);
     
     // Create a new audio object for this sound effect
     const sound = new THREE.Audio(audioListener);
@@ -169,15 +170,15 @@ function loadSoundEffect(name, path) {
             // Store the sound in our soundEffects object
             soundEffects[name] = sound;
             
-            console.log(`Sound effect loaded: ${name}`);
+            Logger.audio.info(`Sound effect loaded: ${name}`);
         },
         (xhr) => {
             // Loading progress
-            console.log(`Sound effect loading (${name}): ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+            Logger.audio.debug(`Sound effect loading (${name}): ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
         },
         (error) => {
             // Error callback
-            console.error(`Error loading sound effect (${name}):`, error);
+            Logger.audio.error(`Error loading sound effect (${name}):`, error);
         }
     );
 }
@@ -188,7 +189,7 @@ function loadSoundEffect(name, path) {
  */
 export function playBackgroundMusic() {
     if (backgroundMusic && !backgroundMusic.isPlaying && isMusicEnabled) {
-        console.log("Playing background music");
+        Logger.audio.info("Playing background music");
         backgroundMusic.play();
     }
 }
@@ -199,7 +200,7 @@ export function playBackgroundMusic() {
  */
 export function pauseBackgroundMusic() {
     if (backgroundMusic && backgroundMusic.isPlaying) {
-        console.log("Pausing background music");
+        Logger.audio.info("Pausing background music");
         backgroundMusic.pause();
     }
 }
@@ -209,7 +210,7 @@ export function pauseBackgroundMusic() {
  */
 export function stopBackgroundMusic() {
     if (backgroundMusic && backgroundMusic.isPlaying) {
-        console.log("Stopping background music");
+        Logger.audio.info("Stopping background music");
         backgroundMusic.stop();
     }
 }
@@ -227,7 +228,7 @@ export function toggleMusic() {
         pauseBackgroundMusic();
     }
     
-    console.log(`Music ${isMusicEnabled ? 'enabled' : 'disabled'}`);
+    Logger.audio.info(`Music ${isMusicEnabled ? 'enabled' : 'disabled'}`);
     return isMusicEnabled;
 }
 
@@ -237,7 +238,7 @@ export function toggleMusic() {
  */
 export function toggleSound() {
     isSoundEnabled = !isSoundEnabled;
-    console.log(`Sound effects ${isSoundEnabled ? 'enabled' : 'disabled'}`);
+    Logger.audio.info(`Sound effects ${isSoundEnabled ? 'enabled' : 'disabled'}`);
     return isSoundEnabled;
 }
 
@@ -247,7 +248,7 @@ export function toggleSound() {
  */
 export function setMusicVolume(volume) {
     if (volume < 0 || volume > 1) {
-        console.warn(`Invalid music volume: ${volume}. Must be between 0 and 1.`);
+        Logger.audio.warn(`Invalid music volume: ${volume}. Must be between 0 and 1.`);
         return;
     }
     
@@ -257,7 +258,7 @@ export function setMusicVolume(volume) {
         backgroundMusic.setVolume(musicVolume);
     }
     
-    console.log(`Music volume set to: ${musicVolume}`);
+    Logger.audio.info(`Music volume set to: ${musicVolume}`);
 }
 
 /**
@@ -266,7 +267,7 @@ export function setMusicVolume(volume) {
  */
 export function setSoundVolume(volume) {
     if (volume < 0 || volume > 1) {
-        console.warn(`Invalid sound volume: ${volume}. Must be between 0 and 1.`);
+        Logger.audio.warn(`Invalid sound volume: ${volume}. Must be between 0 and 1.`);
         return;
     }
     
@@ -279,7 +280,7 @@ export function setSoundVolume(volume) {
         }
     });
     
-    console.log(`Sound effects volume set to: ${soundVolume}`);
+    Logger.audio.info(`Sound effects volume set to: ${soundVolume}`);
 }
 
 /**
@@ -347,9 +348,9 @@ export function playSoundEffect(name) {
         sound.setVolume(volume);
         sound.play();
         
-        console.log(`Playing sound effect: ${name} at volume ${volume}`);
+        Logger.audio.info(`Playing sound effect: ${name} at volume ${volume}`);
     } else {
-        console.warn(`Sound effect not found or not loaded: ${name}`);
+        Logger.audio.warn(`Sound effect not found or not loaded: ${name}`);
     }
 }
 
@@ -387,9 +388,9 @@ export function playPlayerMoveSound(isAlphaMode = false) {
         sound.setVolume(CONFIG.AUDIO_VOLUME.MOVEMENT_SOUNDS);
         sound.play();
         
-        console.log(`Playing ${isAlphaMode ? 'Alpha Mode' : 'regular'} movement sound: ${soundName}`);
+        Logger.audio.info(`Playing ${isAlphaMode ? 'Alpha Mode' : 'regular'} movement sound: ${soundName}`);
     } else {
-        console.warn(`Sound effect not found or not loaded: ${soundName}`);
+        Logger.audio.warn(`Sound effect not found or not loaded: ${soundName}`);
     }
 }
 
@@ -398,7 +399,7 @@ export function playPlayerMoveSound(isAlphaMode = false) {
  */
 export function resetAlphaKillVoiceCounter() {
     alphaKillVoiceIndex = 0;
-    console.log("Alpha kill voice counter reset");
+    Logger.audio.info("Alpha kill voice counter reset");
 }
 
 /**
@@ -435,7 +436,7 @@ export function playAlphaKillVoice() {
     // Play the voice line
     playSoundEffect(voiceName);
     
-    console.log(`Playing alpha kill voice: ${voiceName} (index: ${alphaKillVoiceIndex})`);
+    Logger.audio.info(`Playing alpha kill voice: ${voiceName} (index: ${alphaKillVoiceIndex})`);
 }
 
 /**
@@ -454,5 +455,5 @@ export function cleanupAudio() {
         }
     });
     
-    console.log("Audio system cleaned up");
+    Logger.audio.info("Audio system cleaned up");
 }

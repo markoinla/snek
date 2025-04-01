@@ -6,6 +6,7 @@ import { createExplosion, createNormalFoodEffect, createFrogEffect } from './par
 import { applyPowerUp, addScoreMultiplier } from './playerSnake.js'; // Import specific functions
 import * as UI from './ui.js';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
+import { Logger, isLoggingEnabled } from './debugLogger.js';
 
 /**
  * Creates a blocky apple model made of a few cubes
@@ -83,7 +84,7 @@ function createAppleModel(material) {
 function createFoodMeshInstance(pos, type, materials) {
     const material = materials.food[type];
     if (!material) {
-        console.error(`Food material missing for type: ${type}`);
+        Logger.error(`Food material missing for type: ${type}`);
         return null;
     }
     
@@ -250,7 +251,7 @@ export function spawnInitialFood(gameState) {
     // Clear existing food first
     resetFood(gameState);
 
-    console.log(`Creating ${CONFIG.NUM_INITIAL_FOOD} initial food...`);
+    Logger.gameplay.info(`Creating ${CONFIG.NUM_INITIAL_FOOD} initial food...`);
     for (let i = 0; i < CONFIG.NUM_INITIAL_FOOD; i++) {
         addNewFoodItem(gameState);
     }
@@ -262,7 +263,7 @@ export function addNewFoodItem(gameState) {
 
     const newPos = generateUniquePosition(gameState, true, true, true, true); // Check all collisions
     if (!newPos) {
-        console.error("Failed to find a position for new food!");
+        Logger.error("Failed to find a position for new food!");
         return;
     }
 
@@ -275,7 +276,7 @@ export function addNewFoodItem(gameState) {
         food.meshes.push(newMesh);
         scene.add(newMesh);
     } else {
-        console.error(`Failed to create mesh for food type ${type}`);
+        Logger.error(`Failed to create mesh for food type ${type}`);
     }
 }
 
@@ -299,7 +300,7 @@ function selectFoodTypeByRatio() {
     }
     
     // Fallback to normal food if something goes wrong
-    console.warn("Food selection fallback - check that FOOD_SPAWN_RATIOS adds up to 100");
+    Logger.warn("Food selection fallback - check that FOOD_SPAWN_RATIOS adds up to 100");
     return 'normal';
 }
 
@@ -310,9 +311,11 @@ export function checkAndEatFood(position, gameState) {
      if (!scene || !food?.positions || !food?.meshes || !camera || !playerSnake) return null; // Add camera check
 
     // Debug logging for Alpha Mode
-    console.log("checkAndEatFood called with position:", position, 
-                "Alpha Mode active:", playerSnake.alphaMode?.active,
-                "Food positions count:", food.positions.length);
+    if (isLoggingEnabled()) {
+        Logger.gameplay.debug("checkAndEatFood called with position:", position, 
+           "Alpha Mode:", playerSnake.alphaMode?.active,
+           "Food positions count:", food.positions.length);
+    }
 
     let eatenFoodIndex = -1;
     let eatenFoodType = null;
@@ -327,10 +330,12 @@ export function checkAndEatFood(position, gameState) {
         
         if (foodPos.type === 'normal') {
             // For normal food, use grid-based collision detection
-            console.log(`Checking food #${i} at (${foodPos.x}, ${foodPos.z}) against snake at (${position.x}, ${position.z})`);
+            if (isLoggingEnabled()) {
+                Logger.gameplay.trace(`Checking food #${i} at (${foodPos.x}, ${foodPos.z}) against snake at (${position.x}, ${position.z})`);
+            }
             
             if (position.x === foodPos.x && position.z === foodPos.z) {
-                console.log("FOOD COLLISION DETECTED!");
+                Logger.gameplay.info("FOOD COLLISION DETECTED!");
                 eatenFoodIndex = i;
                 eatenFoodType = foodPos.type;
                 break;
@@ -391,7 +396,7 @@ export function checkAndEatFood(position, gameState) {
                     // Add a score multiplier to the stack
                     addScoreMultiplier(currentTime, gameState);
                     
-                    console.log(`Alpha Mode extended by ${CONFIG.ALPHA_MODE_EXTENSION_PER_FOOD} seconds! New end time:`, 
+                    Logger.gameplay.info(`Alpha Mode extended by ${CONFIG.ALPHA_MODE_EXTENSION_PER_FOOD} seconds! New end time:`, 
                                 gameState.playerSnake.alphaMode.endTime);
                 }
             }
