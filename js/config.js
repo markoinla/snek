@@ -1,7 +1,7 @@
 // --- Configuration Constants ---
 export const GRID_SIZE = 60;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.25;
+export const BASE_SNAKE_SPEED = 0.22;
 export const CAMERA_DISTANCE = 9;
 export const CAMERA_HEIGHT = 12;
 export const CAMERA_LAG = 0.25;
@@ -15,7 +15,7 @@ export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if nee
 
 // Food speed boost settings
 export const FOOD_SPEED_BOOST_DURATION = 7.0; // Duration of speed boost in seconds
-export const FOOD_SPEED_BOOST_MULTIPLIER = 1.9; // How much faster the snake moves during boost
+export const FOOD_SPEED_BOOST_MULTIPLIER = 1.5; // How much faster the snake moves during boost
 export const ALPHA_MODE_EXTENSION_PER_FOOD = 0.5; // Seconds to extend Alpha Mode when eating food in Alpha Mode
 
 // Power-up settings

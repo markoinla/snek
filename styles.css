@@ -35,10 +35,10 @@ canvas { display: block; }
 /* Power-up Text Effect */
 #powerUpTextEffect { 
     position: absolute; 
-    top: 25%; 
+    top: 10%; 
     left: 50%; 
     transform: translateX(-50%) scale(0.5); 
-    font-size: 3em; 
+    font-size: 1.5em; 
     font-weight: bold; 
     text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7); 
     color: white; 
@@ -436,46 +436,51 @@ canvas { display: block; }
     color: #BB86FC; /* Material Design primary color for high score */
 }
 
-/* Help Button */
-#helpButton {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    background-color: #9C27B0; /* Alpha Mode purple color */
-    color: white;
-    border-radius: 50%;
+/* Game Stats Styles */
+.game-stats {
+    margin: 20px 0;
+    padding: 15px;
+   /* background-color: rgba(0, 0, 0, 0.2);*/
+    border-radius: 6px;
+    text-align: left;
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+}
+
+.game-stats h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    color: #BB86FC;
+    text-align: center;
+}
+
+.stat-item {
     display: flex;
     justify-content: center;
+    gap: 20px;
+    font-size: 20px;
+    margin-bottom: 10px;
+   /* background-color: rgba(255, 255, 255, 0.05);*/
+    border-radius: 4px;
+}
+
+.stat-label {
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
     align-items: center;
-    font-size: 24px;
+    gap: 8px;
+}
+
+.stat-label::first-letter {
+    font-size: 1.4em;
+    margin-right: 5px;
+}
+
+.stat-value {
     font-weight: bold;
-    cursor: pointer;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s ease;
-    user-select: none;
-}
-
-#helpButton:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-}
-
-#helpButton:active {
-    transform: scale(0.95);
-}
-
-/* Mobile responsiveness for help button */
-@media (max-width: 600px) {
-    #helpButton {
-        width: 36px;
-        height: 36px;
-        font-size: 20px;
-        top: 15px;
-        right: 15px;
-    }
+    color: #03DAC6;
 }
 
 /* Responsive Styles - Organized by breakpoint */
@@ -555,12 +560,35 @@ canvas { display: block; }
     }
     
     .score-container {
-        margin: 16px 0;
-        padding: 12px;
+        margin: 8px 0;
+        padding: 8px;
     }
     
     .score-value {
         font-size: 1.3em;
+    }
+    
+    /* Game Stats Mobile Styling */
+    .game-stats {
+        margin: 15px 0;
+        padding: 10px;
+    }
+    
+    .game-stats h3 {
+        font-size: 1.1em;
+        margin-bottom: 10px;
+    }
+    
+    .stat-item {
+        padding: 6px;
+        margin-bottom: 6px;
+        flex-direction: row;
+        font-size: 0.9em;
+        align-items: center;
+    }
+    
+    .stat-label::first-letter {
+        font-size: 1.2em;
     }
 }
 
@@ -581,6 +609,27 @@ canvas { display: block; }
     .intro-content-container h1 {
         font-size: 2em;
         margin-bottom: 0px;
+    }
+    
+    /* Game Stats Small Mobile Styling */
+    .game-stats {
+        margin: 12px 0;
+        padding: 8px;
+    }
+    
+    .game-stats h3 {
+        font-size: 1em;
+        margin-bottom: 8px;
+    }
+    
+    .stat-item {
+        padding: 5px;
+        margin-bottom: 5px;
+        font-size: 0.85em;
+    }
+    
+    .stat-label::first-letter {
+        font-size: 1.1em;
     }
 }
 
@@ -619,6 +668,18 @@ canvas { display: block; }
     
     .score-container {
         padding: 8px;
+    }
+    
+    /* Game Stats Very Small Mobile Styling */
+    .game-stats {
+        margin: 10px 0;
+        padding: 6px;
+    }
+    
+    .stat-item {
+        padding: 4px;
+        margin-bottom: 4px;
+        font-size: 0.8em;
     }
 }
 
@@ -673,4 +734,46 @@ canvas { display: block; }
     .mobile-button { 
         display: flex; 
     } 
+}
+
+/* Help Button */
+#helpButton {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background-color: #9C27B0; /* Alpha Mode purple color */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+#helpButton:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+#helpButton:active {
+    transform: scale(0.95);
+}
+
+/* Mobile responsiveness for help button */
+@media (max-width: 600px) {
+    #helpButton {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        top: 15px;
+        right: 15px;
+    }
 }
