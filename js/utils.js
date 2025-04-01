@@ -79,7 +79,7 @@ export function generateUniquePosition(gameState, checkFood = true, checkObstacl
 
 
 // Creates a snake segment mesh (player or enemy)
-export function createSnakeSegmentMesh(pos, isHead, materials, isPlayer) {
+export function createSnakeSegmentMesh(pos, isHead, materials, isPlayer, enemyId = null) {
     let headMat1, headMat2, bodyMat1, bodyMat2;
 
     if (isPlayer) {
@@ -116,6 +116,15 @@ export function createSnakeSegmentMesh(pos, isHead, materials, isPlayer) {
 
     // Adjust position slightly upward so it sits exactly on the ground plane
     mesh.position.y += CONFIG.UNIT_SIZE / 2;
+    
+    // Add a name to the mesh for easier identification and cleanup
+    if (isPlayer) {
+        mesh.name = isHead ? 'playerSnakeHead' : 'playerSnakeBody';
+    } else {
+        // Include the enemy ID in the name if available
+        const idStr = enemyId !== null ? `_${enemyId}` : '';
+        mesh.name = isHead ? `enemySnakeHead${idStr}` : `enemySnakeBody${idStr}`;
+    }
 
     return mesh;
 }

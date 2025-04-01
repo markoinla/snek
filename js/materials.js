@@ -29,11 +29,12 @@ export async function loadAndCreateMaterials() {
         skybox: null,
     };
     let snakeSpriteSheetTexture;
+    let enemySnakeSpriteSheetTexture;
 
     try {
         // Load textures concurrently
         const [
-            snakeSheetTex, particleTex, skyboxTex, groundTileTex, wallBrickTex,
+            snakeSheetTex, enemySnakeSheetTex, particleTex, skyboxTex, groundTileTex, wallStoneTex, wallIvyTex,
             treeLeavesTexture, treeTrunkTexture, flowerBushTexture,
             pinkFlowerTexture, whiteDaisyTexture, whiteTulipTexture, yellowFlowerTexture,
             ...foodTextures
@@ -42,6 +43,12 @@ export async function loadAndCreateMaterials() {
                 t.magFilter = THREE.NearestFilter;
                 t.minFilter = THREE.NearestFilter;
                 snakeSpriteSheetTexture = t; // Assign to shared var
+            }),
+            // Load the enemy snake sprite sheet
+            loadTexture(loader, PATHS.enemySnakeSheet, true, (t) => {
+                t.magFilter = THREE.NearestFilter;
+                t.minFilter = THREE.NearestFilter;
+                enemySnakeSpriteSheetTexture = t; // Assign to shared var
             }),
             loadTexture(loader, PATHS.particle, true),
             loadTexture(loader, PATHS.skybox, true, (t) => {
@@ -59,6 +66,14 @@ export async function loadAndCreateMaterials() {
                 t.wrapS = THREE.RepeatWrapping;
                 t.wrapT = THREE.RepeatWrapping;
                  // Adjust repeat based on geometry aspect ratio if needed
+                t.repeat.set(CONFIG.GRID_SIZE / 3, CONFIG.WALL_HEIGHT * 1);
+                t.magFilter = THREE.LinearFilter;
+                t.minFilter = THREE.LinearMipmapLinearFilter;
+            }),
+            loadTexture(loader, PATHS.wallIvy, true, (t) => {
+                t.wrapS = THREE.RepeatWrapping;
+                t.wrapT = THREE.RepeatWrapping;
+                // Adjust repeat based on wall dimensions
                 t.repeat.set(CONFIG.GRID_SIZE / 3, CONFIG.WALL_HEIGHT * 1);
                 t.magFilter = THREE.LinearFilter;
                 t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -116,27 +131,26 @@ export async function loadAndCreateMaterials() {
 
         // Snake Materials
         const baseSnakeParams = { side: THREE.FrontSide, roughness: 0.6, metalness: 0.1 };
-        const createSpriteMaterial = (offsetX, offsetY) => {
-            if (!snakeSpriteSheetTexture) return new THREE.MeshStandardMaterial({ color: 0xff00ff, ...baseSnakeParams }); // Fallback
+        const createSpriteMaterial = (offsetX, offsetY, spriteSheetTexture) => {
+            if (!spriteSheetTexture) return new THREE.MeshStandardMaterial({ color: 0xff00ff, ...baseSnakeParams }); // Fallback
             const mat = new THREE.MeshStandardMaterial(baseSnakeParams);
-            mat.map = snakeSpriteSheetTexture.clone(); // Clone map for unique offsets
+            mat.map = spriteSheetTexture.clone(); // Clone map for unique offsets
             mat.map.needsUpdate = true; // Ensure clone is used
             const r = 1.0 / CONFIG.SPRITE_SHEET_DIM;
             mat.map.offset.set(offsetX * r, offsetY * r);
             mat.map.repeat.set(r, r);
             return mat;
         };
-        materials.snake.head1 = createSpriteMaterial(0, 1); // Top Left in SVG was head1
-        materials.snake.head2 = createSpriteMaterial(1, 1); // Top Right
-        materials.snake.body1 = createSpriteMaterial(0, 0); // Bottom Left
-        materials.snake.body2 = createSpriteMaterial(1, 0); // Bottom Right
+        materials.snake.head1 = createSpriteMaterial(0, 1, snakeSpriteSheetTexture); // Top Left in SVG was head1
+        materials.snake.head2 = createSpriteMaterial(1, 1, snakeSpriteSheetTexture); // Top Right
+        materials.snake.body1 = createSpriteMaterial(0, 0, snakeSpriteSheetTexture); // Bottom Left
+        materials.snake.body2 = createSpriteMaterial(1, 0, snakeSpriteSheetTexture); // Bottom Right
 
-        // Enemy Materials (Simple Colors for now, could use spritesheet)
-        materials.enemy.head1 = new THREE.MeshStandardMaterial({ color: 0x00BCD4, roughness: 0.6 });
-        materials.enemy.head2 = new THREE.MeshStandardMaterial({ color: 0x4DD0E1, roughness: 0.6 });
-        materials.enemy.body1 = new THREE.MeshStandardMaterial({ color: 0x00838F, roughness: 0.7 });
-        materials.enemy.body2 = new THREE.MeshStandardMaterial({ color: 0x0097A7, roughness: 0.7 });
-
+        // Enemy Materials
+        materials.enemy.head1 = createSpriteMaterial(0, 1, enemySnakeSpriteSheetTexture); // Top Left in SVG was head1
+        materials.enemy.head2 = createSpriteMaterial(1, 1, enemySnakeSpriteSheetTexture); // Top Right
+        materials.enemy.body1 = createSpriteMaterial(0, 0, enemySnakeSpriteSheetTexture); // Bottom Left
+        materials.enemy.body2 = createSpriteMaterial(1, 0, enemySnakeSpriteSheetTexture); // Bottom Right
 
         // Food Materials
         FOOD_TYPES.forEach((foodType, index) => {
@@ -246,7 +260,15 @@ export async function loadAndCreateMaterials() {
         console.log("Ground material created with color:", CONFIG.GROUND_COLOR ? 
             "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
         
-        materials.wall = new THREE.MeshStandardMaterial({ map: wallBrickTex, side: THREE.FrontSide, roughness: 0.9, metalness: 0.05 });
+        // Create wall material with ivy texture
+        materials.wall = new THREE.MeshStandardMaterial({
+            map: wallIvyTex,
+            roughness: 0.8,
+            metalness: 0.2,
+            color: 0xffffff, // Use white to let the texture color show through
+            side: THREE.DoubleSide
+        });
+        
         materials.grass = new THREE.MeshStandardMaterial({ color: 0x558B2F, side: THREE.DoubleSide, roughness: 0.95 }); // Simple green for grass blades
         materials.skybox = new THREE.MeshBasicMaterial({ map: skyboxTex, side: THREE.BackSide, fog: false });
 

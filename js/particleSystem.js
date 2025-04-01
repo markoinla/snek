@@ -152,6 +152,63 @@ export function createKillEffect(scene, camera, position) {
     }
 }
 
+// Create a special effect for frog power-ups
+export function createFrogEffect(scene, camera, position, color = 0x8BC34A) {
+    if (!particleMaterialRef || !scene || !camera) {
+        console.warn("Cannot create frog effect - material, scene or camera missing.");
+        return;
+    }
+    
+    // Create a more playful, bouncy particle effect for frogs
+    const particleCount = 30; // More particles for frogs
+    const baseColor = new THREE.Color(color);
+    
+    for (let i = 0; i < particleCount; i++) {
+        // Clone material for color tint
+        const pMat = particleMaterialRef.clone();
+        
+        // Create a slightly randomized color based on the base color
+        const tint = new THREE.Color().setHSL(
+            Math.random() * 0.1 + 0.3, // Slightly random hue around green
+            0.8, // High saturation
+            0.6  // Medium lightness
+        );
+        pMat.color = baseColor.clone().lerp(tint, Math.random() * 0.3);
+        
+        // Create particle
+        const particleMesh = new THREE.Mesh(GEOMETRIES.particle, pMat);
+        particleMesh.position.copy(position);
+        
+        // Make particles face the camera
+        particleMesh.lookAt(camera.position);
+        
+        // Create a bouncy, hopping effect
+        const angle = Math.random() * Math.PI * 2;
+        const speed = CONFIG.PARTICLE_SPEED * (0.7 + Math.random() * 0.6);
+        
+        // More vertical movement for a hopping effect
+        const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed * 0.7,
+            (Math.random() * 0.8 + 0.5) * speed, // Strong upward movement
+            Math.sin(angle) * speed * 0.7
+        );
+        
+        // Longer lifespan for frog particles
+        const life = CONFIG.PARTICLE_LIFESPAN * (0.8 + Math.random() * 0.7);
+        
+        // Add to active particles
+        activeParticles.push({
+            mesh: particleMesh,
+            velocity: velocity,
+            life: life,
+            initialLife: life,
+            isFrog: true // Mark as frog particle for special behavior
+        });
+        
+        scene.add(particleMesh);
+    }
+}
+
 export function updateParticles(deltaTime, scene) { // Pass scene for removal
     if (!scene) return;
     const gravity = 9.8; // Simple gravity simulation
@@ -182,6 +239,22 @@ export function updateParticles(deltaTime, scene) { // Pass scene for removal
 
             // Apply gravity
             p.velocity.y -= gravity * deltaTime;
+
+            // Special behavior for frog particles
+            if (p.isFrog) {
+                // Add a slight rotation for frog particles
+                p.mesh.rotation.z += deltaTime * (Math.random() * 2 - 1);
+                
+                // Add a slight wobble effect
+                if (p.mesh.position.y < 0.5 && p.velocity.y < 0) {
+                    // Bounce when close to the ground with reduced energy
+                    p.velocity.y = Math.abs(p.velocity.y) * 0.6;
+                    
+                    // Reduce horizontal velocity slightly on each bounce
+                    p.velocity.x *= 0.9;
+                    p.velocity.z *= 0.9;
+                }
+            }
 
             // Optional: Add simple ground collision / bounce
             // if (p.mesh.position.y < CONFIG.UNIT_SIZE * 0.1) {

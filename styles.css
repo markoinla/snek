@@ -1,48 +1,79 @@
+/* Base Styles */
 body { margin: 0; overflow: hidden; background-color: #000; color: white; font-family: sans-serif; touch-action: none; }
 canvas { display: block; }
-#info, #powerUpInfo, #kills, #highScoreInfo { position: absolute; left: 10px; background-color: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px; color: white; z-index: 5; font-size: 0.9em; }
+
+/* Game UI Elements */
+#info, #kills, #highScoreInfo { position: absolute; left: 10px; background-color: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px; color: white; z-index: 5; font-size: 0.9em; }
 #info { top: 50px; }
 #highScoreInfo { top: 10px; color: #BB86FC; } /* Material Design primary color for high score */
 #kills { top: 90px; color: #E91E63; } /* Pink color matching the edible tail */
-#powerUpInfo { top: 130px; display: none; color: #ffff99; }
 
-/* Restart button styling */
-#restartButton {
-    margin-top: 15px;
-    padding: 10px 20px;
-    background-color: rgba(0, 150, 0, 0.8);
-    color: white;
-    border: none;
+/* Power-up info container */
+#powerUpInfo { 
+    position: absolute;
+    left: 10px;
+    top: 130px;
+    color: #ffff99;
+    padding: 8px 12px;
     border-radius: 5px;
-    font-size: 0.7em;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
+    z-index: 5;
+    font-size: 0.9em;
+    max-width: 200px;
+    /* Flexbox for vertical layout */
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Space between power-up items */
 }
 
-#restartButton:hover {
-    background-color: rgba(0, 180, 0, 0.9);
+/* Individual power-up item style */
+.power-up-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
-#restartButton:active {
-    transform: scale(0.95);
-    background-color: rgba(0, 200, 0, 1);
+/* Power-up Text Effect */
+#powerUpTextEffect { 
+    position: absolute; 
+    top: 25%; 
+    left: 50%; 
+    transform: translateX(-50%) scale(0.5); 
+    font-size: 3em; 
+    font-weight: bold; 
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7); 
+    color: white; 
+    z-index: 8; 
+    display: none; 
+    text-align: center; 
+    pointer-events: none; 
+    opacity: 0; 
 }
 
-/* Mobile-specific button styling */
-@media (max-width: 767px) {
-    #restartButton {
-        padding: 15px 30px;
-        font-size: 0.9em;
-        margin-top: 20px;
-        /* Prevent text selection on touch */
-        user-select: none;
-        -webkit-user-select: none;
-        /* Disable default touch highlight */
-        -webkit-tap-highlight-color: transparent;
+/* Power-up Text Effect Animation */
+.powerup-text-animate {
+    animation: powerupTextAnimation 2s ease-out forwards;
+}
+
+@keyframes powerupTextAnimation {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.5);
+    }
+    20% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.2);
+    }
+    30% {
+        transform: translateX(-50%) scale(1);
+    }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(1.5);
     }
 }
-
-#powerUpTextEffect { position: absolute; top: 25%; left: 50%; transform: translateX(-50%) scale(0.5); font-size: 3em; font-weight: bold; text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7); color: white; z-index: 8; display: none; text-align: center; pointer-events: none; opacity: 0; }
 
 /* Alpha Mode Styles */
 #alphaModeContainer {
@@ -100,9 +131,40 @@ canvas { display: block; }
         rgba(255, 255, 255, 0.3) 75%,
         rgba(255, 255, 255, 0) 75%
     );
-    background-size: 8px 8px; /* 8-bit style pixel size */
-    image-rendering: pixelated;
-    transition: height 0.3s ease; /* Smooth transition for progress changes */
+    background-size: 100% 20px;
+    transition: height 0.3s ease;
+}
+
+#alphaModeCooldown {
+    margin-top: 10px;
+    color: #FF5252; /* Red color for cooldown */
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: center;
+    display: none; /* Hidden by default */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#alphaModeCooldownTimer {
+    font-size: 16px;
+}
+
+.debug-button {
+    background-color: #FF5252;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-left: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.debug-button:hover {
+    background-color: #FF8A80;
 }
 
 /* Alpha Mode Animation */
@@ -118,343 +180,35 @@ canvas { display: block; }
 
 /* Style for progress bar when Alpha Mode is active */
 .alpha-mode-active + #alphaModeBar #alphaModeProgress {
-    background-color: #FF4081; /* Brighter pink when active */
+    background-color: #FF4081; /* Brighter pink color when active */
     background-image: linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.3) 25%,
-        transparent 25%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.3) 50%,
-        rgba(255, 255, 255, 0.3) 75%,
-        transparent 75%
+        to top,
+        rgba(255, 255, 255, 0.5) 25%,
+        rgba(255, 255, 255, 0.2) 25%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.5) 50%,
+        rgba(255, 255, 255, 0.5) 75%,
+        rgba(255, 255, 255, 0.2) 75%
     );
-    background-size: 16px 16px; /* Larger pattern for active mode */
-    animation: progressBarAnimation 1s linear infinite;
-}
-
-@keyframes progressBarAnimation {
-    0% { background-position: 0 0; }
-    100% { background-position: 16px 0; }
-}
-
-/* Power Up Animation */
-@keyframes powerUpAnimate { 0% { opacity: 0; transform: translateX(-50%) scale(0.5) translateY(20px); } 20% { opacity: 1; transform: translateX(-50%) scale(1.2) translateY(0px); } 70% { opacity: 1; transform: translateX(-50%) scale(1.0) translateY(0px); } 100% { opacity: 0; transform: translateX(-50%) scale(0.8) translateY(-30px); } }
-.powerup-text-animate { display: block !important; animation: powerUpAnimate 2s ease-out forwards; }
-.mobile-button { position: absolute; bottom: 30px; width: 120px; height: 120px; background-color: rgba(120, 120, 120, 0.4); border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%; display: none; justify-content: center; align-items: center; font-size: 2.5em; color: rgba(255, 255, 255, 0.6); user-select: none; -webkit-user-select: none; z-index: 6; cursor: pointer; transition: background-color 0.1s ease; }
-.mobile-button:active { background-color: rgba(160, 160, 160, 0.6); }
-#leftButton { left: 30px; }
-#rightButton { right: 30px; }
-@media (max-width: 767px) { .mobile-button { display: flex; } }
-
-/* Help Button */
-#helpButton {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    background-color: #9C27B0; /* Alpha Mode purple color */
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s ease;
-    user-select: none;
-}
-
-#helpButton:hover {
-    transform: scale(1.1);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-}
-
-#helpButton:active {
-    transform: scale(0.95);
-}
-
-/* Mobile responsiveness for help button */
-@media (max-width: 600px) {
-    #helpButton {
-        width: 36px;
-        height: 36px;
-        font-size: 20px;
-        top: 15px;
-        right: 15px;
-    }
-}
-
-/* Common Modal Screen Styles - Material Design */
-.modal-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Lighter overlay for Material Design */
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Roboto', 'Arial', sans-serif; /* Material Design font */
-    backdrop-filter: blur(3px); /* Subtle blur effect */
-}
-
-.modal-content {
-    background-color: #303030; /* Material dark theme background */
-    border: none; /* No border in Material Design */
-    border-radius: 8px; /* Material Design uses smaller border radius */
-    padding: 24px; /* Material Design standard padding */
-    max-width: 600px;
-    width: 90%;
-    color: white;
-    text-align: center;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* Material Design elevation shadow */
-    animation: modalAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Material Design animation curve */
-    overflow: hidden; /* For ripple effects */
-}
-
-/* Game Stats Styling */
-.game-stats {
-    margin: 20px 0;
-    padding: 15px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    text-align: left;
-}
-
-.game-stats h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: #BB86FC; /* Material Design primary color */
-    font-size: 1.2em;
-    text-align: center;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    padding: 5px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.stat-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-
-.stat-label {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.stat-value {
-    font-weight: bold;
-    color: #03DAC6; /* Material Design secondary color */
-}
-
-@keyframes modalAppear {
-    0% { opacity: 0; transform: translateY(30px); }
-    100% { opacity: 1; transform: translateY(0); }
+    background-size: 100% 20px;
+    animation: alphaModeFlash 0.5s infinite;
 }
 
 /* Intro Screen Styles - Material Design */
 #introScreen {
     background-color: rgba(0, 0, 0, 0.85);
-}
-
-/* Login-style layout for intro screen */
-.login-style {
-    max-width: 900px;
-    width: 90%;
-    padding: 0;
-    overflow: hidden;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.intro-split-layout {
-    display: flex;
-    flex-direction: row;
-    height: 100%;
-}
-
-.intro-image-container {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    min-height: 500px;
-}
-
-.intro-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
-}
-
-.intro-content-container {
-    flex: 1;
-    padding: 40px;
-    background-color: #1E1E1E;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
-.intro-content-container h1 {
-    font-size: 2.5em;
-    margin-bottom: 24px;
-    color: #BB86FC; /* Material Design purple */
-    font-weight: 500;
-    letter-spacing: 1px;
-    text-align: center;
-}
-
-/* Responsive adjustments for login style */
-@media (max-width: 768px) {
-    .intro-split-layout {
-        flex-direction: column;
-    }
-    
-    .intro-image-container {
-        min-height: 200px;
-        position: relative;
-        width: 100%;
-    }
-    
-    .intro-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: top center; /* Position from the top */
-        position: absolute;
-        top: 0;
-        left: 0;
-    }
-    
-    .intro-content-container {
-        padding: 30px;
-    }
-    
-    .login-style {
-        max-width: 95%;
-    }
-}
-
-/* For very small screens */
-@media (max-width: 480px) {
-    .intro-image-container {
-        min-height: 150px;
-    }
-    
-    .intro-image {
-        object-position: top center; /* Ensure it's positioned from the top */
-    }
-    
-    .intro-content-container {
-        padding: 20px;
-    }
-    
-    .intro-content-container h1 {
-        font-size: 2em;
-        margin-bottom: 16px;
-    }
-}
-
-.instructions {
-    text-align: left;
-    margin: 16px 0 24px 0;
-    background-color: rgba(255, 255, 255, 0.05);
-    padding: 16px;
-    border-radius: 4px;
-    border: none;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-    flex-grow: 1;
-}
-
-.instructions h2 {
-    text-align: center;
-    margin-bottom: 16px;
-    color: #03DAC6; /* Material Design teal */
-    font-size: 1.4em;
-    font-weight: 500;
-}
-
-.instruction-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.instruction-item {
-    display: flex;
-    flex-direction: column;
-    padding: 12px;
-    background-color: rgba(255, 255, 255, 0.03);
-    border-radius: 4px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.instruction-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-    background-color: rgba(255, 255, 255, 0.07);
-}
-
-.instruction-label {
-    font-weight: 500;
-    color: #FF7597; /* Material Design pink */
-    margin-bottom: 8px;
-    font-size: 1em;
-}
-
-.instruction-text {
-    line-height: 1.5;
-    color: rgba(255, 255, 255, 0.87); /* Material Design primary text */
-}
-
-/* Restart button styling - Simplified */
-#restartButton {
-    margin-top: 15px;
-    padding: 10px 20px;
-    background-color: transparent;
-    color: white;
-    border: 1px solid white;
-    border-radius: 0;
-    font-size: 0.9em;
-    cursor: pointer;
-}
-
-#restartButton:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-#restartButton:active {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Mobile-specific button styling */
-@media (max-width: 767px) {
-    #restartButton {
-        padding: 15px 30px;
-        font-size: 0.9em;
-        margin-top: 20px;
-        /* Prevent text selection on touch */
-        user-select: none;
-        -webkit-user-select: none;
-        /* Disable default touch highlight */
-        -webkit-tap-highlight-color: transparent;
-    }
-}
-
-/* Intro screen styles */
+/* Intro content layout */
 .intro-content {
     max-width: 900px;
     width: 90%;
@@ -509,46 +263,7 @@ canvas { display: block; }
     text-align: center;
 }
 
-/* Media queries for responsive design */
-@media (max-width: 768px) {
-    .intro-split-layout {
-        flex-direction: column;
-    }
-    
-    .intro-image-container {
-        min-height: 200px;
-        border-radius: 8px 8px 0 0; /* Round only top corners */
-    }
-    
-    .intro-content-container {
-        border-radius: 0 0 8px 8px; /* Round only bottom corners */
-    }
-    
-    .intro-content {
-        max-width: 95%;
-    }
-}
-
-/* For very small screens */
-@media (max-width: 480px) {
-    .intro-image-container {
-        min-height: 150px;
-    }
-    
-    .intro-image {
-        object-position: top center; /* Ensure it's positioned from the top */
-    }
-    
-    .intro-content-container {
-        padding: 20px;
-    }
-    
-    .intro-content-container h1 {
-        font-size: 2em;
-        margin-bottom: 16px;
-    }
-}
-
+/* Instructions styles */
 .instructions {
     text-align: left;
     margin: 0 0 24px 0;
@@ -605,7 +320,7 @@ canvas { display: block; }
     color: rgba(255, 255, 255, 0.87); /* Material Design primary text */
 }
 
-/* Login-style start button */
+/* Buttons */
 #startButton {
     background-color: #BB86FC; /* Material Design primary */
     color: #000; /* Dark text on light button */
@@ -636,7 +351,26 @@ canvas { display: block; }
     transform: scale(0.98); /* Subtle press effect */
 }
 
-/* Game Over Screen Styles - Simplified */
+#restartButton {
+    margin-top: 15px;
+    padding: 10px 20px;
+    background-color: transparent;
+    color: white;
+    border: 1px solid white;
+    border-radius: 0;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+#restartButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+#restartButton:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Game Over Screen Styles */
 #gameOver {
     display: none; /* Hidden by default */
     position: fixed;
@@ -645,6 +379,7 @@ canvas { display: block; }
     width: 100%;
     height: 100%;
     z-index: 1000; /* Ensure it's above everything */
+    background-color: rgba(0, 0, 0, 0.85); /* Add semi-transparent background */
 }
 
 #gameOver.active {
@@ -654,15 +389,19 @@ canvas { display: block; }
 }
 
 #gameOver .modal-content {
-    background-color: transparent; /* No background */
+    background-color: rgba(30, 30, 30, 0.9); /* Add background to modal content */
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%); /* Perfect centering */
     margin: 0; /* Remove any margin that might affect centering */
-    box-shadow: none; /* No shadow */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); /* Add shadow for depth */
     text-align: center;
     color: white;
+    padding: 24px; /* Add padding */
+    border-radius: 8px; /* Rounded corners */
+    max-width: 600px;
+    width: 90%;
 }
 
 #deathReason {
@@ -697,22 +436,97 @@ canvas { display: block; }
     color: #BB86FC; /* Material Design primary color for high score */
 }
 
-/* Mobile Responsiveness for Modal Screens */
+/* Help Button */
+#helpButton {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background-color: #9C27B0; /* Alpha Mode purple color */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+#helpButton:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+#helpButton:active {
+    transform: scale(0.95);
+}
+
+/* Mobile responsiveness for help button */
+@media (max-width: 600px) {
+    #helpButton {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        top: 15px;
+        right: 15px;
+    }
+}
+
+/* Responsive Styles - Organized by breakpoint */
+/* Tablets and smaller desktops */
+@media (max-width: 768px) {
+    /* Intro screen */
+    .intro-split-layout {
+        flex-direction: column;
+    }
+    
+    .intro-image-container {
+        min-height: 400px;
+        position: relative;
+        width: 100%;
+        border-radius: 8px 8px 0 0; /* Round only top corners */
+    }
+    
+    .intro-content-container {
+        padding: 30px;
+        border-radius: 0 0 8px 8px; /* Round only bottom corners */
+    }
+    
+    .intro-content {
+        max-width: 95%;
+    }
+    
+    .login-style {
+        max-width: 95%;
+    }
+}
+
+/* Mobile devices */
 @media (max-width: 600px) {
     .modal-content {
         padding: 16px;
         width: 95%;
         border-radius: 4px; /* Smaller radius on mobile */
     }
+
+    .intro-image-container {
+        max-height: 400px;
+    }
     
     .intro-content h1 {
         font-size: 2em;
-        margin-bottom: 16px;
+        margin-bottom: 0px;
     }
     
     .instructions {
         padding: 12px;
-        margin: 16px 0;
+        margin: 0px;
     }
     
     .instructions h2 {
@@ -750,7 +564,27 @@ canvas { display: block; }
     }
 }
 
-/* For very small screens */
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .intro-image-container {
+        max-height: 350px;
+    }
+    
+    .intro-image {
+        object-position: top center; /* Ensure it's positioned from the top */
+    }
+    
+    .intro-content-container {
+        padding: 20px;
+    }
+    
+    .intro-content-container h1 {
+        font-size: 2em;
+        margin-bottom: 0px;
+    }
+}
+
+/* Very small mobile devices */
 @media (max-width: 400px) {
     .modal-content {
         padding: 12px;
@@ -786,4 +620,57 @@ canvas { display: block; }
     .score-container {
         padding: 8px;
     }
+}
+
+/* Mobile-specific button styling */
+@media (max-width: 767px) {
+    #restartButton {
+        padding: 15px 30px;
+        font-size: 0.9em;
+        margin-top: 20px;
+        /* Prevent text selection on touch */
+        user-select: none;
+        -webkit-user-select: none;
+        /* Disable default touch highlight */
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Mobile Control Buttons */
+.mobile-button { 
+    position: absolute; 
+    bottom: 30px; 
+    width: 120px; 
+    height: 120px; 
+    background-color: rgba(120, 120, 120, 0.4); 
+    border: 2px solid rgba(255, 255, 255, 0.4); 
+    border-radius: 50%; 
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    font-size: 2.5em; 
+    color: rgba(255, 255, 255, 0.6); 
+    user-select: none; 
+    -webkit-user-select: none; 
+    z-index: 6; 
+    cursor: pointer; 
+    transition: background-color 0.1s ease; 
+}
+
+.mobile-button:active { 
+    background-color: rgba(160, 160, 160, 0.6); 
+}
+
+#leftButton { 
+    left: 30px; 
+}
+
+#rightButton { 
+    right: 30px; 
+}
+
+@media (max-width: 767px) { 
+    .mobile-button { 
+        display: flex; 
+    } 
 }

@@ -11,6 +11,10 @@ import * as Food from './food.js';
 import * as Obstacles from './obstacles.js';
 import * as Player from './playerSnake.js';
 import * as Enemy from './enemySnake.js';
+import Stats from '../lib/stats.module.js';
+
+// FPS counter
+let stats;
 
 // --- Initialization ---
 async function init() {
@@ -73,6 +77,31 @@ async function init() {
     
     // Event Listeners
     window.addEventListener('resize', onWindowResize);
+
+    // Add event listeners for UI buttons
+    document.getElementById('startButton')?.addEventListener('click', UI.startGame);
+    document.getElementById('helpButton')?.addEventListener('click', UI.showHelp);
+    document.getElementById('closeHelpButton')?.addEventListener('click', UI.hideHelp);
+    document.getElementById('restartButton')?.addEventListener('click', UI.startGame);
+    
+    // Add event listener for Alpha Mode cooldown reset button
+    document.getElementById('resetAlphaModeCooldown')?.addEventListener('click', function() {
+        // Reset the Alpha Mode cooldown
+        Player.resetAlphaModeCooldown(gameState);
+        
+        // Show a message to the player
+        UI.showPowerUpTextEffect("Alpha Mode cooldown reset!");
+        
+        console.log("Alpha Mode cooldown reset button clicked");
+    });
+    
+    // Add stats display if query string parameter is set
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    if (urlParams.get('stats') === 'true') {
+        stats = new Stats();
+        document.body.appendChild(stats.dom);
+    }
 }
 
 // Function to start the actual gameplay after intro screen
@@ -262,6 +291,11 @@ function render() {
 
     // Render the scene
     gameState.renderer.render(gameState.scene, gameState.camera);
+
+    // Update stats display if present
+    if (stats) {
+        stats.update();
+    }
 }
 
 // --- Camera Effects ---

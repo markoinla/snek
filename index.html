@@ -50,11 +50,13 @@
     <!-- Help Button -->
     <div id="helpButton">?</div>
     
-    <!-- Alpha Mode Progress Bar -->
-    <div id="alphaModeContainer">
-        <div id="alphaModeLabel"></div>
+    <!-- Alpha Mode UI -->
+    <div id="alphaModeContainer" class="ui-element">
         <div id="alphaModeBar">
             <div id="alphaModeProgress"></div>
+        </div>
+        <div id="alphaModeCooldown">COOLDOWN: <span id="alphaModeCooldownTimer">0.0</span>s
+            <button id="resetAlphaModeCooldown" class="debug-button">Reset Cooldown</button>
         </div>
     </div>
 

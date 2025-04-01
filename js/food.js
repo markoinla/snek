@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import * as CONFIG from './config.js';
-import { FOOD_TYPES, GEOMETRIES } from './constants.js';
+import { FOOD_TYPES, GEOMETRIES, PATHS } from './constants.js';
 import { generateUniquePosition } from './utils.js';
-import { createExplosion, createNormalFoodEffect } from './particleSystem.js';
-import { applyPowerUp } from './playerSnake.js'; // Import power-up logic
-import { showPowerUpTextEffect } from './ui.js';
+import { createExplosion, createNormalFoodEffect, createFrogEffect } from './particleSystem.js';
+import { applyPowerUp, addScoreMultiplier } from './playerSnake.js'; // Import specific functions
+import * as UI from './ui.js';
 
 /**
  * Creates a blocky apple model made of a few cubes
@@ -305,8 +305,13 @@ function selectFoodTypeByRatio() {
 // Returns the type of food eaten, or null if no food at position
 export function checkAndEatFood(position, gameState) {
      // *** Destructure camera here ***
-     const { scene, food, materials, camera } = gameState;
-     if (!scene || !food?.positions || !food?.meshes || !camera) return null; // Add camera check
+     const { scene, food, materials, camera, playerSnake } = gameState;
+     if (!scene || !food?.positions || !food?.meshes || !camera || !playerSnake) return null; // Add camera check
+
+    // Debug logging for Alpha Mode
+    console.log("checkAndEatFood called with position:", position, 
+                "Alpha Mode active:", playerSnake.alphaMode?.active,
+                "Food positions count:", food.positions.length);
 
     let eatenFoodIndex = -1;
     let eatenFoodType = null;
@@ -321,7 +326,10 @@ export function checkAndEatFood(position, gameState) {
         
         if (foodPos.type === 'normal') {
             // For normal food, use grid-based collision detection
+            console.log(`Checking food #${i} at (${foodPos.x}, ${foodPos.z}) against snake at (${position.x}, ${position.z})`);
+            
             if (position.x === foodPos.x && position.z === foodPos.z) {
+                console.log("FOOD COLLISION DETECTED!");
                 eatenFoodIndex = i;
                 eatenFoodType = foodPos.type;
                 break;
@@ -358,6 +366,31 @@ export function checkAndEatFood(position, gameState) {
         if (eatenFoodType === 'normal') {
             // Increment apples eaten count
             gameState.stats.applesEaten++;
+            
+            // Apply temporary speed boost when eating an apple
+            if (gameState.playerSnake) {
+                // Set the speed boost end time
+                const currentTime = gameState.clock.getElapsedTime();
+                gameState.playerSnake.speedBoostUntil = currentTime + CONFIG.FOOD_SPEED_BOOST_DURATION;
+                
+                // Show a speed boost text effect
+                UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF); // Light blue color for speed boost
+                
+                // If in Alpha Mode, extend its duration and add score multiplier
+                if (gameState.playerSnake.alphaMode && gameState.playerSnake.alphaMode.active) {
+                    // Extend Alpha Mode by the configured amount
+                    gameState.playerSnake.alphaMode.endTime += CONFIG.ALPHA_MODE_EXTENSION_PER_FOOD;
+                    
+                    // Show a message about the extension
+                    UI.showPowerUpTextEffect(`Alpha Mode +${CONFIG.ALPHA_MODE_EXTENSION_PER_FOOD}s!`, 0xFF5722); // Orange color
+                    
+                    // Add a score multiplier to the stack
+                    addScoreMultiplier(currentTime, gameState);
+                    
+                    console.log(`Alpha Mode extended by ${CONFIG.ALPHA_MODE_EXTENSION_PER_FOOD} seconds! New end time:`, 
+                                gameState.playerSnake.alphaMode.endTime);
+                }
+            }
         } else {
             // Increment frogs eaten count
             gameState.stats.frogsEaten++;
@@ -368,27 +401,26 @@ export function checkAndEatFood(position, gameState) {
             // Different particle effects based on food type
             if (eatenFoodType === 'normal') {
                 // Small green particles for regular food
-                console.log("Creating normal food particle effect");
                 createNormalFoodEffect(
                     scene,
                     camera,
                     eatenFoodMesh.position
                 );
             } else {
-                // Colorful explosion for power-ups
-                console.log("Creating power-up explosion effect for:", eatenFoodType);
-                createExplosion(
+                // Special frog particle effect for power-ups
+                createFrogEffect(
                     scene,
                     camera,
                     eatenFoodMesh.position,
-                    CONFIG.PARTICLE_COUNT_EAT,
-                    foodTypeInfo?.colorHint.getHex() || 0xffffff
+                    foodTypeInfo?.colorHint.getHex() || 0x8BC34A
                 );
             }
-            scene.remove(eatenFoodMesh); // Remove mesh from scene
+            
+            // Remove the food mesh from the scene
+            scene.remove(eatenFoodMesh);
         }
         if (foodTypeInfo?.effectText) {
-             showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
+             UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
         }
 
         // Remove from state arrays

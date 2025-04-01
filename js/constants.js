@@ -4,10 +4,12 @@ import * as CONFIG from './config.js';
 // Asset Paths
 export const PATHS = {
     snakeSheet: 'assets/svg/snake_spritesheet_improved.svg', // Using the improved spritesheet
+    enemySnakeSheet: 'assets/svg/enemy_snake_spritesheet.svg', // New enemy snake spritesheet
     particle: 'assets/svg/particle.svg',
     skybox: 'assets/svg/skybox_blocky.svg',
     groundTile: 'assets/svg/grass.svg', // Changed to use the grass.svg file
     wallStone: 'assets/svg/wall_stone.svg',
+    wallIvy: 'assets/textures/ivy_wall.png', // Added ivy wall texture
     foodNormal: 'assets/svg/food_normal.svg',
     frogSpeed: 'assets/textures/frogs/frog_speed.svg',
     frogShrink: 'assets/textures/frogs/frog_shrink.svg',
@@ -25,10 +27,10 @@ export const PATHS = {
 // Food Types Definition
 export const FOOD_TYPES = [
     { type: 'normal', svgPath: PATHS.foodNormal, colorHint: new THREE.Color(0xDD2C00), powerUpDuration: 0, description: "Normal Food", effectText: "+1" },
-    { type: 'speed', svgPath: PATHS.frogSpeed, colorHint: new THREE.Color(0x8BC34A), powerUpDuration: 8, description: "Speed Boost Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SPEED_BOOST },
+    { type: 'speed', svgPath: PATHS.frogSpeed, colorHint: new THREE.Color(0x8BC34A), powerUpDuration: CONFIG.POWERUP_SPEED_DURATION, description: "Speed Boost Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SPEED_BOOST },
     { type: 'shrink', svgPath: PATHS.frogShrink, colorHint: new THREE.Color(0x9C27B0), powerUpDuration: 0, description: "Shrink Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SHRINK },
-    { type: 'score_x2', svgPath: PATHS.frogScore, colorHint: new THREE.Color(0xFFD700), powerUpDuration: 10, description: "Score Multiplier Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SCORE_MULTIPLIER },
-    { type: 'ghost', svgPath: PATHS.frogGhost, colorHint: new THREE.Color(0xBDBDBD), powerUpDuration: 6, description: "Ghost Mode Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.GHOST_MODE }
+    { type: 'score_x2', svgPath: PATHS.frogScore, colorHint: new THREE.Color(0xFFD700), powerUpDuration: CONFIG.POWERUP_SCORE_MULTIPLIER_DURATION, description: "Score Multiplier Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SCORE_MULTIPLIER },
+    { type: 'ghost', svgPath: PATHS.frogGhost, colorHint: new THREE.Color(0xBDBDBD), powerUpDuration: CONFIG.POWERUP_GHOST_DURATION, description: "Ghost Mode Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.GHOST_MODE }
 ];
 
 // Obstacle Types Definition

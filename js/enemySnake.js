@@ -77,7 +77,7 @@ function initializeEnemy(id, gameState) {
     let currentEnemyMeshes = [];
     enemySnakeSegments.forEach((pos, index) => {
         const isHead = index === 0;
-        const mesh = createSnakeSegmentMesh(pos, isHead, materials, false); // false for isPlayer
+        const mesh = createSnakeSegmentMesh(pos, isHead, materials, false, id); // Pass the enemy ID
         if (mesh) {
             currentEnemyMeshes.push(mesh);
             scene.add(mesh);
@@ -106,19 +106,39 @@ function initializeEnemy(id, gameState) {
 
 export function resetEnemies(gameState) {
     const { scene, enemies } = gameState;
-    if (scene && enemies?.list) {
-        enemies.list.forEach(enemy => {
-            const meshes = enemyMeshes[enemy.id];
-            if (meshes) {
-                meshes.forEach(mesh => scene.remove(mesh));
+    
+    // First, remove all existing enemy meshes from the scene
+    if (scene) {
+        // Remove meshes from the scene for all tracked enemies
+        Object.keys(enemyMeshes).forEach(enemyId => {
+            const meshes = enemyMeshes[enemyId];
+            if (meshes && Array.isArray(meshes)) {
+                meshes.forEach(mesh => {
+                    if (mesh && scene.children.includes(mesh)) {
+                        scene.remove(mesh);
+                    }
+                });
+            }
+        });
+        
+        // Additional cleanup: scan the scene for any enemy meshes that might have been missed
+        // Look for objects with names that match enemy snake segments
+        scene.children.forEach(child => {
+            if (child.name && child.name.startsWith('enemySnake')) {
+                scene.remove(child);
             }
         });
     }
+    
+    // Reset the enemy data structures
     if (enemies) {
         enemies.list = []; // Clear the list of enemy data
     }
-    enemyMeshes = {}; // Clear the mesh cache
-    console.log("Enemies reset.");
+    
+    // Clear the mesh cache
+    enemyMeshes = {}; 
+    
+    console.log("Enemies reset completely.");
 }
 
 
@@ -145,7 +165,40 @@ export function updateEnemies(deltaTime, currentTime, gameState) {
             moveEnemy(enemy, gameState); // Pass gameState here
             enemy.lastMoveTime = currentTime; // Reset move timer AFTER moving
         }
+        
+        // Update pulsing effect for edible tail segments
+        updateEnemyTailPulsing(enemy, currentTime);
     });
+}
+
+function updateEnemyTailPulsing(enemy, currentTime) {
+    const meshes = enemyMeshes[enemy.id];
+    if (!meshes) return;
+    
+    const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
+    
+    // Only process if we have enough segments for edible tails
+    if (meshes.length < tailSegments) return;
+    
+    // Update each edible tail segment
+    for (let i = meshes.length - tailSegments; i < meshes.length; i++) {
+        const mesh = meshes[i];
+        if (!mesh || !mesh.userData.isPulsing) continue;
+        
+        // Calculate pulse based on time
+        const pulseSpeed = 1.5; // Speed of pulsing
+        const pulseIntensity = 0.2; // How much the emission changes
+        const startTime = mesh.userData.pulseStartTime || 0;
+        const timeSinceStart = currentTime - startTime;
+        
+        // Create a pulsing effect using a sine wave
+        const pulseValue = 0.3 + Math.sin(timeSinceStart * pulseSpeed) * pulseIntensity;
+        
+        // Apply the pulse to the emissive intensity
+        if (mesh.material) {
+            mesh.material.emissiveIntensity = pulseValue;
+        }
+    }
 }
 
 function updateEnemyAI(enemy, gameState) {
@@ -441,7 +494,7 @@ function moveEnemy(enemy, gameState) {
             meshes.unshift(tailMesh);
         } else {
              console.error(`Enemy ${enemy.id} missing tail mesh!`);
-              const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, false);
+              const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, false, enemy.id); // Pass the enemy ID
               if (newMesh) {
                   scene.add(newMesh);
                   meshes.unshift(newMesh);
@@ -449,7 +502,7 @@ function moveEnemy(enemy, gameState) {
         }
     } else {
         // Create new mesh for the head
-        const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, false);
+        const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, false, enemy.id); // Pass the enemy ID
         if (newMesh) {
             scene.add(newMesh);
             meshes.unshift(newMesh);
@@ -481,14 +534,27 @@ export function updateEnemyMaterialsAfterMove(enemy, gameState) {
             const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
             if (meshes.length >= tailSegments && 
                 index >= meshes.length - tailSegments) {
-                // This is part of the edible tail - create a lighter version of the body material
-                const tailMaterial = enemy.animationFrame === 0 ? 
+                // This is part of the edible tail
+                // Use the same material but with a cyan overlay to indicate it's edible
+                // The cyan color is already part of our sprite sheet for the edible tail
+                mesh.material = enemy.animationFrame === 0 ? 
                     materials.enemy.body1.clone() : 
                     materials.enemy.body2.clone();
                 
-                // Set to the configured lighter color
-                tailMaterial.color.setHex(CONFIG.ENEMY_TAIL_COLOR);
-                mesh.material = tailMaterial;
+                // Set to the configured color from config
+                mesh.material.color.setHex(CONFIG.ENEMY_TAIL_COLOR);
+                
+                // Add emissive glow to make it more noticeable
+                mesh.material.emissive.setHex(0x4DD0E1);
+                mesh.material.emissiveIntensity = 0.3;
+                
+                // Add a subtle pulsing animation to draw attention to edible segments
+                const pulseSpeed = 1.5; // Speed of pulsing
+                const pulseIntensity = 0.2; // How much the emission changes
+                
+                // Store the current time to use for pulsing
+                mesh.userData.pulseStartTime = Date.now() / 1000;
+                mesh.userData.isPulsing = true;
             } else {
                 // Regular body segment
                 mesh.material = enemy.animationFrame === 0 ? 

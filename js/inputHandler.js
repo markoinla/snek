@@ -11,19 +11,23 @@ export function setupInputListeners(gameState, uiElements) {
             return;
         }
 
-        // Prevent default browser behavior for arrow keys if needed
-        // if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(event.key.toLowerCase())) {
-        //     event.preventDefault();
-        // }
+        // Prevent default browser behavior for arrow keys to improve responsiveness
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'a', 'd', 'w', 's'].includes(event.key.toLowerCase())) {
+            event.preventDefault();
+        }
 
         switch (event.key.toLowerCase()) {
             case 'arrowleft':
             case 'a':
                 playerTurnLeft(gameState); // Pass gameState
+                // Set flag for immediate direction change
+                gameState.playerSnake.immediateDirectionChange = true;
                 break;
             case 'arrowright':
             case 'd':
                 playerTurnRight(gameState); // Pass gameState
+                // Set flag for immediate direction change
+                gameState.playerSnake.immediateDirectionChange = true;
                 break;
             case 'p': // Debug log
                 console.log("Debug Game State:", gameState);
@@ -35,12 +39,16 @@ export function setupInputListeners(gameState, uiElements) {
         if (gameState.flags.gameOver) return;
         e.preventDefault(); // Prevent scrolling/zooming
         playerTurnLeft(gameState);
+        // Set flag for immediate direction change
+        gameState.playerSnake.immediateDirectionChange = true;
     };
 
     const handleTouchRight = (e) => {
          if (gameState.flags.gameOver) return;
          e.preventDefault(); // Prevent scrolling/zooming
         playerTurnRight(gameState);
+        // Set flag for immediate direction change
+        gameState.playerSnake.immediateDirectionChange = true;
     };
     
     // Restart button handler

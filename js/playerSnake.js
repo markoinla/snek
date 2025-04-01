@@ -26,38 +26,63 @@ let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/
 //     enlargedHeadUntil: 0, // New property for enlarged head effect
 //     alphaMode: {
 //         active: false,
+//         progress: 0,
 //         startTime: 0,
 //         endTime: 0,
-//         lastScoreThreshold: 0
-//     }
+//         lastScoreThreshold: 0,
+//         scoreMultiplier: 1.0,         // Current score multiplier (starts at 1.0)
+//         scoreMultiplierUntil: 0,      // When the current multiplier expires
+//         scoreMultiplierStack: []       // Stack of active multipliers with their end times
+//         consecutiveActivations: 0,    // Track consecutive Alpha Mode activations
+//         cooldownActive: false,        // Track if Alpha Mode is in cooldown
+//         cooldownEndTime: 0            // When the cooldown period ends
+//     },
+//     lastTextureUpdateFrame: 0, // Initialize last texture update frame
+//     immediateDirectionChange: false, // New property for immediate direction change
+//     lastDirection: {x, y, z}, // Track the last direction the snake actually moved
+//     pendingTurns: [] // Queue for pending turns to prevent self-collision
 // };
 
 export function initPlayerSnake(gameState) {
     const { playerSnake } = gameState;
-    const startOffset = 2; // Start slightly offset from center
-    playerSnake.segments = [
-        { x: startOffset, y: 0, z: 0 },
-        { x: startOffset - 1, y: 0, z: 0 },
-        { x: startOffset - 2, y: 0, z: 0 }
-    ];
-    playerSnake.direction = { x: 1, y: 0, z: 0 };
-    playerSnake.nextDirection = { x: 1, y: 0, z: 0 };
+    
+    if (!playerSnake) return;
+    
+    // Reset all snake properties
+    playerSnake.segments = [];
+    playerSnake.direction = { x: 1, z: 0 };
+    playerSnake.lastDirection = { x: 1, z: 0 };
+    playerSnake.pendingTurns = [];
     playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
     playerSnake.moveTimer = 0;
     playerSnake.animationFrame = 0;
     playerSnake.animationTimer = 0;
-    playerSnake.scoreMultiplier = 1;
     playerSnake.ghostModeActive = false;
-    playerSnake.activePowerUps = []; // Initialize activePowerUps array
-    playerSnake.enlargedHeadUntil = 0; // Initialize enlarged head timer
+    playerSnake.activePowerUps = [];
+    playerSnake.enlargedHeadUntil = 0;
+    playerSnake.speedBoostUntil = 0;
+    playerSnake.immediateDirectionChange = false;
+    playerSnake.lastTextureUpdateFrame = 0;
+    
+    // Initialize Alpha Mode properties
     playerSnake.alphaMode = {
         active: false,
+        progress: 0,
         startTime: 0,
         endTime: 0,
-        lastScoreThreshold: 0
+        lastScoreThreshold: 0,
+        scoreMultiplier: 1.0,
+        scoreMultiplierStack: [],
+        consecutiveActivations: 0,    // Track consecutive Alpha Mode activations
+        cooldownActive: false,        // Track if Alpha Mode is in cooldown
+        cooldownEndTime: 0            // When the cooldown period ends
     };
-    playerSnake.lastTextureUpdateFrame = 0; // Initialize last texture update frame
-
+    
+    // Create initial segments
+    for (let i = 0; i < CONFIG.MIN_SNAKE_LENGTH; i++) {
+        playerSnake.segments.push({ x: -i, y: 0, z: 0 });
+    }
+    
     // Create initial meshes
     createPlayerMeshes(gameState);
     console.log("Player snake initialized.");
@@ -102,25 +127,75 @@ export function resetPlayer(gameState) {
 export function turnLeft(gameState) {
     const { playerSnake, flags } = gameState;
     if (flags.gameOver) return;
-    // Prevent turning 180 degrees
-    const currentDirX = playerSnake.direction.x;
-    const currentDirZ = playerSnake.direction.z;
+    
+    // Get current direction - use lastDirection to prevent double-turns in same frame
+    const currentDirX = playerSnake.lastDirection.x;
+    const currentDirZ = playerSnake.lastDirection.z;
+    
+    // Calculate the new direction
     const nextDir = { x: currentDirZ, y: 0, z: -currentDirX };
-    // Ensure the next direction isn't the direct opposite of the *current* head segment direction
-     if (playerSnake.segments.length <= 1 || (nextDir.x === 0 && nextDir.z === 0) || (nextDir.x !== -currentDirX || nextDir.z !== -currentDirZ)) {
-        playerSnake.nextDirection = nextDir;
-     }
+    
+    // Check if there are pending turns, and if so, use the last pending turn as reference
+    // This prevents 180-degree turns when rapidly alternating directions
+    let referenceDir;
+    if (playerSnake.pendingTurns.length > 0) {
+        // Use the last pending turn as reference to prevent turning back
+        const lastPendingTurn = playerSnake.pendingTurns[playerSnake.pendingTurns.length - 1];
+        referenceDir = lastPendingTurn;
+    } else {
+        // No pending turns, use current direction
+        referenceDir = { x: currentDirX, z: currentDirZ };
+    }
+    
+    // Ensure the next direction isn't the direct opposite of the reference direction
+    if ((nextDir.x !== -referenceDir.x || nextDir.z !== -referenceDir.z)) {
+        // Store this turn in the pending turns queue
+        playerSnake.pendingTurns.push({...nextDir});
+        
+        // Only update nextDirection if there are no other pending turns
+        if (playerSnake.pendingTurns.length === 1) {
+            playerSnake.nextDirection = nextDir;
+        }
+        
+        playerSnake.immediateDirectionChange = true;
+    }
 }
 
 export function turnRight(gameState) {
     const { playerSnake, flags } = gameState;
     if (flags.gameOver) return;
-     const currentDirX = playerSnake.direction.x;
-     const currentDirZ = playerSnake.direction.z;
-     const nextDir = { x: -currentDirZ, y: 0, z: currentDirX };
-      if (playerSnake.segments.length <= 1 || (nextDir.x === 0 && nextDir.z === 0) || (nextDir.x !== -currentDirX || nextDir.z !== -currentDirZ)) {
-        playerSnake.nextDirection = nextDir;
-      }
+    
+    // Get current direction - use lastDirection to prevent double-turns in same frame
+    const currentDirX = playerSnake.lastDirection.x;
+    const currentDirZ = playerSnake.lastDirection.z;
+    
+    // Calculate the new direction
+    const nextDir = { x: -currentDirZ, y: 0, z: currentDirX };
+    
+    // Check if there are pending turns, and if so, use the last pending turn as reference
+    // This prevents 180-degree turns when rapidly alternating directions
+    let referenceDir;
+    if (playerSnake.pendingTurns.length > 0) {
+        // Use the last pending turn as reference to prevent turning back
+        const lastPendingTurn = playerSnake.pendingTurns[playerSnake.pendingTurns.length - 1];
+        referenceDir = lastPendingTurn;
+    } else {
+        // No pending turns, use current direction
+        referenceDir = { x: currentDirX, z: currentDirZ };
+    }
+    
+    // Ensure the next direction isn't the direct opposite of the reference direction
+    if ((nextDir.x !== -referenceDir.x || nextDir.z !== -referenceDir.z)) {
+        // Store this turn in the pending turns queue
+        playerSnake.pendingTurns.push({...nextDir});
+        
+        // Only update nextDirection if there are no other pending turns
+        if (playerSnake.pendingTurns.length === 1) {
+            playerSnake.nextDirection = nextDir;
+        }
+        
+        playerSnake.immediateDirectionChange = true;
+    }
 }
 
 
@@ -141,6 +216,10 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
     // Update Alpha Mode progress if active
     if (playerSnake.alphaMode.active) {
         updateAlphaMode(currentTime, gameState);
+    } 
+    // Show cooldown status if Alpha Mode is in cooldown
+    else if (playerSnake.alphaMode.cooldownActive) {
+        UI.showAlphaModeCooldown(playerSnake.alphaMode.cooldownEndTime, currentTime);
     }
     
     // Update Power-up Timers
@@ -166,21 +245,56 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
     // Movement timer
     playerSnake.moveTimer += deltaTime;
     
-    // Calculate actual speed based on power-ups and Alpha Mode
+    // Calculate actual speed based on power-ups, speed boost, and Alpha Mode
     let actualSpeed = playerSnake.speed;
+    let speedMultiplier = 1.0; // Base multiplier
     
-    // Apply Alpha Mode speed boost if active
+    // Apply speed boost if active - this stacks with other speed effects
+    if (playerSnake.speedBoostUntil > 0 && currentTime < playerSnake.speedBoostUntil) {
+        // Multiply the speed multiplier by the food speed boost multiplier
+        speedMultiplier *= CONFIG.FOOD_SPEED_BOOST_MULTIPLIER;
+    } else if (playerSnake.speedBoostUntil > 0 && currentTime >= playerSnake.speedBoostUntil) {
+        // Reset speed boost timer when it expires
+        playerSnake.speedBoostUntil = 0;
+    }
+    
+    // Apply Alpha Mode speed boost if active - this stacks with the food speed boost
     if (playerSnake.alphaMode.active) {
-        // FIXED: Lower speed value = faster movement (since it's the time between moves)
-        // We need to divide by the multiplier, not multiply
-        actualSpeed /= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER; // Faster in Alpha Mode
+        // Multiply the speed multiplier by the alpha mode speed multiplier
+        speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
+    }
+    
+    // Apply the combined speed multiplier
+    // Lower actualSpeed value = faster movement (since it's the time between moves)
+    // So we divide by the multiplier to make the snake faster
+    actualSpeed /= speedMultiplier;
+    
+    // Check for immediate direction change flag
+    if (playerSnake.immediateDirectionChange) {
+        // If player has requested a direction change, update direction immediately
+        playerSnake.direction = playerSnake.nextDirection;
+        playerSnake.immediateDirectionChange = false;
     }
     
     if (playerSnake.moveTimer >= actualSpeed) {
         playerSnake.moveTimer = 0;
         
-        // Update direction based on queued input
-        playerSnake.direction = playerSnake.nextDirection;
+        // Process the next turn from the queue if available
+        if (playerSnake.pendingTurns.length > 0) {
+            playerSnake.direction = {...playerSnake.pendingTurns[0]};
+            playerSnake.pendingTurns.shift(); // Remove the processed turn
+            
+            // If there are more turns in the queue, set up the next one
+            if (playerSnake.pendingTurns.length > 0) {
+                playerSnake.nextDirection = {...playerSnake.pendingTurns[0]};
+            }
+        } else {
+            // No pending turns, use the next direction
+            playerSnake.direction = {...playerSnake.nextDirection};
+        }
+
+        // Store the direction we actually moved in
+        playerSnake.lastDirection = {...playerSnake.direction};
 
         // Check if direction became zero (shouldn't happen with turn logic)
         if (playerSnake.direction.x === 0 && playerSnake.direction.z === 0) {
@@ -250,12 +364,35 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
          }
 
         // --- Food Check ---
-        const eatenFood = checkAndEatFood(newHeadPos, gameState); // checkAndEatFood handles particles/sound/UI text
+        const eatenFood = checkAndEatFood(newHeadPos, gameState);
         let growSnake = false;
 
         if (eatenFood) {
-            gameState.score += (eatenFood.scoreValue * playerSnake.scoreMultiplier);
+            console.log("Food eaten in playerSnake.js:", eatenFood.type, "Alpha Mode active:", playerSnake.alphaMode?.active);
+            
+            // Calculate score with multiplier
+            let scoreMultiplier = 1.0; // Default multiplier
+            
+            // Apply Alpha Mode score multiplier if active
+            if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
+                scoreMultiplier = playerSnake.alphaMode.scoreMultiplier;
+                console.log(`Applying Alpha Mode score multiplier: x${scoreMultiplier}`);
+            }
+            
+            // Apply the multiplier to the base score value
+            const baseScore = eatenFood.scoreValue;
+            const multipliedScore = Math.round(baseScore * scoreMultiplier);
+            
+            // Add the score and update UI
+            gameState.score += multipliedScore;
+            
+            // Show score popup if multiplier is active
+            if (scoreMultiplier > 1.0) {
+                UI.showPowerUpTextEffect(`+${multipliedScore} pts!`, 0xFFD700); // Gold color for score
+            }
+            
             UI.updateScore(gameState.score);
+            
             // Now apply power-up effect AFTER score update and food removal
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === eatenFood.type);
             if(foodTypeInfo){
@@ -285,7 +422,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             } else {
                 console.error("Tail mesh missing during move!");
                  // Attempt recovery: Create a new mesh for the head
-                 const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true);
+                 const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true); // Fix: Set isPlayer to true
                  if (newMesh) {
                      scene.add(newMesh);
                      playerSnakeMeshes.unshift(newMesh);
@@ -293,7 +430,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             }
         } else {
              // Create a new mesh for the new head segment
-             const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true);
+             const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true); // Fix: Set isPlayer to true
              if (newMesh) {
                  scene.add(newMesh);
                  playerSnakeMeshes.unshift(newMesh);
@@ -302,6 +439,9 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
 
         // Update materials/textures for the new head and the segment behind it
         updatePlayerMaterialsAfterMove(gameState);
+        
+        // Store the direction we actually moved in
+        playerSnake.lastDirection = {...playerSnake.direction};
     }
 }
 
@@ -329,11 +469,31 @@ export function killEnemySnake(enemyId, gameState) {
     
     // Call the enemy module's kill function
     if (killEnemy(enemyId, gameState)) {
-        // Increase score - apply the player's score multiplier
+        // Calculate score with multiplier
+        let scoreMultiplier = 1.0; // Default multiplier
+        
+        // Apply Alpha Mode score multiplier if active
+        if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
+            scoreMultiplier = playerSnake.alphaMode.scoreMultiplier;
+            
+            // Add a new score multiplier to the stack for killing a snake in Alpha Mode
+            addScoreMultiplier(currentTime, gameState);
+            
+            console.log(`Applied Alpha Mode score multiplier: x${scoreMultiplier} and added new multiplier`);
+        }
+        
+        // Apply the multiplier to the base score value
         const baseScore = CONFIG.ENEMY_KILL_SCORE;
-        const scoreToAdd = baseScore * playerSnake.scoreMultiplier;
-        gameState.score += scoreToAdd;
+        const multipliedScore = Math.round(baseScore * scoreMultiplier);
+        
+        // Add the score and update UI
+        gameState.score += multipliedScore;
         gameState.enemies.kills += 1;
+        
+        // Show score popup if multiplier is active
+        if (scoreMultiplier > 1.0) {
+            UI.showPowerUpTextEffect(`+${multipliedScore} pts!`, 0xFFD700); // Gold color for score
+        }
         
         // Update UI
         UI.updateScore(gameState.score);
@@ -387,7 +547,7 @@ function growSnakeSegments(gameState, numSegments) {
         playerSnake.segments.push(newSegment);
         
         // Create a mesh for the new segment
-        const newMesh = createSnakeSegmentMesh(newSegment, false, materials, false);
+        const newMesh = createSnakeSegmentMesh(newSegment, false, materials, true); // Fix: Set isPlayer to true
         if (newMesh) {
             scene.add(newMesh);
             playerSnakeMeshes.push(newMesh);
@@ -426,14 +586,17 @@ export function updateCamera(gameState) {
     const targetCamPos = headPos.clone().addScaledVector(cameraOffsetDirection, CONFIG.CAMERA_DISTANCE);
     targetCamPos.y = CONFIG.CAMERA_HEIGHT; // Maintain fixed height
 
-    // Smoothly interpolate camera position and rotation (lookAt)
-    camera.position.lerp(targetCamPos, CONFIG.CAMERA_LAG);
+    // Smoothly interpolate camera position using the new position smoothness setting
+    // Lower value = smoother movement
+    camera.position.lerp(targetCamPos, CONFIG.CAMERA_POSITION_SMOOTHNESS);
 
     // Smooth LookAt using Quaternion slerp for nicer rotation
     const tempCam = camera.clone(); // Clone current camera state
     tempCam.lookAt(targetLookAt);   // Point the clone at the target
+    
     // Slerp the actual camera's quaternion towards the clone's quaternion
-    camera.quaternion.slerp(tempCam.quaternion, CONFIG.CAMERA_LAG * 0.8); // Adjust slerp speed as needed
+    // Using the new rotation smoothness setting - lower value = smoother rotation
+    camera.quaternion.slerp(tempCam.quaternion, CONFIG.CAMERA_ROTATION_SMOOTHNESS);
 }
 
 // --- Power-ups ---
@@ -464,7 +627,8 @@ export function applyPowerUp(type, gameState) {
     // Apply power-up effect based on type
     switch (type) {
         case 'speed':
-            playerSnake.speed = CONFIG.BASE_SNAKE_SPEED * 0.6; // 40% faster
+            // Use the speed multiplier from config.js
+            playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.POWERUP_SPEED_MULTIPLIER;
             // Add to active power-ups array instead of replacing
             playerSnake.activePowerUps.push({
                 type: type,
@@ -485,7 +649,8 @@ export function applyPowerUp(type, gameState) {
             break;
         
         case 'score_x2':
-            playerSnake.scoreMultiplier = 2;
+            // Use the score multiplier from config.js
+            playerSnake.scoreMultiplier = CONFIG.POWERUP_SCORE_MULTIPLIER;
             // Add to active power-ups array
             playerSnake.activePowerUps.push({
                 type: type,
@@ -495,10 +660,12 @@ export function applyPowerUp(type, gameState) {
             break;
         
         case 'shrink':
-            // Shrink the snake by removing tail segments (to a minimum length)
+            // Shrink the snake by removing a configurable number of segments
             const currentLength = playerSnake.segments.length;
-            const targetLength = Math.max(CONFIG.MIN_SNAKE_LENGTH, Math.floor(currentLength * 0.6)); // Shrink by 40%
-            const segmentsToRemove = currentLength - targetLength;
+            const segmentsToRemove = Math.min(
+                CONFIG.POWERUP_SHRINK_AMOUNT, 
+                currentLength - CONFIG.MIN_SNAKE_LENGTH
+            );
             
             if (segmentsToRemove > 0) {
                 // Remove tail segments
@@ -564,6 +731,8 @@ function updatePowerUpState(currentTime, gameState) {
     // Check each power-up from end to start (to safely remove items)
     while (i--) {
         const powerUp = playerSnake.activePowerUps[i];
+        
+        // If power-up has expired
         if (currentTime >= powerUp.endTime) {
             // Power-up expired
             console.log(`Power-up expired: ${powerUp.type}`);
@@ -572,13 +741,18 @@ function updatePowerUpState(currentTime, gameState) {
             switch (powerUp.type) {
                 case 'speed':
                     playerSnake.speed = CONFIG.BASE_SNAKE_SPEED; // Reset speed
+                    UI.showPowerUpTextEffect("Speed boost ended");
                     break;
+                    
                 case 'ghost':
                     playerSnake.ghostModeActive = false;
                     updatePlayerSnakeTextures(gameState); // Update visuals
+                    UI.showPowerUpTextEffect("Ghost mode ended");
                     break;
+                    
                 case 'score_x2':
                     playerSnake.scoreMultiplier = 1; // Reset multiplier
+                    UI.showPowerUpTextEffect("Score multiplier ended");
                     break;
             }
             
@@ -588,7 +762,7 @@ function updatePowerUpState(currentTime, gameState) {
         }
     }
     
-    // Update the UI if any power-ups changed
+    // Update the power-up info display if any changes occurred
     if (powerUpsChanged) {
         updatePowerUpInfoDisplay(gameState);
     } else {
@@ -646,33 +820,31 @@ export function updatePowerUps(gameState) {
         
         // If power-up has expired
         if (currentTime >= powerUp.endTime) {
-            // Remove from active power-ups
-            playerSnake.activePowerUps.splice(i, 1);
-            powerUpStateChanged = true;
+            // Power-up expired
+            console.log(`Power-up expired: ${powerUp.type}`);
             
-            // Reset effects based on type
+            // Handle specific power-up expiration
             switch (powerUp.type) {
                 case 'speed':
-                    // Reset speed to normal (or alpha mode speed if active)
-                    if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
-                        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
-                    } else {
-                        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
-                    }
+                    playerSnake.speed = CONFIG.BASE_SNAKE_SPEED; // Reset speed
                     UI.showPowerUpTextEffect("Speed boost ended");
                     break;
                     
                 case 'ghost':
                     playerSnake.ghostModeActive = false;
-                    updatePlayerSnakeTextures(gameState); // Update visuals immediately
+                    updatePlayerSnakeTextures(gameState); // Update visuals
                     UI.showPowerUpTextEffect("Ghost mode ended");
                     break;
                     
                 case 'score_x2':
-                    playerSnake.scoreMultiplier = 1;
+                    playerSnake.scoreMultiplier = 1; // Reset multiplier
                     UI.showPowerUpTextEffect("Score multiplier ended");
                     break;
             }
+            
+            // Remove expired power-up from array
+            playerSnake.activePowerUps.splice(i, 1);
+            powerUpStateChanged = true;
         }
     }
     
@@ -783,6 +955,26 @@ function updatePlayerMaterialsAfterMove(gameState) {
 // --- Alpha Mode ---
 
 /**
+ * Resets the Alpha Mode cooldown state
+ * This function can be called to force-reset the cooldown
+ */
+export function resetAlphaModeCooldown(gameState) {
+    const { playerSnake } = gameState;
+    
+    // Reset cooldown state
+    playerSnake.alphaMode.cooldownActive = false;
+    playerSnake.alphaMode.consecutiveActivations = 0;
+    
+    // Reset the lastScoreThreshold to allow activation at the current threshold
+    const currentScore = gameState.score.current;
+    const scoreThreshold = CONFIG.ALPHA_MODE_SCORE_THRESHOLD;
+    const currentThreshold = Math.floor(currentScore / scoreThreshold) - 1;
+    playerSnake.alphaMode.lastScoreThreshold = currentThreshold;
+    
+    console.log("Alpha Mode cooldown reset. lastScoreThreshold set to:", currentThreshold);
+}
+
+/**
  * Checks if Alpha Mode should be activated based on score
  */
 function checkAlphaModeActivation(score, currentTime, gameState) {
@@ -791,6 +983,10 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
     
     // Calculate which threshold we're at
     const currentThreshold = Math.floor(score / scoreThreshold);
+    
+    // Debug logging to understand the current state
+    console.log(`Alpha Mode Check - Current Threshold: ${currentThreshold}, Last Threshold: ${playerSnake.alphaMode.lastScoreThreshold}`);
+    console.log(`Alpha Mode Active: ${playerSnake.alphaMode.active}, Cooldown Active: ${playerSnake.alphaMode.cooldownActive}`);
     
     // If we've reached a new threshold and we're not already in Alpha Mode
     if (currentThreshold > playerSnake.alphaMode.lastScoreThreshold && !playerSnake.alphaMode.active) {
@@ -808,52 +1004,121 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
         UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
         
         // Update player speed for Alpha Mode
-        // NOTE: In our game, speed is the time between moves, so a lower value means faster movement
-        // BASE_SNAKE_SPEED is 0.10, and with multiplier of 1.5, we should set it to 0.10 / 1.5 = 0.067
-        // This makes the snake move every 0.067 seconds instead of every 0.10 seconds
         playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
         
+        // Increment consecutive activations counter
+        playerSnake.alphaMode.consecutiveActivations++;
+        
         console.log("Alpha Mode activated! Threshold:", currentThreshold);
+        console.log("Consecutive Alpha Mode activations:", playerSnake.alphaMode.consecutiveActivations, 
+                   "Max allowed:", CONFIG.ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS);
+    } else {
+        // Debug why Alpha Mode is not activating
+        if (currentThreshold <= playerSnake.alphaMode.lastScoreThreshold) {
+            console.log("Alpha Mode not activated: Current threshold not greater than last threshold");
+        }
+        if (playerSnake.alphaMode.active) {
+            console.log("Alpha Mode not activated: Alpha Mode is already active");
+        }
     }
 }
 
 /**
  * Updates Alpha Mode state
  */
-function updateAlphaMode(currentTime, gameState) {
+export function updateAlphaMode(currentTime, gameState) {
     const { playerSnake } = gameState;
+    
+    // If Alpha Mode is not active, just return
+    if (!playerSnake.alphaMode.active) return;
     
     // Check if Alpha Mode has expired
     if (currentTime >= playerSnake.alphaMode.endTime) {
         // Deactivate Alpha Mode
         playerSnake.alphaMode.active = false;
-        
-        // Reset player speed to normal
         playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
         
-        // Show deactivation message
-        UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.DEACTIVATED_MESSAGE);
+        // Reset score multiplier when Alpha Mode ends
+        playerSnake.alphaMode.scoreMultiplier = 1.0;
+        playerSnake.alphaMode.scoreMultiplierStack = [];
         
-        // Reset the label but keep the progress bar visible with 0% progress
-        if (document.getElementById('alphaModeLabel')) {
-            document.getElementById('alphaModeLabel').textContent = CONFIG.GAME_TEXT.ALPHA_MODE.PROGRESS_LABEL;
-            document.getElementById('alphaModeLabel').classList.remove('alpha-mode-active');
-        }
+        // Update UI
+        UI.updateAlphaModeUI(0, 0);
+        UI.showPowerUpTextEffect("Alpha Mode ended");
         
-        // Reset progress bar to 0%
-        UI.updateAlphaModeProgress(0);
+        // Update player appearance
+        updatePlayerSnakeTextures(gameState);
+        
+        // Always update the progress meter after Alpha Mode ends
+        const currentScore = gameState.score.current;
+        updateAlphaModeProgress(currentScore, gameState);
         
         console.log("Alpha Mode deactivated");
         return;
     }
     
-    // Calculate remaining time percentage
+    // Calculate and update remaining time
+    const remainingTime = playerSnake.alphaMode.endTime - currentTime;
     const totalDuration = CONFIG.ALPHA_MODE_DURATION;
-    const remaining = playerSnake.alphaMode.endTime - currentTime;
-    const percentage = (remaining / totalDuration) * 100;
+    const progress = remainingTime / totalDuration;
     
-    // Update the UI
-    UI.updateAlphaModeProgress(percentage);
+    // Update score multiplier stack
+    updateScoreMultiplierStack(currentTime, playerSnake);
+    
+    // Update UI with remaining time and current score multiplier
+    UI.updateAlphaModeUI(progress, remainingTime, playerSnake.alphaMode.scoreMultiplier);
+}
+
+// Helper function to update the score multiplier stack
+function updateScoreMultiplierStack(currentTime, playerSnake) {
+    // Remove expired multipliers from the stack
+    playerSnake.alphaMode.scoreMultiplierStack = playerSnake.alphaMode.scoreMultiplierStack.filter(
+        multiplier => multiplier.endTime > currentTime
+    );
+    
+    // Calculate the current total multiplier
+    if (playerSnake.alphaMode.scoreMultiplierStack.length > 0) {
+        // Start with base multiplier of 1.0
+        let totalMultiplier = 1.0;
+        
+        // Apply each stacked multiplier
+        playerSnake.alphaMode.scoreMultiplierStack.forEach(multiplier => {
+            totalMultiplier *= multiplier.value;
+        });
+        
+        // Cap at maximum allowed multiplier
+        totalMultiplier = Math.min(totalMultiplier, CONFIG.ALPHA_MODE_MAX_SCORE_MULTIPLIER);
+        
+        // Update the current multiplier
+        playerSnake.alphaMode.scoreMultiplier = totalMultiplier;
+    } else {
+        // No active multipliers, reset to 1.0
+        playerSnake.alphaMode.scoreMultiplier = 1.0;
+    }
+}
+
+// Add a new score multiplier to the stack
+export function addScoreMultiplier(currentTime, gameState) {
+    const { playerSnake } = gameState;
+    
+    if (!playerSnake.alphaMode.active) return;
+    
+    // Create a new multiplier object
+    const newMultiplier = {
+        value: CONFIG.ALPHA_MODE_SCORE_MULTIPLIER,
+        endTime: currentTime + CONFIG.ALPHA_MODE_SCORE_MULTIPLIER_DURATION
+    };
+    
+    // Add to the stack
+    playerSnake.alphaMode.scoreMultiplierStack.push(newMultiplier);
+    
+    // Update the multiplier stack
+    updateScoreMultiplierStack(currentTime, playerSnake);
+    
+    // Show notification with current multiplier
+    UI.showPowerUpTextEffect(`Score x${playerSnake.alphaMode.scoreMultiplier.toFixed(1)}!`);
+    
+    console.log(`Added score multiplier. Current total: x${playerSnake.alphaMode.scoreMultiplier}`);
 }
 
 // Global counter to track which alpha kill message to display next
@@ -889,7 +1154,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
     const { playerSnake } = gameState;
     
     // If in Alpha Mode or hit the tail (which is always edible), kill the enemy
-    if (playerSnake.alphaMode && playerSnake.alphaMode.active) {
+    if (playerSnake.alphaMode.active) {
         // In Alpha Mode, always kill the enemy snake regardless of collision point
         console.log("Alpha Mode active - killing enemy snake regardless of collision point");
         killEnemySnake(collision.enemyId, gameState);
@@ -946,15 +1211,49 @@ function updateAlphaModeProgress(score, gameState) {
     // (it's handled by updateAlphaMode function)
     if (playerSnake.alphaMode.active) return;
     
-    // After Alpha Mode deactivates, we want to start from 0 and build up again
-    // to the next threshold, so we'll calculate progress differently
+    // Safety check - ensure lastScoreThreshold is a valid number
+    if (typeof playerSnake.alphaMode.lastScoreThreshold !== 'number' || 
+        isNaN(playerSnake.alphaMode.lastScoreThreshold)) {
+        console.log("Fixing invalid lastScoreThreshold value:", playerSnake.alphaMode.lastScoreThreshold);
+        playerSnake.alphaMode.lastScoreThreshold = Math.max(0, Math.floor(score / scoreThreshold) - 1);
+    }
+    
+    // Calculate the next threshold score needed for Alpha Mode activation
     const nextThreshold = (playerSnake.alphaMode.lastScoreThreshold + 1) * scoreThreshold;
+    
+    // Calculate progress toward the next threshold
     const scoreProgress = score - (playerSnake.alphaMode.lastScoreThreshold * scoreThreshold);
     const progressNeeded = scoreThreshold; // Always need to gain THRESHOLD points for next activation
     
-    // Calculate percentage (0-100)
-    const percentage = Math.min(100, Math.floor((scoreProgress / progressNeeded) * 100));
+    // Safety check - ensure we don't divide by zero
+    let percentage = 0;
+    if (progressNeeded > 0) {
+        percentage = Math.min(100, Math.floor((scoreProgress / progressNeeded) * 100));
+    }
     
-    // Update the UI
+    // Update the UI with the current progress percentage
     UI.updateAlphaModeProgress(percentage);
+    
+    // Show the Alpha Mode container if it's not already visible
+    const alphaModeContainer = document.getElementById('alphaModeContainer');
+    if (alphaModeContainer && alphaModeContainer.style.display !== 'flex') {
+        alphaModeContainer.style.display = 'flex';
+    }
+    
+    // Debug logging
+    console.log(`Alpha Mode Progress: ${percentage}% (Score: ${score}, Next Threshold: ${nextThreshold})`);
+    
+    // If we've reached 100% progress but Alpha Mode isn't activating, check why
+    if (percentage >= 100 && !playerSnake.alphaMode.cooldownActive) {
+        console.log("Alpha Mode at 100% - Checking activation state:", {
+            lastScoreThreshold: playerSnake.alphaMode.lastScoreThreshold,
+            currentThreshold: Math.floor(score / scoreThreshold),
+            cooldownActive: playerSnake.alphaMode.cooldownActive
+        });
+        
+        // Force the activation by directly calling checkAlphaModeActivation
+        // This ensures Alpha Mode will activate when the meter is full
+        const currentTime = gameState.clock.getElapsedTime();
+        checkAlphaModeActivation(score, currentTime, gameState);
+    }
 }

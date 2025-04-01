@@ -1,15 +1,48 @@
 // --- Configuration Constants ---
 export const GRID_SIZE = 60;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.2;
-export const CAMERA_DISTANCE = 11;
-export const CAMERA_HEIGHT = 9;
-export const CAMERA_LAG = 0.18;
+export const BASE_SNAKE_SPEED = 0.25;
+export const CAMERA_DISTANCE = 9;
+export const CAMERA_HEIGHT = 12;
+export const CAMERA_LAG = 0.25;
+export const CAMERA_POSITION_SMOOTHNESS = 0.08; // Lower = smoother camera position movement
+export const CAMERA_ROTATION_SMOOTHNESS = 0.1; // Lower = smoother camera rotation
 export const SPRITE_SHEET_DIM = 2;
 export const NUM_INITIAL_FOOD = 50;
 export const MIN_SNAKE_LENGTH = 3;
 export const NUM_OBSTACLES = 17;
 export const POWERUP_TEXT_ANIMATION_DURATION = 2000; // Keep for CSS sync if needed
+
+// Food speed boost settings
+export const FOOD_SPEED_BOOST_DURATION = 7.0; // Duration of speed boost in seconds
+export const FOOD_SPEED_BOOST_MULTIPLIER = 1.9; // How much faster the snake moves during boost
+export const ALPHA_MODE_EXTENSION_PER_FOOD = 0.5; // Seconds to extend Alpha Mode when eating food in Alpha Mode
+
+// Power-up settings
+export const POWERUP_SPEED_DURATION = 20.0; // Duration of speed boost power-up in seconds
+export const POWERUP_SPEED_MULTIPLIER = 1.3; // How much faster the snake moves during speed boost power-up
+
+export const POWERUP_SHRINK_AMOUNT = 3; // Number of segments to remove when shrink power-up is activated
+
+export const POWERUP_SCORE_MULTIPLIER = 3.0; // Score multiplier for the score multiplier power-up
+export const POWERUP_SCORE_MULTIPLIER_DURATION = 10.0; // Duration of score multiplier power-up in seconds
+
+export const POWERUP_GHOST_DURATION = 8.0; // Duration of ghost mode power-up in seconds
+
+// Alpha Mode score multiplier settings
+export const ALPHA_MODE_SCORE_MULTIPLIER = 2.0; // Multiplier for each stack
+export const ALPHA_MODE_SCORE_MULTIPLIER_DURATION = 5.0; // How long each multiplier stack lasts
+export const ALPHA_MODE_MAX_SCORE_MULTIPLIER = 8.0; // Maximum allowed multiplier
+
+// Alpha Mode activation limits - DISABLED
+export const ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS = 999; // Setting to a high number effectively disables the limit
+export const ALPHA_MODE_COOLDOWN_DURATION = 0.1; // Setting to a very short duration effectively disables cooldown
+
+// Alpha Mode settings
+export const ALPHA_MODE_SCORE_THRESHOLD = 25; // Score needed to activate Alpha Mode
+export const ALPHA_MODE_DURATION = 7; // Duration in seconds
+export const ALPHA_MODE_SPEED_MULTIPLIER = 1.5; // How much faster the snake moves in Alpha Mode
+export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
 
 // Enemy snake settings
 export const NUM_ENEMIES = 6;
@@ -19,7 +52,7 @@ export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
 export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
 export const ENEMY_KILL_SCORE = 7; // Points awarded for killing an enemy
-export const ENEMY_RESPAWN_TIME = 5; // Seconds before a new enemy spawns after being killed
+export const ENEMY_RESPAWN_TIME = 12; // Seconds before a new enemy spawns after being killed
 
 // Player powerup settings
 export const ENLARGED_HEAD_DURATION = 5; // Seconds the player's head stays enlarged after killing an enemy
@@ -30,7 +63,7 @@ export const PARTICLE_COUNT_KILL = 30; // Number of particles when killing an en
 export const PARTICLE_COLOR_KILL = 0xFF5722; // Orange color for kill particles
 
 // Regular food particle settings (smaller, green effect)
-export const PARTICLE_COUNT_NORMAL_FOOD = 1; // Fewer particles for regular food
+export const PARTICLE_COUNT_NORMAL_FOOD = 10; // Fewer particles for regular food
 export const PARTICLE_COLOR_NORMAL_FOOD = 0x4CAF50; // Green color for regular food particles
 
 export const WALL_HEIGHT = 3;
@@ -40,15 +73,6 @@ export const FOG_COLOR = 0xFFFFFF;
 export const FOG_DENSITY = 0.018;
 
 export const START_SAFE_ZONE = 5; // Player start area free of obstacles
-
-// Alpha Mode settings
-export const ALPHA_MODE_SCORE_THRESHOLD = 25; // Score needed to trigger Alpha Mode
-export const ALPHA_MODE_DURATION = 7; // Duration in seconds
-export const ALPHA_MODE_SPEED_MULTIPLIER = 1.5; // How much faster the snake moves in Alpha Mode
-export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
-
-export const GRASS_COUNT = 15000;
-export const PARTICLE_COUNT_EAT = 25;
 
 // Game Text Configuration
 // This section allows you to customize all text messages in the game
@@ -66,7 +90,7 @@ export const GAME_TEXT = {
             DEATH_REASONS: {
                 WALL_COLLISION: "You crashed into a wall",
                 SELF_COLLISION: "You ate yourself",
-                ENEMY_COLLISION: "You were eaten by another snek",
+                ENEMY_COLLISION: "You choked on a snek",
                 OBSTACLE_COLLISION: "You crashed into an obstacle",
                 TREE_COLLISION: "You tried to eat a tree",
                 BUSH_COLLISION: "You got tangled in a bush"
@@ -112,10 +136,7 @@ export const GAME_TEXT = {
             "GULP",
             "YOU ATE YOUR COUSIN",
             "GROWING BOY",
-            "HOW DOES THAT FIT IN THERE",
             "BIG SNEK",
-            "YOUR MOM WOULD BE PROUD",
-            "YOUR DAD WOULD BE PROUD",
             "SNEK JOB",
             "JUST THE TAIL"
         ]
@@ -140,7 +161,7 @@ export const FROG_MOVEMENT = {
     SPEED_VARIATION: 0.5,
     
     // How high frogs hop (in grid units)
-    HOP_HEIGHT: 0.3,
+    HOP_HEIGHT: 0.2,
     
     // Base frequency of hopping (higher = more frequent hops)
     HOP_FREQUENCY: 2.0,

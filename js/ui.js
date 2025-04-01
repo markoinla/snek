@@ -70,7 +70,7 @@ function initializeUIText() {
 
     // Alpha mode label
     if (alphaModeLabel) {
-        alphaModeLabel.textContent = CONFIG.GAME_TEXT.ALPHA_MODE.PROGRESS_LABEL;
+        alphaModeLabel.textContent = 'ALPHA MODE';
     }
     
     // Intro screen text
@@ -226,7 +226,7 @@ function initAlphaModeUI() {
         }
         // No flashing animation until Alpha Mode is active
         if (alphaModeLabel) {
-            alphaModeLabel.classList.remove('alpha-mode-active');
+            alphaModeLabel.style.display = 'block';
         }
     }
 }
@@ -387,8 +387,37 @@ export function hideGameOver() {
 
 export function updatePowerUpInfo(text) {
     if (powerUpInfoElement) {
-        powerUpInfoElement.textContent = text;
-        powerUpInfoElement.style.display = text ? 'block' : 'none';
+        // Clear previous content
+        powerUpInfoElement.innerHTML = '';
+        
+        // If there's no text, hide the element
+        if (!text) {
+            powerUpInfoElement.style.display = 'none';
+            return;
+        }
+        
+        // Check if the text contains multiple power-ups (separated by |)
+        if (text.includes('|')) {
+            // Split the text into individual power-ups
+            const powerUps = text.split('|').map(item => item.trim());
+            
+            // Create a div for each power-up
+            powerUps.forEach(powerUp => {
+                const powerUpDiv = document.createElement('div');
+                powerUpDiv.className = 'power-up-item';
+                powerUpDiv.textContent = powerUp;
+                powerUpInfoElement.appendChild(powerUpDiv);
+            });
+        } else {
+            // Single power-up, create one div
+            const powerUpDiv = document.createElement('div');
+            powerUpDiv.className = 'power-up-item';
+            powerUpDiv.textContent = text;
+            powerUpInfoElement.appendChild(powerUpDiv);
+        }
+        
+        // Show the container
+        powerUpInfoElement.style.display = 'flex';
     }
 }
 
@@ -453,7 +482,10 @@ export function resetUI(initialScore = 0, gameState) {
             alphaModeProgress.style.height = '0%';
         }
         if (alphaModeLabel) {
+            alphaModeLabel.style.display = 'block';
             alphaModeLabel.classList.remove('alpha-mode-active');
+            // Reset label text
+            alphaModeLabel.textContent = 'ALPHA MODE';
         }
     }
 }
@@ -478,22 +510,13 @@ export function getRandomEnemyKillMessage() {
 // --- Alpha Mode UI Functions ---
 
 /**
- * Shows the Alpha Mode progress bar with active animation
+ * Shows the Alpha Mode progress bar
  */
 export function showAlphaModeBar() {
     if (alphaModeContainer) {
-        // Make sure the container is visible
         alphaModeContainer.style.display = 'flex';
-        
-        // Change label text to indicate active mode
         if (alphaModeLabel) {
-            alphaModeLabel.textContent = CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVE_LABEL;
-            alphaModeLabel.classList.add('alpha-mode-active');
-        }
-        
-        // Make sure the progress bar is visible and fully filled
-        if (alphaModeProgress) {
-            alphaModeProgress.style.height = '100%';
+            alphaModeLabel.style.display = 'block';
         }
     }
 }
@@ -506,8 +529,9 @@ export function hideAlphaModeBar() {
         alphaModeContainer.style.display = 'none';
         if (alphaModeLabel) {
             alphaModeLabel.classList.remove('alpha-mode-active');
+            alphaModeLabel.style.display = 'none';
             // Reset label text
-            alphaModeLabel.textContent = CONFIG.GAME_TEXT.ALPHA_MODE.PROGRESS_LABEL;
+            alphaModeLabel.textContent = 'ALPHA MODE';
         }
     }
 }
@@ -527,6 +551,49 @@ export function updateAlphaModeProgress(percentage) {
         // make sure the container is visible
         if (alphaModeContainer && alphaModeContainer.style.display !== 'flex') {
             alphaModeContainer.style.display = 'flex';
+            
+            // Make sure the label is visible
+            if (alphaModeLabel) {
+                alphaModeLabel.style.display = 'block';
+            }
+        }
+    }
+}
+
+/**
+ * Updates the Alpha Mode UI with the current score multiplier
+ * @param {number} progress - Progress toward Alpha Mode (0-1)
+ * @param {number} remainingTime - Remaining time in Alpha Mode
+ * @param {number} scoreMultiplier - Current score multiplier
+ */
+export function updateAlphaModeUI(progress, remainingTime, scoreMultiplier = 1.0) {
+    // Update the progress bar
+    if (alphaModeProgress) {
+        const percentage = progress * 100;
+        alphaModeProgress.style.height = `${percentage}%`;
+    }
+    
+    // Update the label with remaining time and multiplier if active
+    if (alphaModeLabel) {
+        if (progress > 0) {
+            // Alpha Mode is active
+            alphaModeLabel.classList.add('alpha-mode-active');
+            
+            // Format the remaining time to one decimal place
+            const timeText = remainingTime.toFixed(1);
+            
+            // Add multiplier info if greater than 1
+            let multiplierText = '';
+            if (scoreMultiplier > 1.0) {
+                multiplierText = ` x${scoreMultiplier.toFixed(1)}`;
+            }
+            
+            // Update the label text
+            alphaModeLabel.textContent = `ALPHA ${timeText}s${multiplierText}`;
+        } else {
+            // Alpha Mode is not active
+            alphaModeLabel.classList.remove('alpha-mode-active');
+            alphaModeLabel.textContent = 'ALPHA MODE';
         }
     }
 }
@@ -537,4 +604,20 @@ export function updateAlphaModeProgress(percentage) {
 export function showAlphaModeActivation() {
     // Use the same power-up text effect as requested
     showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE, 0x9C27B0); // Purple color
+}
+
+/**
+ * Shows the Alpha Mode cooldown status in the UI
+ */
+export function showAlphaModeCooldown(cooldownEndTime, currentTime) {
+    // Function kept for compatibility but does nothing now since cooldown is disabled
+    console.log("Alpha Mode cooldown disabled");
+}
+
+/**
+ * Hides the Alpha Mode cooldown UI
+ */
+export function hideAlphaModeCooldown() {
+    // Function kept for compatibility but does nothing now since cooldown is disabled
+    console.log("Alpha Mode cooldown disabled");
 }
