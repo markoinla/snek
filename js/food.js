@@ -5,6 +5,7 @@ import { generateUniquePosition } from './utils.js';
 import { createExplosion, createNormalFoodEffect, createFrogEffect } from './particleSystem.js';
 import { applyPowerUp, addScoreMultiplier } from './playerSnake.js'; // Import specific functions
 import * as UI from './ui.js';
+import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 
 /**
  * Creates a blocky apple model made of a few cubes
@@ -367,6 +368,9 @@ export function checkAndEatFood(position, gameState) {
             // Increment apples eaten count
             gameState.stats.applesEaten++;
             
+            // Play apple eating sound
+            Audio.playSoundEffect('eatApple');
+            
             // Apply temporary speed boost when eating an apple
             if (gameState.playerSnake) {
                 // Set the speed boost end time
@@ -394,6 +398,9 @@ export function checkAndEatFood(position, gameState) {
         } else {
             // Increment frogs eaten count
             gameState.stats.frogsEaten++;
+            
+            // Play frog eating sound
+            Audio.playSoundEffect('eatFrog');
         }
 
         // Trigger effects (particles, sound?, UI text)

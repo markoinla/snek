@@ -8,6 +8,7 @@ import { checkObstacleCollision } from './obstacles.js';
 import { checkEnemyCollision, killEnemySnake as killEnemy } from './enemySnake.js';
 import { checkAndEatFood } from './food.js';
 import * as UI from './ui.js'; // For power-up UI updates
+import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 
@@ -442,6 +443,9 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         
         // Store the direction we actually moved in
         playerSnake.lastDirection = {...playerSnake.direction};
+        
+        // Play movement sound based on Alpha Mode status
+        Audio.playPlayerMoveSound(playerSnake.alphaMode?.active || false);
     }
 }
 
@@ -494,6 +498,9 @@ export function killEnemySnake(enemyId, gameState) {
         if (scoreMultiplier > 1.0) {
             UI.showPowerUpTextEffect(`+${multipliedScore} pts!`, 0xFFD700); // Gold color for score
         }
+        
+        // Play snake eating sound
+        Audio.playSoundEffect('eatSnake');
         
         // Update UI
         UI.updateScore(gameState.score);
@@ -703,8 +710,7 @@ function startCameraShake(gameState) {
 
 function clearPowerUpEffects(gameState, clearUIDisplay = true) {
     const { playerSnake } = gameState;
-    if (!playerSnake) return;
-
+    
     // Reset all power-up effects
     playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
     playerSnake.scoreMultiplier = 1;
@@ -1158,6 +1164,9 @@ function handleEnemyCollision(collision, gameState, currentTime) {
         // In Alpha Mode, always kill the enemy snake regardless of collision point
         console.log("Alpha Mode active - killing enemy snake regardless of collision point");
         killEnemySnake(collision.enemyId, gameState);
+        
+        // Play explosion sound effect for Alpha Mode kill
+        Audio.playSoundEffect('alphaKillExplode1');
         
         // Show the next message in the sequence for Alpha Mode kills
         UI.showPowerUpTextEffect(getNextAlphaKillMessage(), CONFIG.ALPHA_MODE_COLOR);

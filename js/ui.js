@@ -1,6 +1,7 @@
 // --- DOM Element References ---
 import * as CONFIG from './config.js';
 import { gameState } from './gameState.js';
+import * as Audio from './audioSystem.js';
 
 // Get DOM elements
 const scoreElement = document.getElementById('info');
@@ -21,6 +22,21 @@ const alphaModeProgress = document.getElementById('alphaModeProgress');
 const applesEatenElement = document.getElementById('applesEaten');
 const frogsEatenElement = document.getElementById('frogsEaten');
 const snakesEatenElement = document.getElementById('snakesEaten');
+
+// Settings button
+const settingsButton = document.getElementById('settingsButton');
+// Music toggle button in header
+const musicToggleButton = document.getElementById('musicToggleButton');
+
+// Settings menu elements
+const settingsMenu = document.getElementById('settingsMenu');
+const closeSettingsButton = document.getElementById('closeSettings');
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabPanes = document.querySelectorAll('.tab-pane');
+const musicToggle = document.getElementById('musicToggle');
+const soundToggle = document.getElementById('soundToggle');
+const musicVolumeSlider = document.getElementById('musicVolume');
+const soundVolumeSlider = document.getElementById('soundVolume');
 
 // Intro screen elements
 const introScreen = document.getElementById('introScreen');
@@ -135,24 +151,135 @@ function setupEventListeners() {
         });
     }
     
-    // Help button
+    // Help button now opens settings menu
     if (helpButton) {
-        helpButton.addEventListener('click', showHelpScreen);
+        helpButton.addEventListener('click', showSettingsMenu);
+    }
+    
+    // Settings button
+    if (settingsButton) {
+        settingsButton.addEventListener('click', showSettingsMenu);
+    }
+    
+    // Music toggle button in header
+    if (musicToggleButton) {
+        musicToggleButton.addEventListener('click', toggleBackgroundMusic);
+    }
+    
+    // Settings menu close button
+    if (closeSettingsButton) {
+        closeSettingsButton.addEventListener('click', hideSettingsMenu);
+    }
+    
+    // Tab switching in settings menu
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons and panes
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabPanes.forEach(pane => pane.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding pane
+            button.classList.add('active');
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+    
+    // Settings menu audio controls
+    if (musicToggle) {
+        musicToggle.addEventListener('click', () => {
+            const isMusicEnabled = Audio.toggleMusic();
+            musicToggle.classList.toggle('muted', !isMusicEnabled);
+            musicToggle.querySelector('.toggle-status').textContent = isMusicEnabled ? 'ON' : 'OFF';
+        });
+    }
+    
+    if (soundToggle) {
+        soundToggle.addEventListener('click', () => {
+            const isSoundEnabled = Audio.toggleSound();
+            soundToggle.classList.toggle('muted', !isSoundEnabled);
+            soundToggle.querySelector('.toggle-status').textContent = isSoundEnabled ? 'ON' : 'OFF';
+        });
+    }
+    
+    // Volume sliders
+    if (musicVolumeSlider) {
+        musicVolumeSlider.addEventListener('input', () => {
+            const volume = musicVolumeSlider.value / 100;
+            Audio.setMusicVolume(volume);
+        });
+    }
+    
+    if (soundVolumeSlider) {
+        soundVolumeSlider.addEventListener('input', () => {
+            const volume = soundVolumeSlider.value / 100;
+            Audio.setSoundVolume(volume);
+        });
     }
 }
 
-// Call setup event listeners
-setupEventListeners();
+// Initialize UI elements and set up event listeners
+export function initUI() {
+    setupEventListeners();
+    initAudioControls();
+}
+
+// Initialize audio controls with current audio system state
+function initAudioControls() {
+    // Set initial states for audio controls based on audio system
+    if (musicToggle) {
+        musicToggle.classList.toggle('muted', !Audio.isMusicOn());
+        const musicStatus = musicToggle.querySelector('.toggle-status');
+        if (musicStatus) {
+            musicStatus.textContent = Audio.isMusicOn() ? 'ON' : 'OFF';
+        }
+    }
+    
+    if (soundToggle) {
+        soundToggle.classList.toggle('muted', !Audio.isSoundOn());
+        const soundStatus = soundToggle.querySelector('.toggle-status');
+        if (soundStatus) {
+            soundStatus.textContent = Audio.isSoundOn() ? 'ON' : 'OFF';
+        }
+    }
+    
+    // Set volume sliders to match audio system values
+    if (musicVolumeSlider) {
+        musicVolumeSlider.value = Math.round(Audio.getMusicVolume() * 100);
+    }
+    
+    if (soundVolumeSlider) {
+        soundVolumeSlider.value = Math.round(Audio.getSoundVolume() * 100);
+    }
+    
+    // Initialize music toggle button in header
+    if (musicToggleButton) {
+        musicToggleButton.classList.toggle('muted', !Audio.isMusicOn());
+    }
+}
+
+// Call initUI
+initUI();
 
 // Function to start the game
 export function startGame() {
+    // Hide intro screen if visible
     if (introScreen) {
         introScreen.style.display = 'none';
     }
+    
+    // Hide game over screen if visible
+    if (gameOverElement) {
+        gameOverElement.style.display = 'none';
+    }
+    
+    // Don't automatically play background music - let user control it with the toggle button
+    // Audio.playBackgroundMusic();
+    
     gameStarted = true;
     firstTimeUser = false; // User has now played at least once
     
-    // Dispatch a custom event to notify that the game has started
+    // Dispatch game started event
     window.dispatchEvent(new CustomEvent('gameStarted'));
 }
 
@@ -176,13 +303,22 @@ export function showIntroScreen() {
 }
 
 // Function to show the help screen (reuses the intro screen)
-export function showHelpScreen() {
-    if (introScreen) {
-        introScreen.style.display = 'flex';
+export function showHelp() {
+    showSettingsMenu();
+    
+    // Activate the How to Play tab
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    tabPanes.forEach(pane => pane.classList.remove('active'));
+    
+    const howToPlayButton = document.querySelector('[data-tab="howToPlay"]');
+    if (howToPlayButton) {
+        howToPlayButton.classList.add('active');
     }
     
-    // Dispatch an event to pause the game
-    window.dispatchEvent(new CustomEvent('gamePaused'));
+    const howToPlayPane = document.getElementById('howToPlay');
+    if (howToPlayPane) {
+        howToPlayPane.classList.add('active');
+    }
 }
 
 // Function to resume the game after help screen is closed
@@ -253,6 +389,8 @@ export const elements = {
     applesEatenElement,
     frogsEatenElement,
     snakesEatenElement,
+    settingsButton,
+    musicToggleButton,
 };
 
 export function updateScore(score) {
@@ -327,52 +465,47 @@ export function updateHighScore(highScore) {
 /**
  * Shows the game over screen with the final score and death reason
  * @param {number} score - The final score to display
+ * @param {number} highScore - The current high score
  * @param {string} deathReason - The reason for death (used to look up message in config)
- * @param {Object} gameState - The game state object containing stats
+ * @param {Object} stats - The game statistics
  */
-export function showGameOver(score, deathReason = 'DEFAULT', gameState) {
-    if (gameOverElement && finalScoreElement) {
-        // Set the final score
-        finalScoreElement.textContent = score;
+export function showGameOver(score, highScore, deathReason, stats = {}) {
+    if (gameOverElement) {
+        gameOverElement.style.display = 'flex';
         
-        // Set the high score
-        if (highScoreElement && gameState) {
-            highScoreElement.textContent = gameState.highScore;
+        // Set final score
+        if (finalScoreElement) {
+            finalScoreElement.textContent = score;
         }
         
-        // Set the death reason message based on the provided reason
+        // Set high score
+        if (highScoreElement) {
+            highScoreElement.textContent = highScore;
+        }
+        
+        // Set death reason
         if (deathReasonElement) {
-            // Get the appropriate message from config based on the death reason
-            const deathMessages = CONFIG.GAME_TEXT.UI.GAME_OVER.DEATH_REASONS;
-            const message = deathMessages[deathReason] || deathMessages.DEFAULT;
-            deathReasonElement.textContent = message;
+            deathReasonElement.textContent = deathReason || 'You died!';
         }
         
-        // Update game stats
-        if (gameState) {
-            // Update apples eaten
-            if (applesEatenElement) {
-                applesEatenElement.textContent = gameState.stats.applesEaten || 0;
+        // Set stats if provided
+        if (stats) {
+            if (applesEatenElement && stats.applesEaten !== undefined) {
+                applesEatenElement.textContent = stats.applesEaten;
             }
             
-            // Update frogs eaten
-            if (frogsEatenElement) {
-                frogsEatenElement.textContent = gameState.stats.frogsEaten || 0;
+            if (frogsEatenElement && stats.frogsEaten !== undefined) {
+                frogsEatenElement.textContent = stats.frogsEaten;
             }
             
-            // Update snakes eaten
-            if (snakesEatenElement) {
-                snakesEatenElement.textContent = gameState.enemies.kills || 0;
+            if (snakesEatenElement && stats.snakesEaten !== undefined) {
+                snakesEatenElement.textContent = stats.snakesEaten;
             }
         }
         
-        // Show the game over screen using the active class
-        gameOverElement.classList.add('active');
+        // Dispatch game over event
+        window.dispatchEvent(new CustomEvent('gameOver'));
     }
-    
-    // Hide mobile buttons on game over
-    if (leftButton) leftButton.style.display = 'none';
-    if (rightButton) rightButton.style.display = 'none';
 }
 
 export function hideGameOver() {
@@ -620,4 +753,53 @@ export function showAlphaModeCooldown(cooldownEndTime, currentTime) {
 export function hideAlphaModeCooldown() {
     // Function kept for compatibility but does nothing now since cooldown is disabled
     console.log("Alpha Mode cooldown disabled");
+}
+
+/**
+ * Toggle background music on/off
+ * This function toggles the music and updates the UI to reflect the current state
+ */
+function toggleBackgroundMusic() {
+    // Toggle music using the Audio system
+    const isMusicEnabled = Audio.toggleMusic();
+    
+    // Update the music toggle button in the header
+    if (musicToggleButton) {
+        musicToggleButton.classList.toggle('muted', !isMusicEnabled);
+    }
+    
+    // Update the music toggle in the settings menu
+    if (musicToggle) {
+        musicToggle.classList.toggle('muted', !isMusicEnabled);
+        const musicStatus = musicToggle.querySelector('.toggle-status');
+        if (musicStatus) {
+            musicStatus.textContent = isMusicEnabled ? 'ON' : 'OFF';
+        }
+    }
+    
+    console.log(`Background music ${isMusicEnabled ? 'enabled' : 'disabled'}`);
+}
+
+/**
+ * Show the settings menu
+ */
+export function showSettingsMenu() {
+    // Pause the game when settings menu is shown
+    window.dispatchEvent(new Event('gamePaused'));
+    
+    if (settingsMenu) {
+        settingsMenu.classList.add('active');
+    }
+}
+
+/**
+ * Hide the settings menu
+ */
+export function hideSettingsMenu() {
+    if (settingsMenu) {
+        settingsMenu.classList.remove('active');
+    }
+    
+    // Resume the game when settings menu is closed
+    window.dispatchEvent(new Event('gameResumed'));
 }

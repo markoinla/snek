@@ -117,7 +117,7 @@ export const GAME_TEXT = {
             "SNEK EMPORER",
             "SNEK GOD",
             "THE ONE SNEK TO RULE THEM ALL",
-            "YOU ARE THE OMEGA SNEK"
+            "YOU ARE OMEGA SNEK"
         ]
     },
     

@@ -11,6 +11,7 @@ import * as Food from './food.js';
 import * as Obstacles from './obstacles.js';
 import * as Player from './playerSnake.js';
 import * as Enemy from './enemySnake.js';
+import * as Audio from './audioSystem.js';
 import Stats from '../lib/stats.module.js';
 
 // FPS counter
@@ -61,7 +62,10 @@ async function init() {
 
     // Initialize Systems that need materials/scene
     Particles.initParticles(gameState.materials.particle);
-
+    
+    // Initialize Audio System
+    Audio.initAudioSystem(gameState.camera);
+    
     // Setup Input Listeners (store cleanup function)
     gameState.cleanupInput = Input.setupInputListeners(gameState, UI.elements);
 
@@ -80,8 +84,8 @@ async function init() {
 
     // Add event listeners for UI buttons
     document.getElementById('startButton')?.addEventListener('click', UI.startGame);
-    document.getElementById('helpButton')?.addEventListener('click', UI.showHelp);
-    document.getElementById('closeHelpButton')?.addEventListener('click', UI.hideHelp);
+    document.getElementById('settingsButton')?.addEventListener('click', UI.showSettingsMenu);
+    document.getElementById('closeSettings')?.addEventListener('click', UI.hideSettingsMenu);
     document.getElementById('restartButton')?.addEventListener('click', UI.startGame);
     
     // Add event listener for Alpha Mode cooldown reset button
@@ -102,9 +106,17 @@ async function init() {
         stats = new Stats();
         document.body.appendChild(stats.dom);
     }
+    
+    // Add event listeners for game state changes
+    window.addEventListener('gameStarted', onGameStart);
+    window.addEventListener('gameOver', onGameOver);
+    window.addEventListener('gamePaused', onGamePaused);
+    window.addEventListener('gameResumed', onGameResumed);
 }
 
-// Function to start the actual gameplay after intro screen
+/**
+ * Function to start the actual gameplay after intro screen
+ */
 function startGameplay() {
     console.log("Starting gameplay...");
     
@@ -113,13 +125,18 @@ function startGameplay() {
         resetGame();
     }
     
-    // Start the game loop if not already running
-    if (!gameState.flags.gameRunning) {
-        // Initial Game Reset (spawns player, food, obstacles, enemies)
-        resetGame(); // This now sets flags.gameRunning = true
-
-        // Start Animation Loop
+    // Set game flags
+    gameState.flags.gameStarted = true;
+    gameState.flags.gameOver = false;
+    gameState.flags.gamePaused = false;
+    
+    // Start animation if not already running
+    if (!gameState.flags.animating) {
+        gameState.flags.animating = true;
         animate();
+        
+        // Don't automatically play background music
+        // Audio.playBackgroundMusic();
     }
 }
 
@@ -127,6 +144,9 @@ function startGameplay() {
 function pauseGame() {
     console.log("Game paused");
     gameState.flags.gameRunning = false;
+    
+    // Pause background music
+    Audio.pauseBackgroundMusic();
 }
 
 // Function to resume the game (when help screen is closed)
@@ -140,6 +160,60 @@ function resumeGame() {
             gameState.flags.animating = true;
             animate();
         }
+        
+        // Resume background music
+        Audio.playBackgroundMusic();
+    }
+}
+
+// Game start handler
+function onGameStart() {
+    console.log("Game started");
+    gameState.flags.gameOver = false;
+    gameState.flags.gamePaused = false;
+    
+    // Reset game state
+    resetGame();
+    
+    // Don't automatically play background music
+    // Audio.playBackgroundMusic();
+}
+
+// Game over handler
+function onGameOver() {
+    console.log("Game over");
+    gameState.flags.gameOver = true;
+    
+    // Don't pause background music on game over
+    // Audio.pauseBackgroundMusic();
+    
+    // Show game over screen with stats
+    UI.showGameOver(gameState.score, gameState.highScore, gameState.deathReason, {
+        applesEaten: gameState.applesEaten,
+        frogsEaten: gameState.frogsEaten,
+        snakesEaten: gameState.snakesEaten
+    });
+}
+
+// Game paused handler
+function onGamePaused() {
+    console.log("Game paused");
+    gameState.flags.gamePaused = true;
+    
+    // Pause background music
+    Audio.pauseBackgroundMusic();
+}
+
+// Game resumed handler
+function onGameResumed() {
+    console.log("Game resumed");
+    
+    // Only resume if the game was previously running (not game over)
+    if (!gameState.flags.gameOver) {
+        gameState.flags.gamePaused = false;
+        
+        // Resume background music
+        Audio.playBackgroundMusic();
     }
 }
 
@@ -221,7 +295,8 @@ export function setGameOver(state = gameState, deathReason = 'DEFAULT') { // All
     }
     state.playerSnake.activePowerUp = null;
 
-    // Optional: Stop enemy movement? AI loop will stop due to gameRunning flag
+    // Pause background music
+    // Audio.pauseBackgroundMusic();
 }
 
 // --- Restart Request ---
