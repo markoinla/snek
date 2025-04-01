@@ -70,11 +70,15 @@ export const gameState = {
     },
 
     // Game Status
-    score: 0,
+    score: {
+        current: 0,
+        multiplier: 1
+    },
     highScore: loadHighScore(), // Load high score from localStorage
     stats: {
         applesEaten: 0,   // Track normal food (apples) eaten
         frogsEaten: 0,    // Track power-up frogs eaten
+        snakesEaten: 0,   // Track enemy snakes eaten
     },
     flags: {
         gameOver: false,
@@ -134,12 +138,14 @@ export function resetGameStateForNewGame() {
      // Enemies, Food, Obstacles will be reset by their respective modules calling their reset functions
 
      // Reset Status
-     gameState.score = 0;
+     gameState.score.current = 0;
+     gameState.score.multiplier = 1;
      // Don't reset high score between games
      // gameState.highScore = 0;
      gameState.enemies.kills = 0;
      gameState.stats.applesEaten = 0;
      gameState.stats.frogsEaten = 0;
+     gameState.stats.snakesEaten = 0;
      gameState.flags.gameOver = false;
      gameState.flags.gameRunning = true; // Mark as running after reset
      gameState.flags.restartRequested = false;

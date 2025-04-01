@@ -181,18 +181,10 @@ function onGameStart() {
 
 // Game over handler
 function onGameOver() {
-    console.log("Game over");
-    gameState.flags.gameOver = true;
+    console.log("Game over handler called");
     
     // Don't pause background music on game over
     // Audio.pauseBackgroundMusic();
-    
-    // Show game over screen with stats
-    UI.showGameOver(gameState.score, gameState.highScore, gameState.deathReason, {
-        applesEaten: gameState.applesEaten,
-        frogsEaten: gameState.frogsEaten,
-        snakesEaten: gameState.snakesEaten
-    });
 }
 
 // Game paused handler
@@ -267,13 +259,13 @@ function resetGame() {
 export function setGameOver(state = gameState, deathReason = 'DEFAULT') { // Allow passing state for flexibility
     if (state.flags.gameOver) return; // Prevent multiple triggers
 
-    console.log("Game Over! Final Score:", state.score, "Reason:", deathReason);
+    console.log("Game Over! Final Score:", state.score.current, "Reason:", deathReason);
     state.flags.gameOver = true;
     state.flags.gameRunning = false; // Stop game logic updates
     
     // Update high score if current score is higher
-    if (state.score > state.highScore) {
-        state.highScore = state.score;
+    if (state.score.current > state.highScore) {
+        state.highScore = state.score.current;
         console.log("New High Score:", state.highScore);
         // Save high score to localStorage for persistence between sessions
         saveHighScore(state.highScore);
@@ -281,8 +273,15 @@ export function setGameOver(state = gameState, deathReason = 'DEFAULT') { // All
         UI.updateHighScore(state.highScore);
     }
 
+    // Prepare game stats for the game over screen
+    const gameStats = {
+        applesEaten: state.stats.applesEaten || 0,
+        frogsEaten: state.stats.frogsEaten || 0,
+        snakesEaten: state.stats.snakesEaten || 0
+    };
+    
     // Show UI with death reason and game stats
-    UI.showGameOver(state.score, deathReason, state);
+    UI.showGameOver(state.score.current, state.highScore, deathReason, gameStats);
     UI.updatePowerUpInfo(''); // Clear any active power-up display
     UI.hidePowerUpTextEffect();
 

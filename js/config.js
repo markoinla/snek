@@ -5,8 +5,8 @@ export const BASE_SNAKE_SPEED = 0.22;
 export const CAMERA_DISTANCE = 9;
 export const CAMERA_HEIGHT = 12;
 export const CAMERA_LAG = 0.25;
-export const CAMERA_POSITION_SMOOTHNESS = 0.08; // Lower = smoother camera position movement
-export const CAMERA_ROTATION_SMOOTHNESS = 0.1; // Lower = smoother camera rotation
+export const CAMERA_POSITION_SMOOTHNESS = 0.03; // Lower = smoother camera position movement
+export const CAMERA_ROTATION_SMOOTHNESS = 0.05; // Lower = smoother camera rotation
 export const SPRITE_SHEET_DIM = 2;
 export const NUM_INITIAL_FOOD = 50;
 export const MIN_SNAKE_LENGTH = 3;
@@ -43,6 +43,21 @@ export const ALPHA_MODE_SCORE_THRESHOLD = 30; // Score needed to activate Alpha 
 export const ALPHA_MODE_DURATION = 6; // Duration in seconds
 export const ALPHA_MODE_SPEED_MULTIPLIER = 1.5; // How much faster the snake moves in Alpha Mode
 export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
+
+// Audio settings
+export const AUDIO_VOLUME = {
+    MUSIC: 0.3,               // Background music volume (0.0 to 1.0)
+    MOVEMENT_SOUNDS: 0.4,     // Snake movement sound effects volume
+    EATING_SOUNDS: 0.6,       // Food eating sound effects volume
+    ALPHA_MODE_SOUNDS: 0.7,   // Alpha Mode sound effects volume (explosions, voice lines)
+    DEATH_SOUND: 0.9          // Player death sound volume
+};
+
+// Default audio states
+export const AUDIO_ENABLED = {
+    MUSIC: false,             // Music off by default
+    SOUND_EFFECTS: true       // Sound effects on by default
+};
 
 // Enemy snake settings
 export const NUM_ENEMIES = 6;

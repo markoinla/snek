@@ -473,9 +473,12 @@ export function showGameOver(score, highScore, deathReason, stats = {}) {
     if (gameOverElement) {
         gameOverElement.style.display = 'flex';
         
-        // Set final score
+        // Set final score - ensure it's a number
         if (finalScoreElement) {
-            finalScoreElement.textContent = score;
+            // Convert to number if it's an object
+            const finalScore = typeof score === 'object' ? (score.current || 0) : score;
+            finalScoreElement.textContent = finalScore;
+            console.log("Setting final score:", finalScore);
         }
         
         // Set high score
@@ -483,9 +486,25 @@ export function showGameOver(score, highScore, deathReason, stats = {}) {
             highScoreElement.textContent = highScore;
         }
         
-        // Set death reason
+        // Set death reason message from config
         if (deathReasonElement) {
-            deathReasonElement.textContent = deathReason || 'You died!';
+            // Get the death reason message from config
+            let deathMessage = 'You died!'; // Default message
+            
+            // Check if GAME_TEXT exists in CONFIG
+            if (CONFIG.GAME_TEXT) {
+                if (deathReason && CONFIG.GAME_TEXT.UI?.GAME_OVER?.DEATH_REASONS?.[deathReason]) {
+                    // Use the message from config if available
+                    deathMessage = CONFIG.GAME_TEXT.UI.GAME_OVER.DEATH_REASONS[deathReason];
+                }
+            } else {
+                console.warn("CONFIG.GAME_TEXT not found, using default death message");
+            }
+            
+            // Set the death reason message
+            deathReasonElement.textContent = deathMessage;
+            
+            console.log(`Game over: ${deathMessage} (reason code: ${deathReason})`);
         }
         
         // Set stats if provided

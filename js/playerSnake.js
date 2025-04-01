@@ -209,10 +209,10 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
     if (flags.gameOver || !playerSnake) return;
     
     // Update progress toward Alpha Mode
-    updateAlphaModeProgress(score, gameState);
+    updateAlphaModeProgress(score.current, gameState);
     
     // Check if we should enter Alpha Mode based on score
-    checkAlphaModeActivation(score, currentTime, gameState);
+    checkAlphaModeActivation(score.current, currentTime, gameState);
     
     // Update Alpha Mode progress if active
     if (playerSnake.alphaMode.active) {
@@ -385,14 +385,14 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
             const multipliedScore = Math.round(baseScore * scoreMultiplier);
             
             // Add the score and update UI
-            gameState.score += multipliedScore;
+            gameState.score.current += multipliedScore;
             
             // Show score popup if multiplier is active
             if (scoreMultiplier > 1.0) {
                 UI.showPowerUpTextEffect(`+${multipliedScore} pts!`, 0xFFD700); // Gold color for score
             }
             
-            UI.updateScore(gameState.score);
+            UI.updateScore(gameState.score.current);
             
             // Now apply power-up effect AFTER score update and food removal
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === eatenFood.type);
@@ -491,8 +491,9 @@ export function killEnemySnake(enemyId, gameState) {
         const multipliedScore = Math.round(baseScore * scoreMultiplier);
         
         // Add the score and update UI
-        gameState.score += multipliedScore;
+        gameState.score.current += multipliedScore;
         gameState.enemies.kills += 1;
+        gameState.stats.snakesEaten += 1; // Track snakes eaten for stats
         
         // Show score popup if multiplier is active
         if (scoreMultiplier > 1.0) {
@@ -503,7 +504,7 @@ export function killEnemySnake(enemyId, gameState) {
         Audio.playSoundEffect('eatSnake');
         
         // Update UI
-        UI.updateScore(gameState.score);
+        UI.updateScore(gameState.score.current);
         UI.updateKills(gameState.enemies.kills);
         
         // Show kill message with particle effect color

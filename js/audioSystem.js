@@ -8,10 +8,10 @@ let soundEffects = {};
 let audioLoader;
 
 // Audio state
-let isMusicEnabled = false; // Music off by default
-let isSoundEnabled = true;
-let musicVolume = 0.3;
-let soundVolume = 0.8;
+let isMusicEnabled = CONFIG.AUDIO_ENABLED.MUSIC; // Use config setting for music enabled state
+let isSoundEnabled = CONFIG.AUDIO_ENABLED.SOUND_EFFECTS; // Use config setting for sound effects enabled state
+let musicVolume = CONFIG.AUDIO_VOLUME.MUSIC; // Use config setting for music volume
+let soundVolume = 0.8; // General sound volume (will be modified per sound type)
 let musicLoaded = false;
 
 // Counter for player movement sounds
@@ -331,11 +331,23 @@ export function playSoundEffect(name) {
             sound.stop();
         }
         
+        // Set the volume based on the type of sound
+        let volume = soundVolume; // Default volume
+        
+        // Determine the type of sound and set appropriate volume
+        if (name.startsWith('eat')) {
+            volume = CONFIG.AUDIO_VOLUME.EATING_SOUNDS;
+        } else if (name.startsWith('alphaKill')) {
+            volume = CONFIG.AUDIO_VOLUME.ALPHA_MODE_SOUNDS;
+        } else if (name === 'playerDeath') {
+            volume = CONFIG.AUDIO_VOLUME.DEATH_SOUND;
+        }
+        
         // Set the volume and play the sound
-        sound.setVolume(soundVolume);
+        sound.setVolume(volume);
         sound.play();
         
-        console.log(`Playing sound effect: ${name}`);
+        console.log(`Playing sound effect: ${name} at volume ${volume}`);
     } else {
         console.warn(`Sound effect not found or not loaded: ${name}`);
     }
@@ -371,8 +383,8 @@ export function playPlayerMoveSound(isAlphaMode = false) {
             sound.stop();
         }
         
-        // Set the volume to half of the normal sound effect volume
-        sound.setVolume(soundVolume * 0.5);
+        // Set the volume using the movement sounds volume from config
+        sound.setVolume(CONFIG.AUDIO_VOLUME.MOVEMENT_SOUNDS);
         sound.play();
         
         console.log(`Playing ${isAlphaMode ? 'Alpha Mode' : 'regular'} movement sound: ${soundName}`);
