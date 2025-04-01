@@ -114,8 +114,21 @@ export function resetEnemies(gameState) {
             const meshes = enemyMeshes[enemyId];
             if (meshes && Array.isArray(meshes)) {
                 meshes.forEach(mesh => {
-                    if (mesh && scene.children.includes(mesh)) {
-                        scene.remove(mesh);
+                    if (mesh) {
+                        // Properly dispose of geometry and material
+                        if (mesh.geometry) mesh.geometry.dispose();
+                        if (mesh.material) {
+                            if (Array.isArray(mesh.material)) {
+                                mesh.material.forEach(material => material.dispose());
+                            } else {
+                                mesh.material.dispose();
+                            }
+                        }
+                        
+                        // Remove from scene
+                        if (scene.children.includes(mesh)) {
+                            scene.remove(mesh);
+                        }
                     }
                 });
             }
@@ -123,16 +136,30 @@ export function resetEnemies(gameState) {
         
         // Additional cleanup: scan the scene for any enemy meshes that might have been missed
         // Look for objects with names that match enemy snake segments
+        const objectsToRemove = [];
         scene.children.forEach(child => {
             if (child.name && child.name.startsWith('enemySnake')) {
-                scene.remove(child);
+                // Properly dispose of geometry and material
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(material => material.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+                objectsToRemove.push(child);
             }
         });
+        
+        // Remove objects after the loop to avoid issues with modifying the array while iterating
+        objectsToRemove.forEach(obj => scene.remove(obj));
     }
     
     // Reset the enemy data structures
     if (enemies) {
         enemies.list = []; // Clear the list of enemy data
+        enemies.respawnQueue = []; // Clear the respawn queue as well
     }
     
     // Clear the mesh cache
@@ -630,6 +657,16 @@ export function killEnemySnake(enemyId, gameState) {
                     CONFIG.PARTICLE_COUNT_KILL / meshes.length, // Distribute particles among segments
                     CONFIG.PARTICLE_COLOR_KILL
                 );
+            }
+            
+            // Properly dispose of geometry and material before removing
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(material => material.dispose());
+                } else {
+                    mesh.material.dispose();
+                }
             }
             
             // Remove mesh from scene

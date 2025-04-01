@@ -30,7 +30,7 @@ export const POWERUP_SCORE_MULTIPLIER_DURATION = 10.0; // Duration of score mult
 export const POWERUP_GHOST_DURATION = 8.0; // Duration of ghost mode power-up in seconds
 
 // Alpha Mode score multiplier settings
-export const ALPHA_MODE_SCORE_MULTIPLIER = 2.0; // Multiplier for each stack
+export const ALPHA_MODE_SCORE_MULTIPLIER = 1.5; // Multiplier for each stack
 export const ALPHA_MODE_SCORE_MULTIPLIER_DURATION = 5.0; // How long each multiplier stack lasts
 export const ALPHA_MODE_MAX_SCORE_MULTIPLIER = 8.0; // Maximum allowed multiplier
 
@@ -39,8 +39,8 @@ export const ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS = 999; // Setting to a high 
 export const ALPHA_MODE_COOLDOWN_DURATION = 0.1; // Setting to a very short duration effectively disables cooldown
 
 // Alpha Mode settings
-export const ALPHA_MODE_SCORE_THRESHOLD = 25; // Score needed to activate Alpha Mode
-export const ALPHA_MODE_DURATION = 7; // Duration in seconds
+export const ALPHA_MODE_SCORE_THRESHOLD = 30; // Score needed to activate Alpha Mode
+export const ALPHA_MODE_DURATION = 6; // Duration in seconds
 export const ALPHA_MODE_SPEED_MULTIPLIER = 1.5; // How much faster the snake moves in Alpha Mode
 export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
 
@@ -52,7 +52,7 @@ export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
 export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
 export const ENEMY_KILL_SCORE = 7; // Points awarded for killing an enemy
-export const ENEMY_RESPAWN_TIME = 12; // Seconds before a new enemy spawns after being killed
+export const ENEMY_RESPAWN_TIME = 15; // Seconds before a new enemy spawns after being killed
 
 // Player powerup settings
 export const ENLARGED_HEAD_DURATION = 5; // Seconds the player's head stays enlarged after killing an enemy
@@ -70,7 +70,7 @@ export const WALL_HEIGHT = 3;
 export const WALL_THICKNESS = 1;
 
 export const FOG_COLOR = 0xFFFFFF;
-export const FOG_DENSITY = 0.018;
+export const FOG_DENSITY = 0.03;
 
 export const START_SAFE_ZONE = 5; // Player start area free of obstacles
 
@@ -164,7 +164,7 @@ export const FROG_MOVEMENT = {
     HOP_HEIGHT: 0.2,
     
     // Base frequency of hopping (higher = more frequent hops)
-    HOP_FREQUENCY: 2.0,
+    HOP_FREQUENCY: 1.0,
     
     // Random hop frequency variation
     HOP_FREQUENCY_VARIATION: 0.5,
