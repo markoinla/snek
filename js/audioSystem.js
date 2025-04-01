@@ -17,6 +17,9 @@ let musicLoaded = false;
 // Counter for player movement sounds
 let playerMoveSoundCounter = 0;
 
+// Counter for alpha kill voice lines
+let alphaKillVoiceIndex = 0;
+
 /**
  * Initialize the audio system
  * @param {THREE.Camera} camera - The main camera to attach the audio listener to
@@ -114,11 +117,26 @@ function initSoundEffects() {
         { name: 'moveEnemySnake1', path: 'assets/sounds/move_enemy_snake_1.ogg' },
         { name: 'moveEnemySnake2', path: 'assets/sounds/move_enemy_snake_2.ogg' },
         
+        // Player death sound
+        { name: 'playerDeath', path: 'assets/sounds/died_player.ogg' },
+        
         // Alpha kill sounds (explosion effects)
         { name: 'alphaKillExplode1', path: 'assets/sounds/alpha_kill_explode_1.ogg' },
-        { name: 'alphaKillExplode2', path: 'assets/sounds/alpha_kill_explode_2.ogg' }
+        { name: 'alphaKillExplode2', path: 'assets/sounds/alpha_kill_explode_2.ogg' },
         
-        // Alpha kill voice lines will be loaded separately when needed
+        // Alpha kill voice lines
+        { name: 'alphaKill1', path: 'assets/sounds/alpha_kill_1_firstblood.mp3' },
+        { name: 'alphaKill2', path: 'assets/sounds/alpha_kill_2_Double_Kill.mp3' },
+        { name: 'alphaKill3', path: 'assets/sounds/alpha_kill_3triple_kill.mp3' },
+        { name: 'alphaKill4Monster', path: 'assets/sounds/alpha_kill_4_MonsterKill.mp3' },
+        { name: 'alphaKill4Unstoppable', path: 'assets/sounds/alpha_kill_4_Unstoppable.mp3' },
+        { name: 'alphaKill5', path: 'assets/sounds/alpha_kill_5_GodLike.mp3' },
+        { name: 'alphaKill6', path: 'assets/sounds/alpha_kill_6_Ownage.mp3' },
+        { name: 'alphaKill7', path: 'assets/sounds/alpha_kill_7_Killing_Spree.mp3' },
+        { name: 'alphaKill8', path: 'assets/sounds/alpha_kill_8_UltraKill.mp3' },
+        { name: 'alphaKill9', path: 'assets/sounds/alpha_kill_9_Rampage.mp3' },
+        { name: 'alphaKill10', path: 'assets/sounds/alpha_kill_10_MegaKill.mp3' },
+        { name: 'alphaKill11', path: 'assets/sounds/alpha_kill_11_HolyShit.mp3' }
     ];
     
     // Load each sound effect
@@ -361,6 +379,51 @@ export function playPlayerMoveSound(isAlphaMode = false) {
     } else {
         console.warn(`Sound effect not found or not loaded: ${soundName}`);
     }
+}
+
+/**
+ * Reset the alpha kill voice counter to start from the first voice line
+ */
+export function resetAlphaKillVoiceCounter() {
+    alphaKillVoiceIndex = 0;
+    console.log("Alpha kill voice counter reset");
+}
+
+/**
+ * Play the next alpha kill voice line in sequence
+ * Cycles through all available voice lines
+ */
+export function playAlphaKillVoice() {
+    // Only play sound if sound effects are enabled
+    if (!isSoundEnabled) {
+        return;
+    }
+    
+    // Array of alpha kill voice sound names in order
+    const alphaKillVoices = [
+        'alphaKill1',
+        'alphaKill2',
+        'alphaKill3',
+        'alphaKill4Monster',
+        'alphaKill5',
+        'alphaKill6',
+        'alphaKill7',
+        'alphaKill8',
+        'alphaKill9',
+        'alphaKill10',
+        'alphaKill11'
+    ];
+    
+    // Get the current voice line
+    const voiceName = alphaKillVoices[alphaKillVoiceIndex];
+    
+    // Increment the counter for next time, wrapping around if needed
+    alphaKillVoiceIndex = (alphaKillVoiceIndex + 1) % alphaKillVoices.length;
+    
+    // Play the voice line
+    playSoundEffect(voiceName);
+    
+    console.log(`Playing alpha kill voice: ${voiceName} (index: ${alphaKillVoiceIndex})`);
 }
 
 /**

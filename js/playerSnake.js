@@ -1005,6 +1005,9 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
         // Reset the alpha kill message counter to start from the first message
         alphaKillMessageIndex = 0;
         
+        // Reset the alpha kill voice counter to start from the first voice line
+        Audio.resetAlphaKillVoiceCounter();
+        
         // Update the UI
         UI.showAlphaModeBar();
         UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
@@ -1168,6 +1171,9 @@ function handleEnemyCollision(collision, gameState, currentTime) {
         // Play explosion sound effect for Alpha Mode kill
         Audio.playSoundEffect('alphaKillExplode1');
         
+        // Play the next alpha kill voice line in sequence
+        Audio.playAlphaKillVoice();
+        
         // Show the next message in the sequence for Alpha Mode kills
         UI.showPowerUpTextEffect(getNextAlphaKillMessage(), CONFIG.ALPHA_MODE_COLOR);
         
@@ -1196,6 +1202,9 @@ function triggerPlayerDeath(gameState, reason) {
      // *** Destructure camera here ***
      const { scene, playerSnake, camera } = gameState;
      if (!scene || !playerSnake || !camera) return; // Check camera
+
+     // Play player death sound
+     Audio.playSoundEffect('playerDeath');
 
      if (playerSnakeMeshes.length > 0) {
          // *** UPDATED CALL ***
