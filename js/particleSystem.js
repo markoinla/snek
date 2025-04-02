@@ -272,9 +272,16 @@ export function updateParticles(deltaTime, scene) { // Pass scene for removal
 
         if (p.life <= 0) {
             scene.remove(p.mesh);
-            // Dispose geometry/material if they were cloned per particle and no longer needed?
-            // p.mesh.geometry.dispose(); // Only if geometry was unique
-            // p.mesh.material.dispose(); // Only if material was unique
+            // Properly dispose of materials and geometries to prevent memory leaks
+            if (p.mesh.material) {
+                p.mesh.material.dispose(); // Dispose material since it was cloned
+            }
+            if (p.mesh.geometry && p.mesh.geometry !== GEOMETRIES.particle) {
+                // Only dispose if it's not a shared geometry
+                p.mesh.geometry.dispose();
+            }
+            // Set to null to help garbage collection
+            p.mesh = null;
             activeParticles.splice(i, 1);
         } else {
             p.mesh.position.addScaledVector(p.velocity, deltaTime);

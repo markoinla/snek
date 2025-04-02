@@ -19,6 +19,37 @@ import Stats from '../lib/stats.module.js';
 // FPS counter
 let stats;
 
+// Store event listener references so we can clean them up
+const globalEventListeners = [];
+
+// Helper function to add event listeners that we can clean up later
+function addManagedEventListener(target, type, listener, options) {
+    target.addEventListener(type, listener, options);
+    globalEventListeners.push({ target, type, listener });
+}
+
+// Helper function to clean up all global event listeners
+function cleanupAllEventListeners() {
+    globalEventListeners.forEach(({ target, type, listener }) => {
+        target.removeEventListener(type, listener);
+    });
+    globalEventListeners.length = 0; // Clear the array
+}
+
+// Clean up event listeners and other resources when restarting or ending game
+function cleanupGameResources() {
+    cleanupAllEventListeners();
+    
+    // Clean up audio resources
+    Audio.cleanupAudio();
+    
+    // Remove stats if it was added
+    if (stats && stats.dom && stats.dom.parentNode) {
+        stats.dom.parentNode.removeChild(stats.dom);
+        stats = null;
+    }
+}
+
 // --- Initialization ---
 async function init() {
     // Initialize debug logger
@@ -80,17 +111,17 @@ async function init() {
     gameState.cleanupInput = Input.setupInputListeners(gameState, UI.elements);
 
     // Set up game start event listener
-    window.addEventListener('gameStarted', startGameplay);
+    addManagedEventListener(window, 'gameStarted', startGameplay);
     
     // Set up game pause/resume event listeners
-    window.addEventListener('gamePaused', pauseGame);
-    window.addEventListener('gameResumed', resumeGame);
+    addManagedEventListener(window, 'gamePaused', pauseGame);
+    addManagedEventListener(window, 'gameResumed', resumeGame);
     
     // Show intro screen (only shown for first-time users)
     UI.showIntroScreen();
     
     // Event Listeners
-    window.addEventListener('resize', onWindowResize);
+    addManagedEventListener(window, 'resize', onWindowResize);
 
     // Add event listeners for UI buttons
     document.getElementById('startButton')?.addEventListener('click', UI.startGame);
@@ -118,10 +149,10 @@ async function init() {
     }
     
     // Add event listeners for game state changes
-    window.addEventListener('gameStarted', onGameStart);
-    window.addEventListener('gameOver', onGameOver);
-    window.addEventListener('gamePaused', onGamePaused);
-    window.addEventListener('gameResumed', onGameResumed);
+    addManagedEventListener(window, 'gameStarted', onGameStart);
+    addManagedEventListener(window, 'gameOver', onGameOver);
+    addManagedEventListener(window, 'gamePaused', onGamePaused);
+    addManagedEventListener(window, 'gameResumed', onGameResumed);
 }
 
 /**
@@ -240,12 +271,35 @@ function resetGame() {
         };
     }
 
-    // Reset individual game components
+    // Reset individual game components - the order matters here!
+    // Each of these calls should properly clean up their THREE.js objects
+    // to prevent memory leaks
+    
+    // Clean up any active particles first
     Particles.resetParticles(gameState.scene);
-    Food.resetFood(gameState); // Clear existing food objects/state
-    Obstacles.resetObstacles(gameState); // Clear existing obstacles
-    Enemy.resetEnemies(gameState); // Clear existing enemies
-    Player.resetPlayer(gameState); // Resets player state and meshes
+    
+    // Reset food objects - this removes food meshes from the scene
+    Food.resetFood(gameState); 
+    
+    // Reset obstacles - removes obstacle meshes from the scene
+    Obstacles.resetObstacles(gameState); 
+    
+    // Reset enemies - removes enemy snake meshes from the scene
+    Enemy.resetEnemies(gameState); 
+    
+    // Reset player - removes player snake meshes from the scene 
+    Player.resetPlayer(gameState);
+
+    // Run a forced garbage collection if possible
+    // Note: This is not guaranteed to work, but can help prompt cleanup
+    if (window.gc) {
+        try {
+            window.gc();
+            Logger.system.info("Manual garbage collection triggered");
+        } catch (e) {
+            Logger.system.warn("Manual garbage collection failed", e);
+        }
+    }
 
     // Respawn initial elements
     Obstacles.spawnInitialObstacles(gameState);
@@ -256,9 +310,8 @@ function resetGame() {
     UI.resetUI(0, gameState); // Reset score display, hide game over, etc.
     UI.updateKills(0); // Initialize kill counter
 
-    // Reset camera position/focus? (Optional, updateCamera handles it)
-    // gameState.camera.position.set(0, CONFIG.CAMERA_HEIGHT, CONFIG.CAMERA_DISTANCE);
-    // Player.updateCamera(gameState); // Force immediate camera update
+    // Clean up audio resources
+    Audio.cleanupAudio();
 
     Logger.system.info("--- GAME RESET COMPLETE ---");
     gameState.flags.gameRunning = true; // Resume updates
@@ -314,6 +367,9 @@ export function requestRestart() {
     if (gameState.flags.gameOver) { // Only allow restart if game is over
         // Hide game over screen
         UI.hideGameOver();
+        
+        // Clean up resources
+        cleanupGameResources();
         
         // Start the game directly without showing intro screen
         UI.startGame();
@@ -475,8 +531,5 @@ function updateGroundColor() {
 init().catch(error => {
     Logger.system.error("Initialization failed:", error);
     // Display a user-friendly error message on the page
-    const body = document.querySelector('body');
-    if (body) {
-        body.innerHTML = `<div style="color: red; padding: 20px; font-size: 1.5em;">Failed to initialize game. Please check console for details.</div>`;
-    }
+    alert("Error initializing the game. Please check the console for details.");
 });

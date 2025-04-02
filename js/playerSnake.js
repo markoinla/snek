@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as CONFIG from './config.js';
-import { GEOMETRIES, FOOD_TYPES } from './constants.js'; // Import FOOD_TYPES for power-ups
+import { FOOD_TYPES } from './constants.js'; // Import FOOD_TYPES for power-ups
 import { createSnakeSegmentMesh } from './utils.js';
 import { createExplosion } from './particleSystem.js';
 import { setGameOver } from './main.js'; // To trigger game over
@@ -119,7 +119,19 @@ function createPlayerMeshes(gameState) {
 function resetPlayerMeshes(gameState) {
     const { scene } = gameState;
     if (scene) {
-        playerSnakeMeshes.forEach(mesh => scene.remove(mesh));
+        // Properly dispose of all snake segment meshes
+        playerSnakeMeshes.forEach(mesh => {
+            scene.remove(mesh);
+            
+            // Dispose of geometries and materials if they are not shared
+            // Only dispose if it's not a shared geometry from GEOMETRIES constant
+            if (mesh.geometry && !mesh.userData?.sharedGeometry) {
+                mesh.geometry.dispose();
+            }
+            
+            // We typically don't dispose of materials here since they're shared
+            // But if you have segment-specific materials, dispose them here
+        });
     }
     playerSnakeMeshes = [];
 }
@@ -332,7 +344,19 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
              return;
         }
 
+        // Make sure the player has segments before trying to access them
+        if (!playerSnake.segments || playerSnake.segments.length === 0) {
+            Logger.gameplay.error("No player snake segments found!");
+            return;
+        }
+
         const head = playerSnake.segments[0];
+        // Safety check in case head is undefined
+        if (!head) {
+            Logger.gameplay.error("Player head segment is undefined!");
+            return;
+        }
+
         const newHeadPos = {
             x: head.x + playerSnake.direction.x,
             y: 0, // Keep snake on the ground plane

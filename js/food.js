@@ -448,8 +448,48 @@ export function checkAndEatFood(position, gameState) {
                 );
             }
             
+            // Properly dispose of food resources
+            if (eatenFoodMesh.isGroup) {
+                // Dispose resources for model made of multiple meshes (like apple or frog)
+                eatenFoodMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        // Dispose of geometry if it's not shared/reused
+                        if (child.geometry && child.geometry !== GEOMETRIES.cube && 
+                            child.geometry !== GEOMETRIES.particle) {
+                            child.geometry.dispose();
+                        }
+                        
+                        // Dispose of material if it's unique to this food (not shared)
+                        if (child.material && !child.userData?.useSharedMaterial) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => mat.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    }
+                });
+            } else if (eatenFoodMesh.isMesh) {
+                // For single mesh food items
+                if (eatenFoodMesh.geometry && eatenFoodMesh.geometry !== GEOMETRIES.cube && 
+                    eatenFoodMesh.geometry !== GEOMETRIES.particle) {
+                    eatenFoodMesh.geometry.dispose();
+                }
+                
+                if (eatenFoodMesh.material && !eatenFoodMesh.userData?.useSharedMaterial) {
+                    if (Array.isArray(eatenFoodMesh.material)) {
+                        eatenFoodMesh.material.forEach(mat => mat.dispose());
+                    } else {
+                        eatenFoodMesh.material.dispose();
+                    }
+                }
+            }
+            
             // Remove the food mesh from the scene
             scene.remove(eatenFoodMesh);
+            
+            // Set to null to help garbage collection
+            food.meshes[eatenFoodIndex] = null;
         }
         if (foodTypeInfo?.effectText) {
              UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
@@ -473,11 +513,52 @@ export function resetFood(gameState) {
     const { scene, food } = gameState;
     if (!scene || !food) return;
 
-    // Remove all existing food meshes from scene
+    // Remove all existing food meshes from scene and dispose of resources
     if (food.meshes && food.meshes.length > 0) {
         for (const mesh of food.meshes) {
-            if (mesh && scene.children.includes(mesh)) {
-                scene.remove(mesh);
+            if (mesh) {
+                // Remove from scene
+                if (scene.children.includes(mesh)) {
+                    scene.remove(mesh);
+                }
+                
+                // If the mesh is a Group (like our apple or frog models)
+                if (mesh.isGroup) {
+                    // Recursively dispose of all child meshes in the group
+                    mesh.traverse((child) => {
+                        if (child.isMesh) {
+                            // Dispose of geometry
+                            if (child.geometry && child.geometry !== GEOMETRIES.cube && 
+                                child.geometry !== GEOMETRIES.particle) {
+                                child.geometry.dispose();
+                            }
+                            
+                            // Dispose of material if it's unique to this food item
+                            // Don't dispose shared materials from materials.js
+                            if (child.material && !child.userData?.useSharedMaterial) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(mat => mat.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                } else if (mesh.isMesh) {
+                    // Handle the case where food is a single mesh
+                    if (mesh.geometry && mesh.geometry !== GEOMETRIES.cube && 
+                        mesh.geometry !== GEOMETRIES.particle) {
+                        mesh.geometry.dispose();
+                    }
+                    
+                    if (mesh.material && !mesh.userData?.useSharedMaterial) {
+                        if (Array.isArray(mesh.material)) {
+                            mesh.material.forEach(mat => mat.dispose());
+                        } else {
+                            mesh.material.dispose();
+                        }
+                    }
+                }
             }
         }
     }
@@ -485,9 +566,11 @@ export function resetFood(gameState) {
     // Reset arrays
     food.meshes = [];
     food.positions = [];
+    
+    // Log cleanup for debugging
+    Logger.system.info("Food system reset, all food items removed and resources disposed");
 }
 
-// Update frog animations - call this from the main game loop
 export function updateFoodAnimations(gameState, deltaTime) {
     const { food } = gameState;
     if (!food || !food.meshes) return;
