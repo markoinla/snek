@@ -26,14 +26,16 @@ let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/
 //     ghostModeActive: false,
 //     activePowerUps: [], // { type, endTime }
 //     enlargedHeadUntil: 0, // New property for enlarged head effect
+//     alphaModeActive: false,
 //     alphaMode: {
 //         active: false,
 //         progress: 0,
 //         startTime: 0,
 //         endTime: 0,
 //         lastScoreThreshold: 0,
+//         alphaPoints: 0,         // New property for alpha points system
+//         lastDecayTime: 0, // Track when we last decayed alpha points
 //         scoreMultiplier: 1.0,         // Current score multiplier (starts at 1.0)
-//         scoreMultiplierUntil: 0,      // When the current multiplier expires
 //         scoreMultiplierStack: []       // Stack of active multipliers with their end times
 //         consecutiveActivations: 0,    // Track consecutive Alpha Mode activations
 //         cooldownActive: false,        // Track if Alpha Mode is in cooldown
@@ -46,7 +48,7 @@ let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/
 // };
 
 export function initPlayerSnake(gameState) {
-    const { playerSnake } = gameState;
+    const { playerSnake, clock } = gameState;
     
     if (!playerSnake) return;
     
@@ -67,12 +69,15 @@ export function initPlayerSnake(gameState) {
     playerSnake.lastTextureUpdateFrame = 0;
     
     // Initialize Alpha Mode properties
+    const currentTime = clock.getElapsedTime();
     playerSnake.alphaMode = {
         active: false,
         progress: 0,
         startTime: 0,
         endTime: 0,
         lastScoreThreshold: 0,
+        alphaPoints: 0,         // New property for alpha points system
+        lastDecayTime: currentTime, // Track when we last decayed alpha points
         scoreMultiplier: 1.0,
         scoreMultiplierStack: [],
         consecutiveActivations: 0,    // Track consecutive Alpha Mode activations
@@ -88,6 +93,9 @@ export function initPlayerSnake(gameState) {
     // Create initial meshes
     createPlayerMeshes(gameState);
     Logger.gameplay.info("Player snake initialized.");
+    
+    // Force an update to the alpha points progress UI
+    updateAlphaModeProgressPoints(gameState);
 }
 
 function createPlayerMeshes(gameState) {
@@ -159,7 +167,20 @@ export function turnLeft(gameState) {
             playerSnake.nextDirection = nextDir;
         }
         
+        // Set flag for immediate direction change
         playerSnake.immediateDirectionChange = true;
+        
+        // For improved responsiveness: If we're adding a second turn in a short time,
+        // boost the move timer to make the snake respond more quickly
+        // This helps with rapid direction changes at slow speeds
+        if (playerSnake.pendingTurns.length > 1) {
+            // If the player is trying to make quick turns, increase the timer
+            // to at least 80% of the required move time
+            const actualSpeed = calculateActualSpeed(gameState);
+            if (playerSnake.moveTimer < actualSpeed * 0.8) {
+                playerSnake.moveTimer = actualSpeed * 0.8;
+            }
+        }
     }
 }
 
@@ -196,7 +217,20 @@ export function turnRight(gameState) {
             playerSnake.nextDirection = nextDir;
         }
         
+        // Set flag for immediate direction change
         playerSnake.immediateDirectionChange = true;
+        
+        // For improved responsiveness: If we're adding a second turn in a short time,
+        // boost the move timer to make the snake respond more quickly
+        // This helps with rapid direction changes at slow speeds
+        if (playerSnake.pendingTurns.length > 1) {
+            // If the player is trying to make quick turns, increase the timer
+            // to at least 80% of the required move time
+            const actualSpeed = calculateActualSpeed(gameState);
+            if (playerSnake.moveTimer < actualSpeed * 0.8) {
+                playerSnake.moveTimer = actualSpeed * 0.8;
+            }
+        }
     }
 }
 
@@ -209,11 +243,24 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
     // Exit early if game is over
     if (flags.gameOver || !playerSnake) return;
     
-    // Update progress toward Alpha Mode
+    // Decay alpha points over time (when not in Alpha Mode)
+    if (!playerSnake.alphaMode.active) {
+        decayAlphaPoints(currentTime, gameState);
+    }
+    
+    // Update progress toward Alpha Mode using alpha points system first
+    // This ensures the alpha meter displays alpha points progress as priority
+    updateAlphaModeProgressPoints(gameState);
+    
+    // Keep the score-based progress as a fallback (not actively shown on the UI)
+    // but still track it in case the game logic requires it
     updateAlphaModeProgress(score.current, gameState);
     
     // Check if we should enter Alpha Mode based on score
     checkAlphaModeActivation(score.current, currentTime, gameState);
+    
+    // Check if we should enter Alpha Mode based on alpha points
+    checkAlphaModeActivationPoints(currentTime, gameState);
     
     // Update Alpha Mode progress if active
     if (playerSnake.alphaMode.active) {
@@ -248,28 +295,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
     playerSnake.moveTimer += deltaTime;
     
     // Calculate actual speed based on power-ups, speed boost, and Alpha Mode
-    let actualSpeed = playerSnake.speed;
-    let speedMultiplier = 1.0; // Base multiplier
-    
-    // Apply speed boost if active - this stacks with other speed effects
-    if (playerSnake.speedBoostUntil > 0 && currentTime < playerSnake.speedBoostUntil) {
-        // Multiply the speed multiplier by the food speed boost multiplier
-        speedMultiplier *= CONFIG.FOOD_SPEED_BOOST_MULTIPLIER;
-    } else if (playerSnake.speedBoostUntil > 0 && currentTime >= playerSnake.speedBoostUntil) {
-        // Reset speed boost timer when it expires
-        playerSnake.speedBoostUntil = 0;
-    }
-    
-    // Apply Alpha Mode speed boost if active - this stacks with the food speed boost
-    if (playerSnake.alphaMode.active) {
-        // Multiply the speed multiplier by the alpha mode speed multiplier
-        speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
-    }
-    
-    // Apply the combined speed multiplier
-    // Lower actualSpeed value = faster movement (since it's the time between moves)
-    // So we divide by the multiplier to make the snake faster
-    actualSpeed /= speedMultiplier;
+    const actualSpeed = calculateActualSpeed(gameState);
     
     // Check for immediate direction change flag
     if (playerSnake.immediateDirectionChange) {
@@ -517,18 +543,21 @@ export function killEnemySnake(enemyId, gameState) {
         // Enlarge player's head for a duration
         enlargePlayerHead(gameState, currentTime);
         
-        // Make the snake grow by 3 segments when eating an enemy
-        growSnakeSegments(gameState, 3);
+        // Make the snake grow by the configured number of segments when eating an enemy
+        growSnakeSegments(gameState, CONFIG.ENEMY_KILL_SEGMENTS);
         
-        // If in alpha mode, extend the alpha mode duration by 1 second
+        // If in alpha mode, extend the alpha mode duration by the configured amount
         if (playerSnake.alphaMode.active) {
-            // Extend alpha mode duration by 1 second
-            playerSnake.alphaMode.endTime += 1;
+            // Get the extension time from config
+            const extensionTime = CONFIG.ALPHA_MODE_EXTENSION_PER_ENEMY;
+            
+            // Extend alpha mode duration
+            playerSnake.alphaMode.endTime += extensionTime;
             
             // Show a message indicating the alpha mode extension
-            UI.showPowerUpTextEffect("+1s ALPHA TIME", CONFIG.ALPHA_MODE_COLOR);
+            UI.showPowerUpTextEffect(`+${extensionTime}s ALPHA TIME`, CONFIG.ALPHA_MODE_COLOR);
             
-            Logger.gameplay.info("Alpha mode extended by 1 second! New end time:", playerSnake.alphaMode.endTime);
+            Logger.gameplay.info(`Alpha mode extended by ${extensionTime} seconds! New end time:`, playerSnake.alphaMode.endTime);
         }
         
         return true;
@@ -922,9 +951,6 @@ function updatePlayerMaterialsAfterMove(gameState) {
     const { playerSnake, materials } = gameState;
     if (playerSnakeMeshes.length === 0 || !materials?.snake) return;
 
-    // Skip if no head mesh
-    if (!playerSnakeMeshes[0]) return;
-
     let headMaterial, bodyMaterial;
     
     if (playerSnake.alphaMode.active) {
@@ -983,6 +1009,54 @@ export function resetAlphaModeCooldown(gameState) {
 }
 
 /**
+ * Add alpha points to the player
+ * @param {number} points - Number of alpha points to add
+ * @param {object} gameState - Game state object
+ */
+export function addAlphaPoints(points, gameState) {
+    const { playerSnake } = gameState;
+    
+    // Don't add alpha points if Alpha Mode is active
+    if (playerSnake.alphaMode.active) return;
+    
+    // Add the points
+    playerSnake.alphaMode.alphaPoints += points;
+    
+    // Update the UI with new alpha points progress
+    updateAlphaModeProgressPoints(gameState);
+}
+
+/**
+ * Checks if Alpha Mode should be activated based on alpha points
+ * @param {number} currentTime - Current game time
+ * @param {object} gameState - Game state object
+ * @returns {boolean} - Whether Alpha Mode should be activated
+ */
+function checkAlphaModeActivationPoints(currentTime, gameState) {
+    const { playerSnake } = gameState;
+    
+    // If Alpha Mode is already active, no need to check
+    if (playerSnake.alphaMode.active) return false;
+    
+    // If cooldown is active, don't activate
+    if (playerSnake.alphaMode.cooldownActive && currentTime < playerSnake.alphaMode.cooldownEndTime) {
+        return false;
+    }
+    
+    // Check if player has enough alpha points to activate Alpha Mode
+    if (playerSnake.alphaMode.alphaPoints >= CONFIG.ALPHA_POINTS_THRESHOLD) {
+        // Reset alpha points to 0
+        playerSnake.alphaMode.alphaPoints = 0;
+        
+        // Activate Alpha Mode
+        activateAlphaMode(currentTime, gameState);
+        return true;
+    }
+    
+    return false;
+}
+
+/**
  * Checks if Alpha Mode should be activated based on score
  */
 function checkAlphaModeActivation(score, currentTime, gameState) {
@@ -998,31 +1072,14 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
     
     // If we've reached a new threshold and we're not already in Alpha Mode
     if (currentThreshold > playerSnake.alphaMode.lastScoreThreshold && !playerSnake.alphaMode.active) {
-        // Activate Alpha Mode
-        playerSnake.alphaMode.active = true;
-        playerSnake.alphaMode.startTime = currentTime;
-        playerSnake.alphaMode.endTime = currentTime + CONFIG.ALPHA_MODE_DURATION;
+        // Update the last threshold score
         playerSnake.alphaMode.lastScoreThreshold = currentThreshold;
         
-        // Reset the alpha kill message counter to start from the first message
-        alphaKillMessageIndex = 0;
+        // Activate Alpha Mode
+        activateAlphaMode(currentTime, gameState);
         
-        // Reset the alpha kill voice counter to start from the first voice line
-        Audio.resetAlphaKillVoiceCounter();
-        
-        // Update the UI
-        UI.showAlphaModeBar();
-        UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
-        
-        // Update player speed for Alpha Mode
-        playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
-        
-        // Increment consecutive activations counter
-        playerSnake.alphaMode.consecutiveActivations++;
-        
-        Logger.gameplay.info("Alpha Mode activated! Threshold:", currentThreshold);
-        Logger.gameplay.info("Consecutive Alpha Mode activations:", playerSnake.alphaMode.consecutiveActivations, 
-                   "Max allowed:", CONFIG.ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS);
+        // Log the activation
+        Logger.gameplay.info("Alpha Mode activated via score threshold! Threshold:", currentThreshold);
     } else {
         // Debug why Alpha Mode is not activating
         if (currentThreshold <= playerSnake.alphaMode.lastScoreThreshold) {
@@ -1032,6 +1089,40 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
             Logger.gameplay.debug("Alpha Mode not activated: Alpha Mode is already active");
         }
     }
+}
+
+/**
+ * Activates Alpha Mode
+ * @param {number} currentTime - Current game time
+ * @param {object} gameState - Game state object
+ */
+function activateAlphaMode(currentTime, gameState) {
+    const { playerSnake } = gameState;
+    
+    // Activate Alpha Mode
+    playerSnake.alphaMode.active = true;
+    playerSnake.alphaMode.startTime = currentTime;
+    playerSnake.alphaMode.endTime = currentTime + CONFIG.ALPHA_MODE_DURATION;
+    
+    // Reset the alpha kill message counter to start from the first message
+    alphaKillMessageIndex = 0;
+    
+    // Reset the alpha kill voice counter to start from the first voice line
+    Audio.resetAlphaKillVoiceCounter();
+    
+    // Update the UI
+    UI.showAlphaModeBar();
+    UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
+    
+    // Update player speed for Alpha Mode
+    playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
+    
+    // Increment consecutive activations counter
+    playerSnake.alphaMode.consecutiveActivations++;
+    
+    Logger.gameplay.info("Alpha Mode activated!");
+    Logger.gameplay.info("Consecutive Alpha Mode activations:", playerSnake.alphaMode.consecutiveActivations, 
+              "Max allowed:", CONFIG.ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS);
 }
 
 /**
@@ -1167,7 +1258,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
     // If in Alpha Mode or hit the tail (which is always edible), kill the enemy
     if (playerSnake.alphaMode.active) {
         // In Alpha Mode, always kill the enemy snake regardless of collision point
-        Logger.gameplay.info("Alpha Mode active - killing enemy snake regardless of collision point");
+        console.log("Alpha Mode active - killing enemy snake regardless of collision point");
         killEnemySnake(collision.enemyId, gameState);
         
         // Play explosion sound effect for Alpha Mode kill
@@ -1182,20 +1273,25 @@ function handleEnemyCollision(collision, gameState, currentTime) {
         return true;
     } else if (collision.isTail) {
         // Not in Alpha Mode but hit the tail (which is always edible)
-        Logger.gameplay.info("Hit enemy tail - killing enemy snake");
+        console.log("Hit enemy tail - killing enemy snake");
         killEnemySnake(collision.enemyId, gameState);
+        
+        // Award alpha points for killing an enemy snake by eating its tail
+        // This encourages strategic play, targeting enemy tails for more alpha points
+        addAlphaPoints(CONFIG.ALPHA_POINTS_ENEMY, gameState);
+        
         return true;
     }
     
     // If not in Alpha Mode and hit the body/head, player dies
     if (!playerSnake.ghostModeActive) {
-        Logger.gameplay.info("Hit enemy body/head without Alpha Mode or Ghost Mode - player dies");
+        console.log("Hit enemy body/head without Alpha Mode or Ghost Mode - player dies");
         triggerPlayerDeath(gameState, 'ENEMY_COLLISION');
         return false;
     }
     
     // Ghost mode active but not Alpha Mode, just pass through
-    Logger.gameplay.info("Ghost Mode active - passing through enemy");
+    console.log("Ghost Mode active - passing through enemy");
     return true;
 }
 
@@ -1227,7 +1323,7 @@ function updateAlphaModeProgress(score, gameState) {
     const { playerSnake } = gameState;
     const scoreThreshold = CONFIG.ALPHA_MODE_SCORE_THRESHOLD;
     
-    // If Alpha Mode is active, don't update the progress bar here
+    // If Alpha Mode is active, don't update the progress here
     // (it's handled by updateAlphaMode function)
     if (playerSnake.alphaMode.active) return;
     
@@ -1251,14 +1347,10 @@ function updateAlphaModeProgress(score, gameState) {
         percentage = Math.min(100, Math.floor((scoreProgress / progressNeeded) * 100));
     }
     
-    // Update the UI with the current progress percentage
-    UI.updateAlphaModeProgress(percentage);
-    
-    // Show the Alpha Mode container if it's not already visible
-    const alphaModeContainer = document.getElementById('alphaModeContainer');
-    if (alphaModeContainer && alphaModeContainer.style.display !== 'flex') {
-        alphaModeContainer.style.display = 'flex';
-    }
+    // Store the progress internally, but DON'T update the UI
+    // This allows the score-based system to continue working internally
+    // while the alpha points system handles the UI display
+    playerSnake.alphaMode.scoreProgress = percentage;
     
     // Debug logging
     Logger.gameplay.info(`Alpha Mode Progress: ${percentage}% (Score: ${score}, Next Threshold: ${nextThreshold})`);
@@ -1276,4 +1368,111 @@ function updateAlphaModeProgress(score, gameState) {
         const currentTime = gameState.clock.getElapsedTime();
         checkAlphaModeActivation(score, currentTime, gameState);
     }
+}
+
+/**
+ * Update the alpha mode progress meter based on alpha points
+ * @param {object} gameState - The game state object
+ */
+function updateAlphaModeProgressPoints(gameState) {
+    const { playerSnake } = gameState;
+    
+    // If Alpha Mode is active, don't update the progress bar here
+    // (it's handled by updateAlphaMode function)
+    if (playerSnake.alphaMode.active) return;
+    
+    // Calculate progress as a percentage of the alpha points threshold
+    const pointsProgress = playerSnake.alphaMode.alphaPoints;
+    const pointsNeeded = CONFIG.ALPHA_POINTS_THRESHOLD;
+    
+    // Calculate percentage (0-100)
+    const percentage = Math.min(100, Math.floor((pointsProgress / pointsNeeded) * 100));
+    
+    // Only update the UI if the percentage has changed or every 10 frames
+    // This saves performance by reducing DOM updates
+    if (!playerSnake.alphaMode.lastDisplayedPercentage || 
+        playerSnake.alphaMode.lastDisplayedPercentage !== percentage ||
+        (gameState.frameCount % 10 === 0)) {
+        
+        // Update the UI to show alpha points progress
+        UI.updateAlphaModeProgress(percentage, pointsProgress, pointsNeeded);
+        
+        // Store the last displayed percentage to avoid redundant updates
+        playerSnake.alphaMode.lastDisplayedPercentage = percentage;
+    }
+    
+    // If we reach 100%, trigger Alpha Mode activation if not in cooldown
+    if (percentage >= 100 && !playerSnake.alphaMode.cooldownActive) {
+        const currentTime = gameState.clock.getElapsedTime();
+        checkAlphaModeActivationPoints(currentTime, gameState);
+    }
+}
+
+/**
+ * Decay alpha points over time
+ * @param {number} currentTime - Current game time
+ * @param {object} gameState - Game state object
+ */
+function decayAlphaPoints(currentTime, gameState) {
+    const { playerSnake } = gameState;
+    
+    // Only decay once every 5 frames to improve performance
+    if (gameState.frameCount % 5 !== 0) return;
+    
+    // If this is the first time we're calculating decay or lastDecayTime is invalid,
+    // just set the time and don't decay yet
+    if (!playerSnake.alphaMode.lastDecayTime || 
+        playerSnake.alphaMode.lastDecayTime === 0 || 
+        isNaN(playerSnake.alphaMode.lastDecayTime)) {
+        playerSnake.alphaMode.lastDecayTime = currentTime;
+        return;
+    }
+    
+    // Calculate time passed since last decay (in seconds)
+    const deltaTime = currentTime - playerSnake.alphaMode.lastDecayTime;
+    
+    // Only decay if a reasonable amount of time has passed
+    // (prevents weird behavior if time jumps, like when pausing)
+    if (deltaTime > 0 && deltaTime < 1.0) {
+        // Only decay if we have points to decay
+        if (playerSnake.alphaMode.alphaPoints > 0) {
+            // Decay alpha points over time
+            const decayRate = CONFIG.ALPHA_POINTS_DECAY_RATE;
+            const decayAmount = decayRate * deltaTime;
+            
+            // Apply decay
+            playerSnake.alphaMode.alphaPoints -= decayAmount;
+            
+            // Ensure alpha points don't go below 0
+            playerSnake.alphaMode.alphaPoints = Math.max(0, playerSnake.alphaMode.alphaPoints);
+        }
+    }
+    
+    // Update the last decay time
+    playerSnake.alphaMode.lastDecayTime = currentTime;
+}
+
+function calculateActualSpeed(gameState) {
+    const { playerSnake } = gameState;
+    let actualSpeed = playerSnake.speed;
+    let speedMultiplier = 1.0; // Base multiplier
+    
+    // Apply speed boost if active - this stacks with other speed effects
+    if (playerSnake.speedBoostUntil > 0) {
+        // Multiply the speed multiplier by the food speed boost multiplier
+        speedMultiplier *= CONFIG.FOOD_SPEED_BOOST_MULTIPLIER;
+    }
+    
+    // Apply Alpha Mode speed boost if active - this stacks with the food speed boost
+    if (playerSnake.alphaMode.active) {
+        // Multiply the speed multiplier by the alpha mode speed multiplier
+        speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
+    }
+    
+    // Apply the combined speed multiplier
+    // Lower actualSpeed value = faster movement (since it's the time between moves)
+    // So we divide by the multiplier to make the snake faster
+    actualSpeed /= speedMultiplier;
+    
+    return actualSpeed;
 }

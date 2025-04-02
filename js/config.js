@@ -4,8 +4,8 @@ export const UNIT_SIZE = 1;
 export const BASE_SNAKE_SPEED = 0.22;
 export const CAMERA_DISTANCE = 9;
 export const CAMERA_HEIGHT = 12;
-export const CAMERA_LAG = 0.25;
-export const CAMERA_POSITION_SMOOTHNESS = 0.02; // Lower = smoother camera position movement
+export const CAMERA_LAG = 0.2;
+export const CAMERA_POSITION_SMOOTHNESS = 0.01; // Lower = smoother camera position movement
 export const CAMERA_ROTATION_SMOOTHNESS = 0.06; // Lower = smoother camera rotation
 export const SPRITE_SHEET_DIM = 2;
 export const NUM_INITIAL_FOOD = 50;
@@ -30,19 +30,28 @@ export const POWERUP_SCORE_MULTIPLIER_DURATION = 10.0; // Duration of score mult
 export const POWERUP_GHOST_DURATION = 8.0; // Duration of ghost mode power-up in seconds
 
 // Alpha Mode score multiplier settings
-export const ALPHA_MODE_SCORE_MULTIPLIER = 1.5; // Multiplier for each stack
+export const ALPHA_MODE_SCORE_MULTIPLIER = 1.8; // Multiplier for each stack
 export const ALPHA_MODE_SCORE_MULTIPLIER_DURATION = 5.0; // How long each multiplier stack lasts
-export const ALPHA_MODE_MAX_SCORE_MULTIPLIER = 8.0; // Maximum allowed multiplier
+export const ALPHA_MODE_MAX_SCORE_MULTIPLIER = 16.0; // Maximum allowed multiplier
 
 // Alpha Mode activation limits - DISABLED
 export const ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS = 999; // Setting to a high number effectively disables the limit
 export const ALPHA_MODE_COOLDOWN_DURATION = 0.1; // Setting to a very short duration effectively disables cooldown
 
+// Alpha Points System
+export const ALPHA_POINTS_THRESHOLD = 30; // Points needed to activate Alpha Mode
+export const ALPHA_POINTS_FOOD = 3; // Points earned for eating normal food
+export const ALPHA_POINTS_FROG = 6; // Points earned for eating a frog
+export const ALPHA_POINTS_ENEMY = 10; // Points earned for killing an enemy snake
+export const ALPHA_POINTS_DECAY_RATE = 0.8; // Points lost per second when not in Alpha Mode
+export const ALPHA_POINTS_FROG_MULTIPLIER = 1.5; // Multiplier for frog alpha points in Alpha Mode
+
 // Alpha Mode settings
-export const ALPHA_MODE_SCORE_THRESHOLD = 30; // Score needed to activate Alpha Mode
+export const ALPHA_MODE_SCORE_THRESHOLD = 1000; // Score needed to activate Alpha Mode
 export const ALPHA_MODE_DURATION = 6; // Duration in seconds
 export const ALPHA_MODE_SPEED_MULTIPLIER = 1.5; // How much faster the snake moves in Alpha Mode
 export const ALPHA_MODE_COLOR = 0x9C27B0; // Purple color for Alpha Mode
+export const ALPHA_MODE_EXTENSION_PER_ENEMY = 1.5; // Seconds to extend Alpha Mode when killing an enemy snake
 
 // Audio settings
 export const AUDIO_VOLUME = {
@@ -66,8 +75,9 @@ export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
 export const ENEMY_TAIL_EDIBLE_SEGMENTS = 3; // Number of tail segments that are edible
 export const ENEMY_TAIL_COLOR = 0x4DD0E1; // Lighter cyan color for edible tail segments (was 0xE91E63)
-export const ENEMY_KILL_SCORE = 7; // Points awarded for killing an enemy
-export const ENEMY_RESPAWN_TIME = 15; // Seconds before a new enemy spawns after being killed
+export const ENEMY_KILL_SCORE = 10; // Points awarded for killing an enemy
+export const ENEMY_RESPAWN_TIME = 5; // Seconds before a new enemy spawns after being killed
+export const ENEMY_KILL_SEGMENTS = 5; // Number of segments the player snake grows when eating an enemy
 
 // Player powerup settings
 export const ENLARGED_HEAD_DURATION = 0; // Seconds the player's head stays enlarged after killing an enemy
@@ -115,7 +125,7 @@ export const GAME_TEXT = {
     
     // Alpha Mode Text
     ALPHA_MODE: {
-        PROGRESS_LABEL: "Alpha meter",
+        PROGRESS_LABEL: "",
         ACTIVE_LABEL: "Alpha SNEK!",
         ACTIVATED_MESSAGE: "ALPHA SNEK ACTIVATED!",
         DEACTIVATED_MESSAGE: "ALPHA SNEK DEACTIVATED",
@@ -141,7 +151,7 @@ export const GAME_TEXT = {
         SPEED_BOOST: "Speed boost!",
         GHOST_MODE: "Ghost mode!",
         SHRINK: "Shrinkaaage!",
-        SCORE_MULTIPLIER: "2x points!",
+        SCORE_MULTIPLIER: "3x rewards!",
         // Array of possible enemy kill messages - one will be randomly selected
         ENEMY_KILLED_MESSAGES: [
             "SWALLOWED WHOLE",

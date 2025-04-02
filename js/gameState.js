@@ -13,6 +13,7 @@ export const gameState = {
         directionalLight: null,
     },
     clock: null,
+    frameCount: 0, // Track frame count for throttling UI updates
 
     // Game Objects State
     playerSnake: {

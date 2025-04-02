@@ -691,8 +691,10 @@ export function hideAlphaModeBar() {
 /**
  * Updates the Alpha Mode progress bar
  * @param {number} percentage - Progress percentage (0-100)
+ * @param {number} [current] - Current progress value (optional)
+ * @param {number} [total] - Total needed for completion (optional)
  */
-export function updateAlphaModeProgress(percentage) {
+export function updateAlphaModeProgress(percentage, current, total) {
     if (alphaModeProgress) {
         // Ensure percentage is between 0-100
         const clampedPercentage = Math.max(0, Math.min(100, percentage));
@@ -707,6 +709,15 @@ export function updateAlphaModeProgress(percentage) {
             // Make sure the label is visible
             if (alphaModeLabel) {
                 alphaModeLabel.style.display = 'block';
+                
+                // If we have current and total values, show alpha points
+                if (current !== undefined && total !== undefined) {
+                    // Update the label to show alpha points progress
+                    alphaModeLabel.textContent = `ALPHA: ${current}/${total}`;
+                } else {
+                    // Default label
+                    alphaModeLabel.textContent = 'ALPHA';
+                }
             }
         }
     }

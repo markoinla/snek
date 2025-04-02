@@ -324,10 +324,10 @@ export function requestRestart() {
 
 // --- Main Loop ---
 function animate() {
-    // Set flag to indicate animation is running
-    gameState.flags.animating = true;
-    
     requestAnimationFrame(animate);
+    
+    // Increment frame counter for throttling updates
+    gameState.frameCount++;
     
     // Skip rendering if game is not running
     if (!gameState.flags.gameRunning) return;

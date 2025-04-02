@@ -3,7 +3,7 @@ import * as CONFIG from './config.js';
 import { FOOD_TYPES, GEOMETRIES, PATHS } from './constants.js';
 import { generateUniquePosition } from './utils.js';
 import { createExplosion, createNormalFoodEffect, createFrogEffect } from './particleSystem.js';
-import { applyPowerUp, addScoreMultiplier } from './playerSnake.js'; // Import specific functions
+import { applyPowerUp, addScoreMultiplier, addAlphaPoints } from './playerSnake.js'; // Import specific functions
 import * as UI from './ui.js';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
@@ -385,6 +385,9 @@ export function checkAndEatFood(position, gameState) {
                 // Show a speed boost text effect
                 UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF); // Light blue color for speed boost
                 
+                // Add alpha points
+                addAlphaPoints(CONFIG.ALPHA_POINTS_FOOD, gameState);
+                
                 // If in Alpha Mode, extend its duration and add score multiplier
                 if (gameState.playerSnake.alphaMode && gameState.playerSnake.alphaMode.active) {
                     // Extend Alpha Mode by the configured amount
@@ -406,6 +409,23 @@ export function checkAndEatFood(position, gameState) {
             
             // Play frog eating sound
             Audio.playSoundEffect('eatFrog');
+            
+            // Check if in Alpha Mode to apply multiplier to frog alpha points
+            if (gameState.playerSnake.alphaMode.active) {
+                // Calculate bonus alpha points with multiplier
+                const basePoints = CONFIG.ALPHA_POINTS_FROG;
+                const multiplier = CONFIG.ALPHA_POINTS_FROG_MULTIPLIER;
+                const bonusPoints = basePoints * multiplier;
+                
+                // Add the bonus alpha points
+                addAlphaPoints(bonusPoints, gameState);
+                
+                // Show a message about the bonus
+                UI.showPowerUpTextEffect(`+${bonusPoints.toFixed(0)} ALPHA PTS!`, CONFIG.ALPHA_MODE_COLOR);
+            } else {
+                // Add normal alpha points for eating a frog (not in Alpha Mode)
+                addAlphaPoints(CONFIG.ALPHA_POINTS_FROG, gameState);
+            }
         }
 
         // Trigger effects (particles, sound?, UI text)
