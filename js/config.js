@@ -157,16 +157,10 @@ export const GAME_TEXT = {
         SCORE_MULTIPLIER: "3x rewards!",
         // Array of possible enemy kill messages - one will be randomly selected
         ENEMY_KILLED_MESSAGES: [
-            "SWALLOWED WHOLE",
-            "SNEK SNACK",
-            "TASTY SNEK",
-            "DEVOURED",
-            "GULP",
-            "YOU ATE YOUR COUSIN",
-            "GROWING BOY",
-            "BIG SNEK",
-            "SNEK JOB",
-            "JUST THE TAIL"
+            "MILOS SMELLS",
+            "MILOS IS THE BEST",
+            "MILOS IS A GOOD SNEK",
+            "MILOS IS THE BEST SNEK"
         ]
     },
     
