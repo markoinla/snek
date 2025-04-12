@@ -127,7 +127,7 @@ async function init() {
     document.getElementById('startButton')?.addEventListener('click', UI.startGame);
     document.getElementById('settingsButton')?.addEventListener('click', UI.showSettingsMenu);
     document.getElementById('closeSettings')?.addEventListener('click', UI.hideSettingsMenu);
-    document.getElementById('restartButton')?.addEventListener('click', UI.startGame);
+    document.getElementById('restartButton')?.addEventListener('click', requestRestart);
     
     // Add event listener for Alpha Mode cooldown reset button
     document.getElementById('resetAlphaModeCooldown')?.addEventListener('click', function() {
@@ -153,6 +153,10 @@ async function init() {
     addManagedEventListener(window, 'gameOver', onGameOver);
     addManagedEventListener(window, 'gamePaused', onGamePaused);
     addManagedEventListener(window, 'gameResumed', onGameResumed);
+    addManagedEventListener(window, 'gameRestart', requestRestart);
+    
+    // Add restart button event listener
+    document.getElementById('restartButton')?.addEventListener('click', requestRestart);
 }
 
 /**
@@ -171,6 +175,14 @@ function startGameplay() {
     gameState.flags.gameOver = false;
     gameState.flags.gamePaused = false;
     
+    // Force audio context start (browser requirement for audio)
+    if (window.fixAudio) {
+        window.fixAudio();
+    }
+    
+    // Add debug audio button for users to test audio
+    addDebugAudioButton();
+    
     // Start animation if not already running
     if (!gameState.flags.animating) {
         gameState.flags.animating = true;
@@ -178,6 +190,53 @@ function startGameplay() {
         
         // Don't automatically play background music
         // Audio.playBackgroundMusic();
+    }
+}
+
+// Add a visible audio test button for debugging audio issues
+function addDebugAudioButton() {
+    // Only add if it doesn't exist and we're in debug mode or have persistent audio issues
+    if (!document.getElementById('audioDebugButton')) {
+        const button = document.createElement('button');
+        button.id = 'audioDebugButton';
+        button.innerText = '🔊 Test Sound';
+        button.style.position = 'fixed';
+        button.style.bottom = '10px';
+        button.style.right = '10px';
+        button.style.zIndex = '1000';
+        button.style.padding = '5px 10px';
+        button.style.backgroundColor = '#444';
+        button.style.color = 'white';
+        button.style.border = '1px solid #666';
+        button.style.borderRadius = '4px';
+        button.style.cursor = 'pointer';
+        button.style.fontSize = '12px';
+        
+        // Add click handler
+        button.addEventListener('click', function() {
+            // First resume the audio context
+            if (window.fixAudio) {
+                window.fixAudio();
+            }
+            
+            // Then play a test sound
+            if (window.playTestSound) {
+                window.playTestSound();
+                
+                // Visual feedback
+                this.innerText = '✓ Sound Test';
+                this.style.backgroundColor = '#0a0';
+                
+                // Reset after a moment
+                setTimeout(() => {
+                    this.innerText = '🔊 Test Sound';
+                    this.style.backgroundColor = '#444';
+                }, 2000);
+            }
+        });
+        
+        // Add to document
+        document.body.appendChild(button);
     }
 }
 
@@ -271,51 +330,56 @@ function resetGame() {
         };
     }
 
-    // Reset individual game components - the order matters here!
-    // Each of these calls should properly clean up their THREE.js objects
-    // to prevent memory leaks
-    
-    // Clean up any active particles first
-    Particles.resetParticles(gameState.scene);
-    
-    // Reset food objects - this removes food meshes from the scene
-    Food.resetFood(gameState); 
-    
-    // Reset obstacles - removes obstacle meshes from the scene
-    Obstacles.resetObstacles(gameState); 
-    
-    // Reset enemies - removes enemy snake meshes from the scene
-    Enemy.resetEnemies(gameState); 
-    
-    // Reset player - removes player snake meshes from the scene 
-    Player.resetPlayer(gameState);
-
-    // Run a forced garbage collection if possible
-    // Note: This is not guaranteed to work, but can help prompt cleanup
-    if (window.gc) {
-        try {
-            window.gc();
-            Logger.system.info("Manual garbage collection triggered");
-        } catch (e) {
-            Logger.system.warn("Manual garbage collection failed", e);
-        }
-    }
-
-    // Respawn initial elements
-    Obstacles.spawnInitialObstacles(gameState);
-    Food.spawnInitialFood(gameState); // Spawn food after obstacles
-    Enemy.spawnInitialEnemies(gameState); // Spawn enemies last
-
-    // Reset UI elements
-    UI.resetUI(0, gameState); // Reset score display, hide game over, etc.
-    UI.updateKills(0); // Initialize kill counter
-
-    // Clean up audio resources
+    // Clean up audio resources but restore music afterward if it was enabled
     Audio.cleanupAudio();
-
-    Logger.system.info("--- GAME RESET COMPLETE ---");
-    gameState.flags.gameRunning = true; // Resume updates
-    gameState.flags.gameOver = false; // Ensure game over is false
+    
+    // Use a timeout to stagger heavy operations to prevent frame drops
+    // Stage 1: Clean up existing objects
+    setTimeout(() => {
+        // Reset individual game components - the order matters here!
+        // Each of these calls should properly clean up their THREE.js objects
+        // to prevent memory leaks
+        
+        // Clean up any active particles first
+        Particles.resetParticles(gameState.scene);
+        
+        // Reset food objects - this removes food meshes from the scene
+        Food.resetFood(gameState); 
+        
+        // Second stage: Recreate game world with slight delays
+        setTimeout(() => {
+            // Reset obstacles - removes obstacle meshes from the scene
+            Obstacles.resetObstacles(gameState); 
+            
+            // Reset enemies - removes enemy snake meshes from the scene
+            Enemy.resetEnemies(gameState); 
+            
+            // Reset player - removes player snake meshes from the scene 
+            Player.resetPlayer(gameState);
+            
+            // Final stage: Spawn new entities with slight delays
+            setTimeout(() => {
+                // Respawn initial elements
+                Obstacles.spawnInitialObstacles(gameState);
+                Food.spawnInitialFood(gameState); // Spawn food after obstacles
+                
+                setTimeout(() => {
+                    Enemy.spawnInitialEnemies(gameState); // Spawn enemies last
+                    
+                    // Reset UI elements
+                    UI.resetUI(0, gameState); // Reset score display, hide game over, etc.
+                    UI.updateKills(0); // Initialize kill counter
+                    
+                    // Restore music if needed
+                    Audio.restoreMusicIfEnabled();
+                    
+                    Logger.system.info("--- GAME RESET COMPLETE ---");
+                    gameState.flags.gameRunning = true; // Resume updates
+                    gameState.flags.gameOver = false; // Ensure game over is false
+                }, 10);
+            }, 10);
+        }, 10);
+    }, 10);
 }
 
 // --- Game Over ---
@@ -371,6 +435,9 @@ export function requestRestart() {
         // Clean up resources
         cleanupGameResources();
         
+        // Reset the game state
+        resetGame();
+        
         // Start the game directly without showing intro screen
         UI.startGame();
         
@@ -401,6 +468,14 @@ function render() {
     // Get time delta
     const deltaTime = gameState.clock.getDelta();
     const currentTime = gameState.clock.getElapsedTime(); // Use elapsed time for timers
+    
+    // Run audio health check more frequently (every second) to ensure audio stability
+    if (Math.floor(currentTime * 2) % 2 === 0 && !gameState.flags.audioHealthCheckRun) {
+        Audio.performAudioHealthCheck();
+        gameState.flags.audioHealthCheckRun = true;
+    } else if (Math.floor(currentTime * 2) % 2 !== 0) {
+        gameState.flags.audioHealthCheckRun = false;
+    }
 
     // Update game state only if running
     if (gameState.flags.gameRunning && !gameState.flags.gameOver) {

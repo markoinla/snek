@@ -1,7 +1,7 @@
 // --- Configuration Constants ---
 export const GRID_SIZE = 60;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.22;
+export const BASE_SNAKE_SPEED = 0.2;
 export const CAMERA_DISTANCE = 9;
 export const CAMERA_HEIGHT = 12;
 export const CAMERA_LAG = 0.2;
@@ -67,6 +67,9 @@ export const AUDIO_ENABLED = {
     MUSIC: false,             // Music off by default
     SOUND_EFFECTS: true       // Sound effects on by default
 };
+
+// Audio preloading
+export const AUDIO_PRELOAD_ALL = true; // Whether to preload all sound effects at game start
 
 // Enemy snake settings
 export const NUM_ENEMIES = 6;

@@ -22,11 +22,7 @@ const alphaModeProgress = document.getElementById('alphaModeProgress');
 const applesEatenElement = document.getElementById('applesEaten');
 const frogsEatenElement = document.getElementById('frogsEaten');
 const snakesEatenElement = document.getElementById('snakesEaten');
-
-// Settings button
 const settingsButton = document.getElementById('settingsButton');
-// Music toggle button in header
-const musicToggleButton = document.getElementById('musicToggleButton');
 
 // Settings menu elements
 const settingsMenu = document.getElementById('settingsMenu');
@@ -37,6 +33,8 @@ const musicToggle = document.getElementById('musicToggle');
 const soundToggle = document.getElementById('soundToggle');
 const musicVolumeSlider = document.getElementById('musicVolume');
 const soundVolumeSlider = document.getElementById('soundVolume');
+const inGameMusicButton = document.getElementById('musicToggleButton');
+const testSoundButton = document.getElementById('testAudioButton');
 
 // Intro screen elements
 const introScreen = document.getElementById('introScreen');
@@ -146,8 +144,8 @@ function setupEventListeners() {
             if (gameOverElement) {
                 gameOverElement.classList.remove('active');
             }
-            // Skip intro screen on restart
-            startGame();
+            // Dispatch a custom event to trigger the game restart
+            window.dispatchEvent(new CustomEvent('gameRestart'));
         });
     }
     
@@ -159,11 +157,6 @@ function setupEventListeners() {
     // Settings button
     if (settingsButton) {
         settingsButton.addEventListener('click', showSettingsMenu);
-    }
-    
-    // Music toggle button in header
-    if (musicToggleButton) {
-        musicToggleButton.addEventListener('click', toggleBackgroundMusic);
     }
     
     // Settings menu close button
@@ -185,20 +178,72 @@ function setupEventListeners() {
         });
     });
     
+    // In-game music toggle button
+    if (inGameMusicButton) {
+        inGameMusicButton.addEventListener('click', () => {
+            // Toggle music state
+            const currentState = getAudioState();
+            currentState.music = !currentState.music;
+            saveAudioState(currentState);
+            
+            // Update UI for both buttons
+            updateMusicToggleUI();
+            updateMusicToggleInSettings();
+            
+            // Apply to audio system
+            if (currentState.music) {
+                Audio.toggleMusic(true);
+                Audio.playBackgroundMusic();
+            } else {
+                Audio.toggleMusic(false);
+            }
+            
+            // Force restart audio context (helps with browser restrictions)
+            if (window.fixAudio) {
+                window.fixAudio();
+            }
+        });
+    }
+    
     // Settings menu audio controls
     if (musicToggle) {
         musicToggle.addEventListener('click', () => {
-            const isMusicEnabled = Audio.toggleMusic();
-            musicToggle.classList.toggle('muted', !isMusicEnabled);
-            musicToggle.querySelector('.toggle-status').textContent = isMusicEnabled ? 'ON' : 'OFF';
+            // Toggle music
+            const currentState = getAudioState();
+            currentState.music = !currentState.music;
+            saveAudioState(currentState);
+            
+            // Update UI for both buttons
+            updateMusicToggleUI();
+            updateMusicToggleInSettings();
+            
+            // Apply to audio system
+            if (currentState.music) {
+                Audio.toggleMusic(true);
+                Audio.playBackgroundMusic();
+            } else {
+                Audio.toggleMusic(false);
+            }
+            
+            // Force restart audio context (helps with browser restrictions)
+            if (window.fixAudio) {
+                window.fixAudio();
+            }
         });
     }
     
     if (soundToggle) {
         soundToggle.addEventListener('click', () => {
-            const isSoundEnabled = Audio.toggleSound();
-            soundToggle.classList.toggle('muted', !isSoundEnabled);
-            soundToggle.querySelector('.toggle-status').textContent = isSoundEnabled ? 'ON' : 'OFF';
+            // Toggle sound effects
+            const currentState = getAudioState();
+            currentState.sound = !currentState.sound;
+            saveAudioState(currentState);
+            
+            // Update UI
+            updateSoundToggleUI();
+            
+            // Apply to audio system
+            Audio.toggleSound(currentState.sound);
         });
     }
     
@@ -216,32 +261,104 @@ function setupEventListeners() {
             Audio.setSoundVolume(volume);
         });
     }
+    
+    // Test sound button
+    if (testSoundButton) {
+        testSoundButton.addEventListener('click', () => {
+            if (window.playTestSound) {
+                window.playTestSound();
+            }
+        });
+    }
 }
 
 // Initialize UI elements and set up event listeners
 export function initUI() {
     setupEventListeners();
     initAudioControls();
+    updateMusicToggleUI();
+}
+
+// Helper for audio state management
+function getAudioState() {
+    // Try to load from localStorage
+    try {
+        const savedState = localStorage.getItem('alphaSnekAudioState');
+        if (savedState) {
+            return JSON.parse(savedState);
+        }
+    } catch (e) {
+        console.error("Error loading audio state:", e);
+    }
+    
+    // Default state
+    return {
+        music: CONFIG.AUDIO_ENABLED.MUSIC,
+        sound: CONFIG.AUDIO_ENABLED.SOUND_EFFECTS
+    };
+}
+
+// Save audio state to localStorage
+function saveAudioState(state) {
+    try {
+        localStorage.setItem('alphaSnekAudioState', JSON.stringify(state));
+    } catch (e) {
+        console.error("Error saving audio state:", e);
+    }
+}
+
+// Update Music Toggle UI
+export function updateMusicToggleUI() {
+    const musicIcon = document.querySelector('#musicToggleButton .music-icon');
+    if (musicIcon) {
+        // Update in-game icon based on music state
+        const isMusicOn = getAudioState().music;
+        musicIcon.style.opacity = isMusicOn ? '1.0' : '0.4';
+        
+        // Add/remove 'muted' class for styling
+        const button = musicIcon.parentElement;
+        if (button) {
+            if (isMusicOn) {
+                button.classList.remove('muted');
+            } else {
+                button.classList.add('muted');
+            }
+        }
+    }
+}
+
+// Update the Settings Menu music toggle
+export function updateMusicToggleInSettings() {
+    if (musicToggle) {
+        const isMusicOn = getAudioState().music;
+        musicToggle.classList.toggle('muted', !isMusicOn);
+        
+        const musicStatus = musicToggle.querySelector('.toggle-status');
+        if (musicStatus) {
+            musicStatus.textContent = isMusicOn ? 'ON' : 'OFF';
+        }
+    }
+}
+
+// Update Sound Toggle UI
+export function updateSoundToggleUI() {
+    if (soundToggle) {
+        const isSoundOn = getAudioState().sound;
+        soundToggle.classList.toggle('muted', !isSoundOn);
+        
+        const soundStatus = soundToggle.querySelector('.toggle-status');
+        if (soundStatus) {
+            soundStatus.textContent = isSoundOn ? 'ON' : 'OFF';
+        }
+    }
 }
 
 // Initialize audio controls with current audio system state
-function initAudioControls() {
-    // Set initial states for audio controls based on audio system
-    if (musicToggle) {
-        musicToggle.classList.toggle('muted', !Audio.isMusicOn());
-        const musicStatus = musicToggle.querySelector('.toggle-status');
-        if (musicStatus) {
-            musicStatus.textContent = Audio.isMusicOn() ? 'ON' : 'OFF';
-        }
-    }
-    
-    if (soundToggle) {
-        soundToggle.classList.toggle('muted', !Audio.isSoundOn());
-        const soundStatus = soundToggle.querySelector('.toggle-status');
-        if (soundStatus) {
-            soundStatus.textContent = Audio.isSoundOn() ? 'ON' : 'OFF';
-        }
-    }
+export function initAudioControls() {
+    // Update both music toggles (in-game and settings)
+    updateMusicToggleUI();
+    updateMusicToggleInSettings();
+    updateSoundToggleUI();
     
     // Set volume sliders to match audio system values
     if (musicVolumeSlider) {
@@ -250,11 +367,6 @@ function initAudioControls() {
     
     if (soundVolumeSlider) {
         soundVolumeSlider.value = Math.round(Audio.getSoundVolume() * 100);
-    }
-    
-    // Initialize music toggle button in header
-    if (musicToggleButton) {
-        musicToggleButton.classList.toggle('muted', !Audio.isMusicOn());
     }
 }
 
@@ -390,7 +502,6 @@ export const elements = {
     frogsEatenElement,
     snakesEatenElement,
     settingsButton,
-    musicToggleButton,
 };
 
 export function updateScore(score) {
@@ -794,11 +905,6 @@ function toggleBackgroundMusic() {
     const isMusicEnabled = Audio.toggleMusic();
     
     // Update the music toggle button in the header
-    if (musicToggleButton) {
-        musicToggleButton.classList.toggle('muted', !isMusicEnabled);
-    }
-    
-    // Update the music toggle in the settings menu
     if (musicToggle) {
         musicToggle.classList.toggle('muted', !isMusicEnabled);
         const musicStatus = musicToggle.querySelector('.toggle-status');

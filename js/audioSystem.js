@@ -1,67 +1,93 @@
 import * as THREE from 'three';
 import * as CONFIG from './config.js';
-import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { Logger } from './debugLogger.js';
 
-// Audio variables
-let audioListener;
-let backgroundMusic;
-let soundEffects = {};
-let soundBuffers = {}; // Store buffers separately from audio instances
-let audioLoader;
+// Detection for mobile devices
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                      (window.innerWidth <= 800 && window.innerHeight <= 600);
 
-// Audio state
-let isMusicEnabled = CONFIG.AUDIO_ENABLED.MUSIC; // Use config setting for music enabled state
-let isSoundEnabled = CONFIG.AUDIO_ENABLED.SOUND_EFFECTS; // Use config setting for sound effects enabled state
-let musicVolume = CONFIG.AUDIO_VOLUME.MUSIC; // Use config setting for music volume
-let soundVolume = 0.8; // General sound volume (will be modified per sound type)
+// Core audio system variables
+let audioListener = null;
+let audioLoader = null;
+let audioContext = null;
+let backgroundMusic = null;
 let musicLoaded = false;
+let audioSystemReady = false;
 
-// Mobile detection
-const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+// Hack to fix audio in Chrome
+let audioContextStarted = false;
 
-// Define sound effects to preload - we'll keep the full list but mark which ones are
-// critical vs optional for performance optimization
+// Sound pooling - use a limited pool of audio objects to prevent too many sounds
+const MAX_CONCURRENT_SOUNDS = isMobileDevice ? 5 : 12; 
+const soundPool = [];
+const soundBuffers = {}; 
+
+// Sound categories for priority handling
+const SOUND_CATEGORIES = {
+    MOVEMENT: 'movement',
+    EFFECT: 'effect',
+    VOICE: 'voice',
+    EXPLOSION: 'explosion',
+    UI: 'ui'
+};
+
+// Track number of sounds playing per category
+const activeSoundCounts = {
+    [SOUND_CATEGORIES.MOVEMENT]: 0,
+    [SOUND_CATEGORIES.EFFECT]: 0,
+    [SOUND_CATEGORIES.VOICE]: 0,
+    [SOUND_CATEGORIES.EXPLOSION]: 0,
+    [SOUND_CATEGORIES.UI]: 0
+};
+
+// Max sounds per category
+const maxSoundsPerCategory = {
+    [SOUND_CATEGORIES.MOVEMENT]: isMobileDevice ? 1 : 2,
+    [SOUND_CATEGORIES.EFFECT]: isMobileDevice ? 2 : 4,
+    [SOUND_CATEGORIES.VOICE]: 1,
+    [SOUND_CATEGORIES.EXPLOSION]: isMobileDevice ? 1 : 2,
+    [SOUND_CATEGORIES.UI]: 1
+};
+
+// Sound effect definitions with categories
 const effectsToLoad = [
-    // Player snake movement sounds - critical
-    { name: 'movePlayerSnake1', path: 'assets/sounds/move_player_snake_1.ogg', critical: true },
-    { name: 'movePlayerSnake2', path: 'assets/sounds/move_player_snake_2.ogg', critical: true },
-    
-    // Eating sounds - critical
-    { name: 'eatApple', path: 'assets/sounds/eat_apple.ogg', critical: true },
-    { name: 'eatFrog', path: 'assets/sounds/eat_frog.ogg', critical: true },
-    { name: 'eatSnake', path: 'assets/sounds/eat_snake.ogg', critical: true },
-    
-    // Enemy snake movement sounds - less critical
-    { name: 'moveEnemySnake1', path: 'assets/sounds/move_enemy_snake_1.ogg', critical: true },
-    { name: 'moveEnemySnake2', path: 'assets/sounds/move_enemy_snake_2.ogg', critical: true },
-    
-    // Player death sound - critical
-    { name: 'playerDeath', path: 'assets/sounds/died_player.ogg', critical: true },
-    
-    // Alpha kill sounds (explosion effects) - less critical
-    { name: 'alphaKillExplode1', path: 'assets/sounds/alpha_kill_explode_1.ogg', critical: true },
-    { name: 'alphaKillExplode2', path: 'assets/sounds/alpha_kill_explode_2.ogg', critical: true },
-    
-    // Alpha kill voice lines - less critical for mobile devices
-    { name: 'alphaKill1', path: 'assets/sounds/alpha_kill_1_firstblood.mp3', critical: true },
-    { name: 'alphaKill2', path: 'assets/sounds/alpha_kill_2_Double_Kill.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill3', path: 'assets/sounds/alpha_kill_3triple_kill.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill4Monster', path: 'assets/sounds/alpha_kill_4_MonsterKill.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill4Unstoppable', path: 'assets/sounds/alpha_kill_4_Unstoppable.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill5', path: 'assets/sounds/alpha_kill_5_GodLike.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill6', path: 'assets/sounds/alpha_kill_6_Ownage.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill7', path: 'assets/sounds/alpha_kill_7_Killing_Spree.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill8', path: 'assets/sounds/alpha_kill_8_UltraKill.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill9', path: 'assets/sounds/alpha_kill_9_Rampage.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill10', path: 'assets/sounds/alpha_kill_10_MegaKill.mp3', critical: !isMobileDevice },
-    { name: 'alphaKill11', path: 'assets/sounds/alpha_kill_11_HolyShit.mp3', critical: !isMobileDevice }
+    { name: 'movePlayerSnake1', path: 'assets/sounds/move_player_snake_1.ogg', critical: true, category: SOUND_CATEGORIES.MOVEMENT },
+    { name: 'movePlayerSnake2', path: 'assets/sounds/move_player_snake_2.ogg', critical: false, category: SOUND_CATEGORIES.MOVEMENT },
+    { name: 'eatApple', path: 'assets/sounds/eat_apple.ogg', critical: true, category: SOUND_CATEGORIES.EFFECT },
+    { name: 'eatFrog', path: 'assets/sounds/eat_frog.ogg', critical: true, category: SOUND_CATEGORIES.EFFECT },
+    { name: 'eatSnake', path: 'assets/sounds/eat_snake.ogg', critical: true, category: SOUND_CATEGORIES.EFFECT },
+    { name: 'playerDeath', path: 'assets/sounds/died_player.ogg', critical: true, category: SOUND_CATEGORIES.EFFECT },
+    { name: 'alphaKillExplode1', path: 'assets/sounds/alpha_kill_explode_1.ogg', critical: true, category: SOUND_CATEGORIES.EXPLOSION },
+    { name: 'alphaKillExplode2', path: 'assets/sounds/alpha_kill_explode_2.ogg', critical: !isMobileDevice, category: SOUND_CATEGORIES.EXPLOSION },
+    { name: 'alphaKill1', path: 'assets/sounds/alpha_kill_1_firstblood.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill2', path: 'assets/sounds/alpha_kill_2_Double_Kill.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill3', path: 'assets/sounds/alpha_kill_3triple_kill.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill4Monster', path: 'assets/sounds/alpha_kill_4_MonsterKill.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill4Unstoppable', path: 'assets/sounds/alpha_kill_4_Unstoppable.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill5', path: 'assets/sounds/alpha_kill_5_GodLike.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill6', path: 'assets/sounds/alpha_kill_6_Ownage.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill7', path: 'assets/sounds/alpha_kill_7_Killing_Spree.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill8', path: 'assets/sounds/alpha_kill_8_UltraKill.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill9', path: 'assets/sounds/alpha_kill_9_Rampage.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill10', path: 'assets/sounds/alpha_kill_10_MegaKill.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE },
+    { name: 'alphaKill11', path: 'assets/sounds/alpha_kill_11_HolyShit.mp3', critical: !isMobileDevice, category: SOUND_CATEGORIES.VOICE }
 ];
 
-// Counter for player movement sounds
-let playerMoveSoundCounter = 0;
+// Audio state
+let isMusicEnabled = CONFIG.AUDIO_ENABLED.MUSIC;
+let isSoundEnabled = CONFIG.AUDIO_ENABLED.SOUND_EFFECTS;
+let musicVolume = CONFIG.AUDIO_VOLUME.MUSIC;
+let soundVolume = CONFIG.AUDIO_VOLUME.SOUND;
 
-// Counter for alpha kill voice lines
+// Debug mode - set to true to see detailed audio logs
+const DEBUG_AUDIO = true;
+
+// Special tracking for player movement sounds
+let playerMoveSoundCounter = 0;
 let alphaKillVoiceIndex = 0;
+
+// Path to background music
+const MUSIC_PATH = 'assets/music/Darkman007 - Sad song.mp3';
 
 /**
  * Initialize the audio system
@@ -70,295 +96,951 @@ let alphaKillVoiceIndex = 0;
 export function initAudioSystem(camera) {
     Logger.audio.info("Initializing audio system...");
     
-    // Create an AudioListener and add it to the camera
-    audioListener = new THREE.AudioListener();
-    camera.add(audioListener);
-    
-    // Create the audio loader
-    audioLoader = new THREE.AudioLoader();
-    
-    // Initialize background music
-    backgroundMusic = new THREE.Audio(audioListener);
-    
-    // Load background music
-    loadBackgroundMusic();
-    
-    // Initialize sound effects
-    initSoundEffects();
-    
-    // Setup iOS-specific audio unlock (handles silent mode issues)
-    setupIOSAudioUnlock();
-    
-    Logger.audio.info("Audio system initialized");
-    
-    // Add a click event listener to the document to enable audio
-    document.addEventListener('click', handleFirstUserInteraction, { once: true });
-    document.addEventListener('keydown', handleFirstUserInteraction, { once: true });
+    try {
+        // Create an AudioListener and add it to the camera
+        audioListener = new THREE.AudioListener();
+        camera.add(audioListener);
+        
+        // Store reference to the audio context
+        audioContext = audioListener.context;
+        
+        if (DEBUG_AUDIO) {
+            console.log("Audio context state at init:", audioContext ? audioContext.state : "No context");
+            console.log("AudioListener created:", !!audioListener);
+        }
+        
+        // CRITICAL: Add a special handler for Safari/iOS
+        // This is required because Safari handles audio context resume differently
+        if (/iPhone|iPad|iPod|Safari/i.test(navigator.userAgent) && !navigator.userAgent.includes('Chrome')) {
+            console.log("Safari/iOS detected, adding special audio handling");
+            document.addEventListener('click', function safariAudioUnlock() {
+                if (audioContextStarted) return;
+                
+                // Create and play a silent buffer to unlock audio
+                const silentBuffer = audioContext.createBuffer(1, 1, 22050);
+                const source = audioContext.createBufferSource();
+                source.buffer = silentBuffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+                console.log("Safari audio unlock attempt");
+                
+                // Mark as unlocked
+                audioContextStarted = true;
+                
+                // Remove this listener
+                document.removeEventListener('click', safariAudioUnlock);
+            }, {once: true});
+        }
+        
+        // Create the audio loader
+        audioLoader = new THREE.AudioLoader();
+        
+        // Initialize sound pool with a fixed number of audio objects
+        initSoundPool();
+        
+        // Initialize background music
+        backgroundMusic = new THREE.Audio(audioListener);
+        
+        // Load background music
+        loadBackgroundMusic();
+        
+        // Initialize sound effects
+        initSoundEffects();
+        
+        Logger.audio.info("Audio system initialized");
+        
+        // Add interaction listeners with multiple options to ensure audio starts
+        setupAudioInteractionHandlers();
+        
+        // Forcibly try to start audio after a delay (for browsers that don't require interaction)
+        setTimeout(() => {
+            if (audioContext && audioContext.state !== 'running') {
+                tryStartAudio();
+            }
+        }, 1000);
+        
+        // Try again later to catch any misses
+        setTimeout(() => {
+            if (audioContext && audioContext.state !== 'running') {
+                tryStartAudio();
+            }
+        }, 5000);
+        
+        // Expose a test function globally for debugging
+        window.testAudio = testAudioSystem;
+        window.fixAudio = tryStartAudio; 
+        window.playTestSound = playTestSound; 
+        
+        if (DEBUG_AUDIO) {
+            console.log("Audio debug functions available in console:");
+            console.log("- window.testAudio() - Test the audio system");
+            console.log("- window.fixAudio() - Try to resume audio context");
+            console.log("- window.playTestSound() - Force play a test sound");
+        }
+    } catch (error) {
+        Logger.audio.error("Error initializing audio system:", error);
+        console.error("Audio init error:", error);
+    }
 }
 
 /**
- * Setup special handling for iOS audio unlock
- * This helps with the silent switch issue on iPhones
- * Uses minimal resources to avoid performance impact
+ * Initialize sound effects - loads the sound effects that are marked as critical
  */
-function setupIOSAudioUnlock() {
-    // Only apply this for iOS devices
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (!isIOS) return;
-    
-    Logger.audio.info("Setting up iOS-specific audio handling");
-    
-    // Use a one-time touch listener that tries to unlock audio
-    // This is very lightweight and won't impact performance
-    document.addEventListener('touchstart', function unlockIOSAudio() {
-        // Remove this listener after first touch to prevent unnecessary processing
-        document.removeEventListener('touchstart', unlockIOSAudio);
+function initSoundEffects() {
+    try {
+        Logger.audio.info("Initializing sound effects...");
         
-        // Try to wake up the audio context - this is the key for iOS
-        if (audioListener && audioListener.context && 
-            audioListener.context.state !== 'running') {
-            audioListener.context.resume().catch(e => {
-                Logger.audio.warn("Could not resume audio context:", e);
-            });
+        if (!audioLoader) {
+            console.error("Audio loader not initialized");
+            return;
         }
         
-        // If music is enabled, try playing it
-        if (musicLoaded && isMusicEnabled && backgroundMusic) {
-            // Small delay to let the context wake up
+        // Load all critical sounds immediately
+        effectsToLoad.forEach(effect => {
+            if (effect.critical) {
+                loadSoundEffect(effect);
+            }
+        });
+        
+        // Start preloading non-critical sounds in the background
+        if (CONFIG.AUDIO_PRELOAD_ALL) {
             setTimeout(() => {
-                playBackgroundMusic();
-            }, 100);
+                preloadAllSounds();
+            }, 2000); // Start preloading after 2 seconds to not interfere with game startup
+        }
+    } catch (error) {
+        Logger.audio.error("Error initializing sound effects:", error);
+        console.error("Error initializing sound effects:", error);
+    }
+}
+
+/**
+ * Preload all non-critical sound effects in the background
+ */
+function preloadAllSounds() {
+    console.log("Preloading all sound effects in background...");
+    
+    try {
+        // Get list of sounds that aren't loaded yet
+        const unloadedSounds = effectsToLoad.filter(effect => 
+            !effect.critical && !soundBuffers[effect.name]);
+            
+        if (unloadedSounds.length === 0) {
+            console.log("All sounds already loaded!");
+            return;
         }
         
-        Logger.audio.info("iOS audio unlock attempt complete");
-    }, {passive: true}); // Using passive listener for better touch performance
+        // Create a queue to load sounds sequentially
+        let currentIndex = 0;
+        
+        function loadNextSound() {
+            if (currentIndex >= unloadedSounds.length) {
+                console.log("Background preloading complete!");
+                return;
+            }
+            
+            const effect = unloadedSounds[currentIndex];
+            currentIndex++;
+            
+            // Load the sound
+            audioLoader.load(
+                effect.path,
+                function(buffer) {
+                    soundBuffers[effect.name] = buffer;
+                    console.log(`Preloaded sound: ${effect.name}`);
+                    
+                    // Load the next sound after a short delay
+                    setTimeout(loadNextSound, 100);
+                },
+                function(xhr) {
+                    // Progress callback (not used)
+                },
+                function(error) {
+                    console.error(`Error preloading sound ${effect.name}:`, error);
+                    // Continue with next sound even if one fails
+                    setTimeout(loadNextSound, 100);
+                }
+            );
+        }
+        
+        // Start loading
+        loadNextSound();
+    } catch (error) {
+        console.error("Error in preloadAllSounds:", error);
+    }
+}
+
+/**
+ * Setup all audio interaction handlers to ensure audio works
+ * after user interaction across different browsers
+ */
+function setupAudioInteractionHandlers() {
+    // Create an array of all possible interaction events
+    const interactionEvents = [
+        'click', 'touchstart', 'touchend', 'mousedown', 'keydown'
+    ];
+    
+    // Add all event listeners
+    interactionEvents.forEach(eventType => {
+        document.addEventListener(eventType, handleFirstUserInteraction, { once: true });
+        // Also add to document body and window to be extra sure
+        document.body.addEventListener(eventType, handleFirstUserInteraction, { once: true });
+        window.addEventListener(eventType, handleFirstUserInteraction, { once: true });
+    });
+    
+    if (DEBUG_AUDIO) {
+        console.log("Set up multiple interaction handlers for audio");
+    }
+}
+
+/**
+ * Aggressive approach to try and start audio
+ * Handles resuming contexts and initiating audio playback
+ */
+function tryStartAudio() {
+    if (DEBUG_AUDIO) {
+        console.log("Attempting to forcibly start audio...");
+    }
+    
+    // Try to resume the audio context
+    if (audioContext) {
+        if (audioContext.state !== 'running') {
+            console.log("Resuming audio context from state:", audioContext.state);
+            
+            // Use promise with both then and catch
+            audioContext.resume().then(() => {
+                console.log("Successfully resumed audio context, new state:", audioContext.state);
+                
+                // If music is enabled but not playing, start it
+                if (isMusicEnabled && musicLoaded && backgroundMusic && !backgroundMusic.isPlaying) {
+                    // Force enable music
+                    isMusicEnabled = true;
+                    
+                    // Directly play background music
+                    try {
+                        backgroundMusic.play();
+                        console.log("Started background music");
+                    } catch (e) {
+                        console.error("Error playing background music:", e);
+                    }
+                }
+                
+                // Try to play a test sound to confirm everything works
+                setTimeout(() => {
+                    if (isSoundEnabled) {
+                        // Force enable sound
+                        isSoundEnabled = true;
+                        
+                        // Try to play a test sound
+                        playMovePlayerSound();
+                    }
+                }, 300);
+                
+                // Mark the system as ready
+                audioSystemReady = true;
+                audioContextStarted = true;
+                
+            }).catch(err => {
+                console.error("Failed to resume audio context:", err);
+            });
+        } else {
+            console.log("Audio context already running");
+            
+            // Still try to play music if applicable
+            if (isMusicEnabled && musicLoaded && backgroundMusic && !backgroundMusic.isPlaying) {
+                try {
+                    backgroundMusic.play();
+                    console.log("Started background music (context already running)");
+                } catch (e) {
+                    console.error("Error playing background music:", e);
+                }
+            }
+        }
+    } else {
+        console.error("No audio context available");
+    }
 }
 
 /**
  * Handle first user interaction to start audio
  * This is needed to work around browser autoplay restrictions
  */
-function handleFirstUserInteraction() {
-    Logger.audio.info("First user interaction detected, enabling audio");
-    if (musicLoaded && isMusicEnabled) {
-        playBackgroundMusic();
+export function handleFirstUserInteraction() {
+    Logger.audio.info("Handling user interaction for audio...");
+    
+    try {
+        // Try our aggressive audio start approach
+        tryStartAudio();
+        
+        // Remove all event listeners since we only need one interaction
+        const interactionEvents = [
+            'click', 'touchstart', 'touchend', 'mousedown', 'keydown'
+        ];
+        
+        interactionEvents.forEach(eventType => {
+            document.removeEventListener(eventType, handleFirstUserInteraction);
+            document.body.removeEventListener(eventType, handleFirstUserInteraction);
+            window.removeEventListener(eventType, handleFirstUserInteraction);
+        });
+        
+        Logger.audio.info("Audio system fully initialized by user interaction");
+    } catch (error) {
+        Logger.audio.error("Error in handleFirstUserInteraction:", error);
+        console.error("First interaction error:", error);
     }
 }
 
 /**
- * Load the background music
+ * Initialize a pool of audio objects for sound effects
+ * This prevents creation of too many audio objects which can cause performance issues
  */
-function loadBackgroundMusic() {
-    Logger.audio.info("Loading background music...");
+function initSoundPool() {
+    Logger.audio.info(`Initializing sound pool with ${MAX_CONCURRENT_SOUNDS} slots`);
     
-    // Load the background music file
-    audioLoader.load(
-        'assets/music/Darkman007 - Sad song.mp3',
-        (buffer) => {
-            // Set the audio buffer to the background music
-            backgroundMusic.setBuffer(buffer);
-            backgroundMusic.setLoop(true);
-            backgroundMusic.setVolume(musicVolume);
+    try {
+        // Create a fixed pool of audio objects
+        for (let i = 0; i < MAX_CONCURRENT_SOUNDS; i++) {
+            const audio = new THREE.Audio(audioListener);
             
-            // Mark music as loaded
-            musicLoaded = true;
-            
-            // Try to play music immediately
-            // This might be blocked by browsers until user interaction
-            if (isMusicEnabled) {
-                playBackgroundMusic();
+            // Set a safe volume (avoid non-finite values)
+            try {
+                audio.setVolume(soundVolume || 0.5);
+            } catch (e) {
+                console.error("Error setting audio volume:", e);
+                audio.gain.gain.value = soundVolume || 0.5;
             }
             
-            Logger.audio.info("Background music loaded successfully");
-        },
-        (xhr) => {
-            // Loading progress
-            Logger.audio.debug(`Background music loading: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
-        },
-        (error) => {
-            // Error callback
-            Logger.audio.error("Error loading background music:", error);
+            soundPool.push({
+                audio: audio,
+                inUse: false,
+                name: null,
+                category: null,  
+                startTime: 0     
+            });
         }
-    );
+        
+        if (DEBUG_AUDIO) {
+            console.log(`Created sound pool with ${soundPool.length} audio objects`);
+        }
+    } catch (error) {
+        Logger.audio.error("Error initializing sound pool:", error);
+        console.error("Sound pool init error:", error);
+    }
 }
 
 /**
- * Initialize sound effects
+ * Load a sound effect into the buffer cache
+ * @param {Object} soundDef - Definition object with name and path
  */
-function initSoundEffects() {
-    // Load each sound effect based on its critical status
-    effectsToLoad.forEach(effect => {
-        // Load all critical sounds, or everything on desktop
-        if (effect.critical || !isMobileDevice) {
-            loadSoundEffect(effect.name, effect.path);
-        }
-    });
-    
-    Logger.audio.info("Sound effects initialization started");
-}
-
-/**
- * Load a sound effect
- * @param {string} name - The name/key of the sound effect
- * @param {string} path - The file path to the sound effect
- */
-function loadSoundEffect(name, path) {
-    Logger.audio.info(`Loading sound effect: ${name}`);
-    
-    // Create a new audio object for this sound effect
-    const sound = new THREE.Audio(audioListener);
-    
-    // Load the sound file
-    audioLoader.load(
-        path,
-        (buffer) => {
-            // Store the buffer for potential reuse
-            soundBuffers[name] = buffer;
-            
-            // Set the audio buffer to the sound
-            sound.setBuffer(buffer);
-            sound.setVolume(soundVolume);
-            
-            // Store the sound in our soundEffects object
-            soundEffects[name] = sound;
-            
-            Logger.audio.info(`Sound effect loaded: ${name}`);
-        },
-        (xhr) => {
-            // Loading progress
-            Logger.audio.debug(`Sound effect loading (${name}): ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
-        },
-        (error) => {
-            // Error callback
-            Logger.audio.error(`Error loading sound effect (${name}):`, error);
-        }
-    );
-}
-
-/**
- * Play a sound effect
- * @param {string} name - The name/key of the sound effect to play
- */
-export function playSoundEffect(name) {
-    // Only play sound if sound effects are enabled
-    if (!isSoundEnabled) {
+function loadSoundEffect(soundDef) {
+    if (!audioLoader) {
+        Logger.audio.error("Cannot load sound effect - audio loader not initialized");
         return;
     }
     
-    // Find the effect definition to get the path if needed
-    const effectDef = effectsToLoad.find(e => e.name === name);
-    if (!effectDef) {
-        Logger.audio.error(`Sound effect definition not found: ${name}`);
+    if (DEBUG_AUDIO) {
+        console.log(`Loading sound effect: ${soundDef.name} from ${soundDef.path}`);
+    }
+    
+    try {
+        audioLoader.load(
+            soundDef.path,
+            (buffer) => {
+                // Store just the buffer
+                soundBuffers[soundDef.name] = buffer;
+                
+                if (DEBUG_AUDIO) {
+                    console.log(`Successfully loaded sound effect: ${soundDef.name}`);
+                }
+            },
+            (progress) => {
+                // Loading progress
+                Logger.audio.debug(`Sound effect ${soundDef.name} loading: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
+            },
+            (error) => {
+                Logger.audio.error(`Error loading sound effect ${soundDef.name}:`, error);
+                console.error(`Failed to load sound ${soundDef.name} from ${soundDef.path}:`, error);
+            }
+        );
+    } catch (error) {
+        Logger.audio.error(`Critical error loading sound effect ${soundDef.name}:`, error);
+        console.error(`Critical error loading sound ${soundDef.name}:`, error);
+    }
+}
+
+/**
+ * Load background music
+ */
+function loadBackgroundMusic() {
+    if (!audioLoader || !audioListener) {
+        Logger.audio.error("Cannot load background music - audio system not initialized");
         return;
     }
+
+    Logger.audio.info("Loading background music...");
     
-    // Check if the sound is loaded
-    if (!soundEffects[name]) {
-        // If not loaded but we have the buffer, create a new audio instance
-        if (soundBuffers[name]) {
-            const sound = new THREE.Audio(audioListener);
-            sound.setBuffer(soundBuffers[name]);
-            sound.setVolume(soundVolume);
-            soundEffects[name] = sound;
-        } else {
-            // Not loaded at all, load it now (for non-critical sounds)
-            loadSoundEffect(name, effectDef.path);
-            return; // Exit early as the sound is still loading
-        }
+    try {
+        audioLoader.load(
+            MUSIC_PATH,
+            (buffer) => {
+                if (backgroundMusic) {
+                    backgroundMusic.setBuffer(buffer);
+                    backgroundMusic.setLoop(true);
+                    backgroundMusic.setVolume(musicVolume);
+                    musicLoaded = true;
+                    
+                    Logger.audio.info("Background music loaded successfully");
+                    
+                    // Auto-play music if already enabled
+                    if (isMusicEnabled && audioSystemReady) {
+                        playBackgroundMusic();
+                    }
+                }
+            },
+            (progress) => {
+                Logger.audio.debug(`Music loading: ${(progress.loaded / progress.total * 100).toFixed(0)}%`);
+            },
+            (error) => {
+                Logger.audio.error("Error loading background music:", error);
+            }
+        );
+    } catch (error) {
+        Logger.audio.error("Critical error loading background music:", error);
     }
+}
+
+/**
+ * Get an available sound from the pool based on category priority
+ * @param {string} category - The sound category 
+ * @returns {THREE.Audio|null} An available audio object or null if audio system not ready
+ */
+function getAvailableSound(category) {
+    try {
+        // Make sure we have a valid audio system
+        if (!audioListener || !soundPool || soundPool.length === 0) {
+            console.error("Cannot get sound - invalid audio system state");
+            return null;
+        }
+        
+        // Check if we've reached the limit for this category
+        if (activeSoundCounts[category] >= maxSoundsPerCategory[category]) {
+            // Find oldest sound in this category to recycle
+            let oldestSound = null;
+            let oldestTime = Infinity;
+            
+            for (let i = 0; i < soundPool.length; i++) {
+                const sound = soundPool[i];
+                if (sound.category === category && sound.inUse && 
+                    sound.audio.startTime && sound.audio.startTime < oldestTime) {
+                    oldestTime = sound.audio.startTime;
+                    oldestSound = sound;
+                }
+            }
+            
+            // If we found an older sound in the same category, reuse it
+            if (oldestSound) {
+                const audio = oldestSound.audio;
+                if (audio.isPlaying) {
+                    try {
+                        // Stop properly to avoid the "already playing" warning later
+                        audio.stop();
+                        // Small delay to ensure stop completes
+                        audio.source.onended = null;
+                        audio.source = null;
+                        audio.buffer = null;
+                    } catch (e) {
+                        console.warn("Non-critical error stopping sound:", e);
+                    }
+                }
+                return audio;
+            }
+        }
+        
+        // Otherwise, find any unused sound
+        for (let i = 0; i < soundPool.length; i++) {
+            const sound = soundPool[i];
+            if (!sound.inUse || !sound.audio.isPlaying) {
+                sound.inUse = true;
+                sound.category = category; 
+                activeSoundCounts[category]++; 
+                
+                // Make sure the sound is properly stopped first
+                if (sound.audio.isPlaying) {
+                    try {
+                        sound.audio.stop();
+                        sound.audio.source.onended = null;
+                        sound.audio.source = null;
+                        sound.audio.buffer = null;
+                    } catch (e) {
+                        console.warn("Non-critical error resetting sound:", e);
+                    }
+                }
+                
+                return sound.audio;
+            }
+        }
+        
+        // If all sounds are in use, find the oldest one from any low-priority category
+        // Order of priority (highest to lowest): VOICE > EXPLOSION > EFFECT > MOVEMENT
+        const categoryPriority = [
+            SOUND_CATEGORIES.MOVEMENT, 
+            SOUND_CATEGORIES.EFFECT,
+            SOUND_CATEGORIES.EXPLOSION,
+            SOUND_CATEGORIES.VOICE
+        ];
+        
+        // Only steal from categories with lower priority
+        const categoryIndex = categoryPriority.indexOf(category);
+        const stealableCategories = categoryPriority.slice(0, categoryIndex);
+        
+        let oldestSound = null;
+        let oldestTime = Infinity;
+        
+        // Find the oldest sound from a stealable category
+        for (let i = 0; i < soundPool.length; i++) {
+            const sound = soundPool[i];
+            if (stealableCategories.includes(sound.category) && sound.inUse && 
+                sound.audio.startTime && sound.audio.startTime < oldestTime) {
+                oldestTime = sound.audio.startTime;
+                oldestSound = sound;
+            }
+        }
+        
+        // If we found a sound to steal, use it
+        if (oldestSound) {
+            const audio = oldestSound.audio;
+            if (audio.isPlaying) {
+                try {
+                    // Properly stop and reset
+                    audio.stop();
+                    audio.source.onended = null;
+                    audio.source = null;
+                    audio.buffer = null;
+                } catch (e) {
+                    console.warn("Non-critical error stopping stolen sound:", e);
+                }
+            }
+            
+            // Decrement the count for the old category
+            activeSoundCounts[oldestSound.category]--;
+            
+            // Update to the new category
+            oldestSound.category = category;
+            activeSoundCounts[category]++;
+            
+            return audio;
+        }
+        
+        // Last resort - get the first available sound regardless of category
+        const fallbackSound = soundPool[0];
+        if (fallbackSound) {
+            const audio = fallbackSound.audio;
+            if (audio.isPlaying) {
+                try {
+                    // Properly stop and reset
+                    audio.stop();
+                    audio.source.onended = null;
+                    audio.source = null;
+                    audio.buffer = null;
+                } catch (e) {
+                    console.warn("Non-critical error stopping fallback sound:", e);
+                }
+            }
+            
+            // Update counts
+            if (fallbackSound.category) {
+                activeSoundCounts[fallbackSound.category]--;
+            }
+            
+            fallbackSound.inUse = true;
+            fallbackSound.category = category;
+            activeSoundCounts[category]++;
+            
+            return audio;
+        }
+        
+        return null; 
+    } catch (error) {
+        console.error("Error in getAvailableSound:", error);
+        return null;
+    }
+}
+
+/**
+ * Play a sound effect if sound is enabled
+ * @param {string} name - Name of the sound effect to play
+ * @param {number} [volume] - Optional volume override
+ * @param {boolean} [forcePlay] - Force play even if category limits are reached
+ * @returns {boolean} True if sound was played, false otherwise
+ */
+export function playSoundEffect(name, volume, forcePlay = false) {
+    if (!isSoundEnabled) return false;
     
-    const sound = soundEffects[name];
-    if (sound && sound.buffer) {
-        // If the sound is already playing, stop it first
-        if (sound.isPlaying) {
-            sound.stop();
+    try {
+        // Try to find the sound definition
+        const effectDef = effectsToLoad.find(effect => effect.name === name);
+        if (!effectDef) {
+            Logger.audio.error(`Sound effect not found: ${name}`);
+            return false;
         }
         
-        // Set the volume based on the type of sound
-        let volume = soundVolume; // Default volume
+        // Get the category for this sound
+        const category = effectDef.category || SOUND_CATEGORIES.EFFECT;
         
-        // Determine the type of sound and set appropriate volume
-        if (name.startsWith('eat')) {
-            volume = CONFIG.AUDIO_VOLUME.EATING_SOUNDS;
-        } else if (name.startsWith('alphaKill')) {
-            volume = CONFIG.AUDIO_VOLUME.ALPHA_MODE_SOUNDS;
-        } else if (name === 'playerDeath') {
-            volume = CONFIG.AUDIO_VOLUME.DEATH_SOUND;
-        } else if (name.startsWith('movePlayer')) {
-            volume = CONFIG.AUDIO_VOLUME.MOVEMENT_SOUNDS;
+        // Check if we've reached the limit for this category and aren't forcing
+        if (!forcePlay && activeSoundCounts[category] >= maxSoundsPerCategory[category]) {
+            // Skip this sound, we're already playing enough of this category
+            //console.log(`Skipping sound ${name}, category ${category} at limit (${activeSoundCounts[category]}/${maxSoundsPerCategory[category]})`);
+            return false;
         }
         
-        // Set the volume and play the sound
-        sound.setVolume(volume);
+        // Lazy-load the sound buffer if needed
+        if (!soundBuffers[name]) {
+            loadSoundEffect(effectDef);
+            console.log(`Loading sound effect: ${name} from ${effectDef.path}`);
+            // We'll try to play it next time since the buffer isn't loaded yet
+            return false;
+        }
+        
+        // Get an available sound object from the pool for this category
+        const sound = getAvailableSound(category);
+        if (!sound) {
+            console.error("Cannot play sound - no available sound objects");
+            return false;
+        }
+        
+        // Set the buffer and play the sound
+        sound.setBuffer(soundBuffers[name]);
+        
+        // Set the volume - ENSURE IT'S A VALID NUMBER
+        const finalVolume = (volume !== undefined && !isNaN(volume) && isFinite(volume)) 
+            ? Math.min(Math.max(volume, 0), 1) 
+            : (soundVolume || 0.5); 
+            
+        try {
+            // Use a safe method to set volume
+            if (sound.gain && sound.gain.gain) {
+                // Direct method
+                sound.gain.gain.value = finalVolume;
+            } else {
+                // THREE.js method
+                sound.setVolume(finalVolume);
+            }
+        } catch (e) {
+            console.error("Error setting volume:", e);
+            // Last resort fallback
+            try {
+                sound.gain.gain.setValueAtTime(finalVolume, audioContext.currentTime);
+            } catch (e2) {
+                console.error("Critical error setting volume, using fixed value:", e2);
+                // Absolute last resort
+                if (sound.gain && sound.gain.gain) {
+                    sound.gain.gain.value = 0.3; 
+                }
+            }
+        }
+        
+        // Record start time for prioritization
+        sound.startTime = audioContext.currentTime;
+        
+        // Play the sound
         sound.play();
+        //console.log(`Playing sound: ${name} (${category}) with volume ${finalVolume}, count: ${activeSoundCounts[category]}/${maxSoundsPerCategory[category]}`);
         
-        Logger.audio.info(`Playing sound effect: ${name} at volume ${volume}`);
-    } else {
-        Logger.audio.warn(`Sound effect not found or not loaded: ${name}`);
+        // Set up a callback for when the sound finishes
+        sound.onEnded = () => {
+            const poolIndex = soundPool.findIndex(poolSound => poolSound.audio === sound);
+            if (poolIndex !== -1) {
+                // Decrement the count for this category
+                const category = soundPool[poolIndex].category;
+                if (category) {
+                    activeSoundCounts[category]--;
+                }
+                
+                // Mark as not in use
+                soundPool[poolIndex].inUse = false;
+                soundPool[poolIndex].name = null;
+                soundPool[poolIndex].category = null;
+            }
+        };
+        
+        return true;
+    } catch (error) {
+        Logger.audio.error(`Error playing sound effect ${name}:`, error);
+        console.error(`Error playing ${name}:`, error);
+        return false;
+    }
+}
+
+/**
+ * Play a player snake movement sound based on Alpha Mode status
+ * Uses move_player_snake_1.ogg for regular movement
+ * Uses move_player_snake_2.ogg for Alpha Mode movement
+ * Only plays a sound every other move to reduce sound frequency
+ * @param {boolean} isAlphaMode - Whether the player is currently in Alpha Mode
+ */
+export function playPlayerMovementSound() {
+    if (!isSoundEnabled) return;
+    
+    try {
+        // Only play movement sound on every fourth call to avoid too many sounds
+        playerMoveSoundCounter = (playerMoveSoundCounter + 1) % 4;
+        if (playerMoveSoundCounter !== 0) {
+            return; 
+        }
+        
+        // Choose sound based on Alpha Mode status
+        const soundName = window.isAlphaMode ? 'movePlayerSnake2' : 'movePlayerSnake1';
+        
+        // Always use a fixed volume for movement sounds
+        // This is important to avoid volume-related audio issues
+        const success = playSoundEffect(soundName, 0.4);
+        
+        if (!success && !soundBuffers[soundName]) {
+            // If the sound failed because it's not loaded yet, try to load it now
+            const soundDef = effectsToLoad.find(effect => effect.name === soundName);
+            if (soundDef) {
+                loadSoundEffect(soundDef);
+                Logger.audio.debug(`Attempted to load missing movement sound: ${soundName}`);
+            }
+        }
+        
+        // Reset sound counter periodically to ensure we don't get stuck in a bad state
+        // where sounds don't play due to sound effect pool issues
+        if (Math.random() < 0.1) { // 10% chance on each move
+            resetSoundPool();
+        }
+    } catch (error) {
+        console.error("Error playing player movement sound:", error);
+    }
+}
+
+/**
+ * Reset the sound pool state to ensure sounds can still play
+ * This helps recover from potential stalled states
+ */
+function resetSoundPool() {
+    try {
+        // Find sounds that are marked as in-use but aren't actually playing
+        for (let i = 0; i < soundPool.length; i++) {
+            const sound = soundPool[i];
+            if (sound.inUse && !sound.audio.isPlaying) {
+                // Reset this sound slot
+                sound.inUse = false;
+                sound.name = null;
+                
+                // Update category counts if needed
+                if (sound.category) {
+                    activeSoundCounts[sound.category]--;
+                    sound.category = null;
+                }
+                
+                Logger.audio.debug("Reset stalled sound in pool");
+            }
+        }
+    } catch (error) {
+        console.error("Error resetting sound pool:", error);
+    }
+}
+
+/**
+ * Play a test sound directly (bypassing normal checks)
+ * This is useful for debugging audio issues
+ */
+function playTestSound() {
+    console.log("Attempting to force-play a test sound...");
+    
+    try {
+        // First try to resume the context
+        if (audioContext && audioContext.state !== 'running') {
+            console.log("Audio context not running, attempting to resume...");
+            audioContext.resume().then(() => {
+                console.log("Audio context resumed, now trying to play sound");
+                forcePlaySound();
+            }).catch(err => {
+                console.error("Failed to resume audio context:", err);
+                // Try anyway
+                forcePlaySound();
+            });
+        } else {
+            forcePlaySound();
+        }
+    } catch (error) {
+        console.error("Error in playTestSound:", error);
+    }
+    
+    function forcePlaySound() {
+        try {
+            // Try creating a simple oscillator
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            gain.gain.value = 0.1; 
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc.frequency.value = 440; 
+            osc.start(0);
+            console.log("Test tone started");
+            
+            // Stop after 1 second
+            setTimeout(() => {
+                osc.stop();
+                console.log("Test tone stopped");
+                
+                // Now try to play a sound effect
+                console.log("Attempting to play movePlayerSnake1 sound...");
+                const success = playSoundEffect('movePlayerSnake1');
+                console.log("Sound effect play result:", success);
+            }, 1000);
+        } catch (e) {
+            console.error("Failed to play oscillator:", e);
+        }
     }
 }
 
 /**
  * Play the background music
- * Only starts playing if it's not already playing and music is enabled
  */
 export function playBackgroundMusic() {
-    if (backgroundMusic && !backgroundMusic.isPlaying && isMusicEnabled) {
-        Logger.audio.info("Playing background music");
+    if (!musicLoaded || !isMusicEnabled || !backgroundMusic) {
+        return false;
+    }
+    
+    try {
+        // Don't restart if already playing
+        if (backgroundMusic.isPlaying) {
+            return true;
+        }
+        
+        Logger.audio.info("Playing background music...");
+        
+        // Make sure music is set to loop and has correct volume
+        backgroundMusic.setLoop(true);
+        backgroundMusic.setVolume(musicVolume);
         backgroundMusic.play();
-    }
-}
-
-/**
- * Pause the background music
- * Only pauses if it's currently playing
- */
-export function pauseBackgroundMusic() {
-    if (backgroundMusic && backgroundMusic.isPlaying) {
-        Logger.audio.info("Pausing background music");
-        backgroundMusic.pause();
-    }
-}
-
-/**
- * Stop the background music
- */
-export function stopBackgroundMusic() {
-    if (backgroundMusic && backgroundMusic.isPlaying) {
-        Logger.audio.info("Stopping background music");
-        backgroundMusic.stop();
+        
+        return true;
+    } catch (error) {
+        Logger.audio.error("Error playing background music:", error);
+        
+        // Try to recover by restarting the audio context
+        if (audioContext && audioContext.state !== 'running') {
+            audioContext.resume().catch(e => {
+                Logger.audio.warn("Could not resume audio context:", e);
+            });
+        }
+        
+        return false;
     }
 }
 
 /**
  * Toggle background music on/off
- * @returns {boolean} The new state of the music (true = enabled)
+ * @param {boolean} forceState - Optional, force a specific state (on/off)
+ * @returns {boolean} - The new music state (true = on, false = off)
  */
-export function toggleMusic() {
-    isMusicEnabled = !isMusicEnabled;
-    
-    if (isMusicEnabled) {
-        playBackgroundMusic();
+export function toggleMusic(forceState) {
+    // If a state is forced, use that value
+    if (forceState !== undefined) {
+        isMusicEnabled = forceState;
     } else {
-        pauseBackgroundMusic();
+        // Otherwise toggle the current state
+        isMusicEnabled = !isMusicEnabled;
     }
     
-    Logger.audio.info(`Music ${isMusicEnabled ? 'enabled' : 'disabled'}`);
+    if (DEBUG_AUDIO) {
+        console.log(`Music toggled to: ${isMusicEnabled ? 'ON' : 'OFF'}`);
+    }
+    
+    // Apply the new state
+    if (isMusicEnabled) {
+        if (musicLoaded && backgroundMusic) {
+            playBackgroundMusic();
+        }
+    } else {
+        if (backgroundMusic && backgroundMusic.isPlaying) {
+            pauseBackgroundMusic();
+        }
+    }
+    
+    // Try to restore audio context if needed
+    if (isMusicEnabled && audioContext && audioContext.state !== 'running') {
+        audioContext.resume().catch(e => console.error("Error resuming audio context:", e));
+    }
+    
     return isMusicEnabled;
 }
 
 /**
  * Toggle sound effects on/off
- * @returns {boolean} The new state of the sound effects (true = enabled)
+ * @param {boolean} forceState - Optional, force a specific state (on/off)
+ * @returns {boolean} - The new sound state (true = on, false = off)
  */
-export function toggleSound() {
-    isSoundEnabled = !isSoundEnabled;
-    Logger.audio.info(`Sound effects ${isSoundEnabled ? 'enabled' : 'disabled'}`);
+export function toggleSound(forceState) {
+    // If a state is forced, use that value
+    if (forceState !== undefined) {
+        isSoundEnabled = forceState;
+    } else {
+        // Otherwise toggle the current state
+        isSoundEnabled = !isSoundEnabled;
+    }
+    
+    if (DEBUG_AUDIO) {
+        console.log(`Sound effects toggled to: ${isSoundEnabled ? 'ON' : 'OFF'}`);
+    }
+    
+    // Stop all playing sound effects if disabling sound
+    if (!isSoundEnabled) {
+        soundPool.forEach(sound => {
+            if (sound && sound.audio && sound.audio.isPlaying) {
+                sound.audio.stop();
+                sound.inUse = false;
+            }
+        });
+    }
+    
+    // Try to restore audio context if needed
+    if (isSoundEnabled && audioContext && audioContext.state !== 'running') {
+        audioContext.resume().catch(e => console.error("Error resuming audio context:", e));
+    }
+    
     return isSoundEnabled;
 }
 
 /**
- * Set the volume of the background music
+ * Check if background music is enabled
+ * @returns {boolean} - True if music is on, false if off
+ */
+export function isMusicOn() {
+    return isMusicEnabled;
+}
+
+/**
+ * Check if sound effects are enabled
+ * @returns {boolean} - True if sound effects are on, false if off
+ */
+export function isSoundOn() {
+    return isSoundEnabled;
+}
+
+/**
+ * Get the current background music volume
+ * @returns {number} - Volume level (0.0 to 1.0)
+ */
+export function getMusicVolume() {
+    return musicVolume;
+}
+
+/**
+ * Get the current sound effects volume
+ * @returns {number} - Volume level (0.0 to 1.0)
+ */
+export function getSoundVolume() {
+    return soundVolume;
+}
+
+/**
+ * Set the music volume
  * @param {number} volume - Volume level (0.0 to 1.0)
  */
 export function setMusicVolume(volume) {
@@ -369,15 +1051,15 @@ export function setMusicVolume(volume) {
     
     musicVolume = volume;
     
+    // Update the volume of the background music if it's loaded
     if (backgroundMusic) {
         backgroundMusic.setVolume(musicVolume);
+        Logger.audio.info(`Music volume set to: ${musicVolume}`);
     }
-    
-    Logger.audio.info(`Music volume set to: ${musicVolume}`);
 }
 
 /**
- * Set the volume of sound effects
+ * Set the sound effects volume
  * @param {number} volume - Volume level (0.0 to 1.0)
  */
 export function setSoundVolume(volume) {
@@ -388,80 +1070,14 @@ export function setSoundVolume(volume) {
     
     soundVolume = volume;
     
-    // Update volume for all loaded sound effects
-    Object.values(soundEffects).forEach(sound => {
-        if (sound && sound.setVolume) {
-            sound.setVolume(soundVolume);
+    // Update volume for all sound pool objects
+    soundPool.forEach(sound => {
+        if (sound && sound.audio.isObject3D) {
+            sound.audio.setVolume(soundVolume);
         }
     });
     
     Logger.audio.info(`Sound effects volume set to: ${soundVolume}`);
-}
-
-/**
- * Get the current music volume
- * @returns {number} Current music volume (0.0 to 1.0)
- */
-export function getMusicVolume() {
-    return musicVolume;
-}
-
-/**
- * Get the current sound effects volume
- * @returns {number} Current sound effects volume (0.0 to 1.0)
- */
-export function getSoundVolume() {
-    return soundVolume;
-}
-
-/**
- * Get the current music enabled state
- * @returns {boolean} True if music is enabled
- */
-export function isMusicOn() {
-    return isMusicEnabled;
-}
-
-/**
- * Get the current sound effects enabled state
- * @returns {boolean} True if sound effects are enabled
- */
-export function isSoundOn() {
-    return isSoundEnabled;
-}
-
-/**
- * Play a player snake movement sound based on Alpha Mode status
- * Uses move_player_snake_1.ogg for regular movement
- * Uses move_player_snake_2.ogg for Alpha Mode movement
- * Only plays a sound every other move to reduce sound frequency
- * @param {boolean} isAlphaMode - Whether the player is currently in Alpha Mode
- */
-export function playPlayerMoveSound(isAlphaMode = false) {
-    // Only play sound if sound effects are enabled
-    if (!isSoundEnabled) {
-        return;
-    }
-    
-    // Only play movement sound on every other call to avoid too many sounds
-    playerMoveSoundCounter++;
-    if (playerMoveSoundCounter % 2 !== 0) {
-        return; // Skip this sound
-    }
-    
-    // Choose sound based on Alpha Mode status
-    const soundName = isAlphaMode ? 'movePlayerSnake2' : 'movePlayerSnake1';
-    
-    // Play the sound effect with the correct volume
-    playSoundEffect(soundName);
-}
-
-/**
- * Reset the alpha kill voice counter to start from the first voice line
- */
-export function resetAlphaKillVoiceCounter() {
-    alphaKillVoiceIndex = 0;
-    Logger.audio.info("Alpha kill voice counter reset");
 }
 
 /**
@@ -500,33 +1116,317 @@ export function playAlphaKillVoice() {
     // Increment the counter for next time
     alphaKillVoiceIndex++;
     
-    // Also play an explosion sound effect
-    const explosionSound = Math.random() > 0.5 ? 'alphaKillExplode1' : 'alphaKillExplode2';
-    setTimeout(() => playSoundEffect(explosionSound), 100);
+    // Also play an explosion sound effect - only use explosion1 as requested
+    setTimeout(() => playSoundEffect('alphaKillExplode1'), 100);
+}
+
+/**
+ * Pause the background music
+ * Only pauses if it's currently playing
+ */
+export function pauseBackgroundMusic() {
+    if (backgroundMusic && backgroundMusic.isPlaying) {
+        Logger.audio.info("Pausing background music");
+        backgroundMusic.pause();
+    }
+}
+
+/**
+ * Stop the background music
+ */
+export function stopBackgroundMusic() {
+    if (backgroundMusic && backgroundMusic.isPlaying) {
+        Logger.audio.info("Stopping background music");
+        backgroundMusic.stop();
+    }
 }
 
 /**
  * Clean up audio resources
  * This function should be called when changing scenes or closing the game
  * to properly release audio resources and prevent memory leaks
+ * @returns {boolean} Whether music was playing before cleanup
  */
 export function cleanupAudio() {
     Logger.audio.info("Cleaning up audio resources...");
     
-    // Stop background music
-    if (backgroundMusic) {
-        if (backgroundMusic.isPlaying) {
-            backgroundMusic.stop();
+    // Remember if music was playing before cleanup
+    const wasMusicPlaying = backgroundMusic && backgroundMusic.isPlaying;
+    
+    // Don't stop background music - preserve it playing continuously
+    // This way the music won't restart after player death
+    
+    try {
+        // Stop all sound effects in the pool
+        soundPool.forEach(sound => {
+            if (sound && sound.audio.isPlaying) {
+                try {
+                    sound.audio.stop();
+                    sound.inUse = false;
+                    sound.name = null;
+                } catch (e) {
+                    // Ignore errors when stopping sounds
+                }
+            }
+        });
+        
+        // Check the audio context health
+        if (audioContext && audioContext.state !== 'running') {
+            Logger.audio.warn(`Audio context is in state: ${audioContext.state}, attempting recovery`);
+            
+            try {
+                // Try to resume the audio context
+                audioContext.resume().catch(e => {
+                    Logger.audio.warn("Could not resume audio context:", e);
+                });
+            } catch (e) {
+                // Ignore errors in the recovery process
+            }
         }
+    } catch (error) {
+        Logger.audio.error("Error during audio cleanup:", error);
     }
     
-    // Stop all sound effects and clean up
-    Object.values(soundEffects).forEach(sound => {
-        if (sound && sound.isPlaying) {
-            sound.stop();
-        }
-    });
+    Logger.audio.info("Sound effects stopped and cleaned up (music preserved)");
     
-    // Don't clear the buffer references immediately, just note that we've cleaned up
-    Logger.audio.info("Audio resources stopped and cleaned up");
+    // Return whether music was playing, so caller can decide to restart it if needed
+    return wasMusicPlaying;
+}
+
+/**
+ * Restore music playback if it was previously enabled
+ * Call this after cleaning up audio resources if you want to resume music
+ */
+export function restoreMusicIfEnabled() {
+    // Only attempt to restore music if it's enabled in settings and not already playing
+    if (isMusicEnabled && musicLoaded && backgroundMusic && !backgroundMusic.isPlaying) {
+        Logger.audio.info("Attempting to restore background music playback");
+        // Small delay to ensure audio context has time to reset
+        setTimeout(() => {
+            playBackgroundMusic();
+        }, 100);
+    }
+}
+
+/**
+ * Perform a health check on the audio system and try to recover if issues are detected
+ * Call this periodically to ensure the audio system remains stable
+ */
+export function performAudioHealthCheck() {
+    if (!audioListener || !audioContext) return;
+    
+    try {
+        // Check audio context state
+        if (audioContext.state !== 'running') {
+            Logger.audio.warn(`Audio health check: context is ${audioContext.state}, attempting recovery`);
+            audioContext.resume().catch(e => {
+                Logger.audio.error("Failed to resume audio context:", e);
+            });
+        }
+        
+        // Check for leaked audio resources
+        let playingSounds = 0;
+        soundPool.forEach(sound => {
+            if (sound.audio.isPlaying) {
+                playingSounds++;
+            }
+        });
+        
+        // If too many sounds are playing, do a cleanup
+        if (playingSounds > MAX_CONCURRENT_SOUNDS - 1) {
+            Logger.audio.warn(`Audio health check: ${playingSounds} sounds playing, cleaning up`);
+            
+            // Find the oldest playing sound and stop it
+            let oldestSound = null;
+            let oldestTime = Infinity;
+            
+            soundPool.forEach(sound => {
+                if (sound.audio.isPlaying && sound.audio.startTime && sound.audio.startTime < oldestTime) {
+                    oldestTime = sound.audio.startTime;
+                    oldestSound = sound;
+                }
+            });
+            
+            if (oldestSound) {
+                oldestSound.audio.stop();
+                oldestSound.inUse = false;
+                Logger.audio.info(`Stopped oldest sound: ${oldestSound.name || 'unknown'}`);
+            }
+        }
+    } catch (error) {
+        Logger.audio.error("Error in audio health check:", error);
+    }
+}
+
+/**
+ * Test the audio system by trying to play a test sound
+ * This is helpful for debugging audio issues
+ */
+function testAudioSystem() {
+    console.log("======= AUDIO SYSTEM TEST =======");
+    console.log("AudioListener exists:", !!audioListener);
+    console.log("AudioContext exists:", !!audioContext);
+    console.log("AudioContext state:", audioContext ? audioContext.state : "N/A");
+    console.log("Sound enabled:", isSoundEnabled);
+    console.log("Music enabled:", isMusicEnabled);
+    console.log("Sound pool size:", soundPool.length);
+    console.log("Loaded sound buffers:", Object.keys(soundBuffers));
+    
+    // Try to resume the audio context
+    if (audioContext && audioContext.state === "suspended") {
+        console.log("Attempting to resume suspended audio context...");
+        audioContext.resume().then(() => {
+            console.log("Audio context resumed successfully");
+        }).catch(err => {
+            console.error("Failed to resume audio context:", err);
+        });
+    }
+    
+    // Try to create a simple test sound
+    try {
+        const testOscillator = audioContext.createOscillator();
+        testOscillator.type = 'sine';
+        testOscillator.frequency.setValueAtTime(440, audioContext.currentTime); 
+        
+        const gainNode = audioContext.createGain();
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); 
+        
+        testOscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        testOscillator.start();
+        console.log("Test tone started");
+        
+        // Stop after 1 second
+        setTimeout(() => {
+            testOscillator.stop();
+            console.log("Test tone stopped");
+            
+            // Now try to play a sound effect
+            console.log("Attempting to play movePlayerSnake1 sound...");
+            const success = playSoundEffect('movePlayerSnake1');
+            console.log("Sound effect play result:", success);
+        }, 1000);
+    } catch (error) {
+        console.error("Error playing test sound:", error);
+    }
+    
+    console.log("================================");
+}
+
+/**
+ * Backward compatibility function that forwards to playPlayerMovementSound
+ * @param {boolean} isAlphaMode - Whether the player is in Alpha Mode (not used anymore)
+ */
+export function playPlayerMoveSound(isAlphaMode = false) {
+    // Set the global Alpha Mode state for the sound function to use
+    window.isAlphaMode = isAlphaMode;
+    
+    // Call the new implementation
+    playPlayerMovementSound();
+}
+
+/**
+ * Reset the alpha kill voice counter to start from the first voice line
+ */
+export function resetAlphaKillVoiceCounter() {
+    alphaKillVoiceIndex = 0;
+    Logger.audio.info("Alpha kill voice counter reset");
+}
+
+/**
+ * Play the player snake movement sound directly, without checks
+ * Useful for testing the audio system
+ */
+function playMovePlayerSound() {
+    console.log("Attempting to play player movement sound (direct method)...");
+    
+    try {
+        // Load the sound if needed
+        if (!soundBuffers['movePlayerSnake1']) {
+            console.log("Sound buffer not loaded, attempting to load...");
+            
+            // Find the sound definition
+            const soundDef = effectsToLoad.find(effect => effect.name === 'movePlayerSnake1');
+            if (!soundDef) {
+                console.error("Sound definition not found");
+                return;
+            }
+            
+            // Load it immediately and synchronously
+            const request = new XMLHttpRequest();
+            request.open('GET', soundDef.path, false); 
+            request.responseType = 'arraybuffer';
+            
+            request.onload = function() {
+                audioContext.decodeAudioData(request.response, function(buffer) {
+                    soundBuffers['movePlayerSnake1'] = buffer;
+                    console.log("Successfully loaded sound buffer synchronously");
+                    
+                    // Now play it
+                    playWithBuffer(buffer);
+                }, function(error) {
+                    console.error("Error decoding audio data:", error);
+                });
+            };
+            
+            request.onerror = function() {
+                console.error("Error loading sound file");
+            };
+            
+            request.send();
+        } else {
+            // We already have the buffer, play it
+            playWithBuffer(soundBuffers['movePlayerSnake1']);
+        }
+    } catch (error) {
+        console.error("Error in playMovePlayerSound:", error);
+    }
+    
+    function playWithBuffer(buffer) {
+        try {
+            // Get a sound from the pool
+            const sound = getAvailableSound();
+            if (!sound) {
+                console.error("No available sound object in pool");
+                return;
+            }
+            
+            // Set the buffer
+            sound.setBuffer(buffer);
+            
+            // Set volume and play - use fixed value to avoid any issues
+            try {
+                // Use the direct gain method which is more reliable
+                if (sound.gain && sound.gain.gain) {
+                    sound.gain.gain.value = 0.5;
+                } else {
+                    sound.setVolume(0.5);
+                }
+            } catch (e) {
+                console.error("Error setting volume:", e);
+                // Last resort fallback
+                try {
+                    sound.gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+                } catch (e2) {
+                    console.error("Critical volume error:", e2);
+                }
+            }
+            
+            // Play the sound
+            sound.play();
+            console.log("Successfully played movement sound!");
+            
+            // Set cleanup callback
+            sound.onEnded = () => {
+                const poolIndex = soundPool.findIndex(poolSound => poolSound.audio === sound);
+                if (poolIndex !== -1) {
+                    soundPool[poolIndex].inUse = false;
+                }
+                console.log("Sound playback completed");
+            };
+        } catch (e) {
+            console.error("Error playing sound with buffer:", e);
+        }
+    }
 }

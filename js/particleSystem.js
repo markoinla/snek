@@ -5,6 +5,7 @@ import { GEOMETRIES } from './constants.js';
 let activeParticles = [];
 let particleMaterialRef = null; // Hold reference to the material
 let isMobileDevice = false;     // Flag to track if we're on a mobile device
+const MAX_PARTICLES = 200;      // Maximum number of particles active at once
 
 // Function to detect if the user is on a mobile device
 function detectMobileDevice() {
@@ -25,13 +26,21 @@ export function initParticles(material) {
     console.log(`Device detected as: ${isMobileDevice ? 'Mobile' : 'Desktop'}`);
 }
 
-// Helper function to adjust particle count based on device
+// Helper function to adjust particle count based on device and current load
 function adjustParticleCount(count) {
-    if (!isMobileDevice) return count;
+    // First check if we're near the maximum particles limit
+    if (activeParticles.length > MAX_PARTICLES * 0.7) {
+        // If we're already at 70% capacity, reduce particles further
+        count = Math.max(1, Math.floor(count * 0.3));
+    }
     
-    // Reduce particles by 75% on mobile devices
-    const reducedCount = Math.max(2, Math.floor(count * 0.25));
-    return reducedCount;
+    // Then apply mobile device reduction if applicable
+    if (isMobileDevice) {
+        // Reduce particles by 75% on mobile devices
+        count = Math.max(1, Math.floor(count * 0.25));
+    }
+    
+    return count;
 }
 
 // Regular food particle effect (smaller, green particles)
@@ -41,14 +50,16 @@ export function createNormalFoodEffect(scene, camera, position) {
         return;
     }
 
-    // Skip normal food particles entirely on mobile
-    if (isMobileDevice) {
+    // Skip normal food particles entirely on mobile or if too many particles
+    if (isMobileDevice || activeParticles.length > MAX_PARTICLES * 0.8) {
         return;
     }
 
     const baseColor = new THREE.Color(CONFIG.PARTICLE_COLOR_NORMAL_FOOD);
-    const count = CONFIG.PARTICLE_COUNT_NORMAL_FOOD;
+    const count = adjustParticleCount(CONFIG.PARTICLE_COUNT_NORMAL_FOOD);
     
+    if (count <= 0) return;
+
     for (let i = 0; i < count; i++) {
         // Clone material for color tint
         const pMat = particleMaterialRef.clone();
@@ -265,6 +276,32 @@ export function createFrogEffect(scene, camera, position, color = 0x8BC34A) {
 export function updateParticles(deltaTime, scene) { // Pass scene for removal
     if (!scene) return;
     const gravity = 9.8; // Simple gravity simulation
+    
+    // Performance optimization: if we have too many particles, dispose some older ones
+    if (activeParticles.length > MAX_PARTICLES) {
+        // Remove 20% of the oldest particles
+        const particlesToRemove = Math.floor(activeParticles.length * 0.2);
+        for (let i = 0; i < particlesToRemove; i++) {
+            const p = activeParticles[i];
+            if (p && p.mesh) {
+                scene.remove(p.mesh);
+                
+                // Properly dispose of materials and geometries
+                if (p.mesh.material) {
+                    p.mesh.material.dispose();
+                }
+                if (p.mesh.geometry && p.mesh.geometry !== GEOMETRIES.particle) {
+                    p.mesh.geometry.dispose();
+                }
+                
+                p.mesh = null;
+            }
+        }
+        
+        // Remove the particles we processed
+        activeParticles.splice(0, particlesToRemove);
+        console.log(`Performance: Removed ${particlesToRemove} excess particles`);
+    }
 
     for (let i = activeParticles.length - 1; i >= 0; i--) {
         const p = activeParticles[i];
