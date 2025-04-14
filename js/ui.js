@@ -34,7 +34,6 @@ const soundToggle = document.getElementById('soundToggle');
 const musicVolumeSlider = document.getElementById('musicVolume');
 const soundVolumeSlider = document.getElementById('soundVolume');
 const inGameMusicButton = document.getElementById('musicToggleButton');
-const testSoundButton = document.getElementById('testAudioButton');
 
 // Intro screen elements
 const introScreen = document.getElementById('introScreen');
@@ -105,10 +104,41 @@ function initializeUIText() {
 
 // Function to check if the user is on a mobile device
 function isMobileDevice() {
-    return (window.innerWidth <= 768) || 
-           ('ontouchstart' in window) || 
+    return ('ontouchstart' in window) || 
            (navigator.maxTouchPoints > 0) || 
            (navigator.msMaxTouchPoints > 0);
+}
+
+/**
+ * Better detection for tablets and touch devices
+ * Uses multiple signals to detect tablets specifically, not just small screens
+ */
+function isTabletDevice() {
+    // Check for touch capability first
+    const hasTouch = ('ontouchstart' in window) || 
+                     (navigator.maxTouchPoints > 0) || 
+                     (navigator.msMaxTouchPoints > 0);
+    
+    if (!hasTouch) return false; // If no touch support, definitely not a tablet
+    
+    // Check if it's a tablet-sized device (typically between 600px and 1200px)
+    // iPad Pro can be up to 1366px width while still being a tablet
+    const tabletSized = window.innerWidth >= 600 && window.innerWidth <= 1366;
+    
+    // Check user agent for common tablet indicators
+    const ua = navigator.userAgent.toLowerCase();
+    const isIPad = /ipad/.test(ua) || 
+                  (/macintosh/.test(ua) && navigator.maxTouchPoints > 1); // Modern iPads identify as Macbooks
+    const isAndroidTablet = /android/.test(ua) && !/mobile/.test(ua); // Android tablets don't have "mobile" in UA
+    const isWindowsTablet = /windows/.test(ua) && /touch/.test(ua);
+    
+    // Tablet-specific browser properties
+    const hasTabletBrowser = !!window.MSStream || // Older Surface tablets
+                            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // Modern iPads
+    
+    // If any tablet-specific indicators are true, or if it's touch-capable with a tablet-sized screen
+    return isIPad || isAndroidTablet || isWindowsTablet || hasTabletBrowser || 
+          (hasTouch && tabletSized);
 }
 
 // Call the initialization function after the document is fully loaded
@@ -259,15 +289,6 @@ function setupEventListeners() {
         soundVolumeSlider.addEventListener('input', () => {
             const volume = soundVolumeSlider.value / 100;
             Audio.setSoundVolume(volume);
-        });
-    }
-    
-    // Test sound button
-    if (testSoundButton) {
-        testSoundButton.addEventListener('click', () => {
-            if (window.playTestSound) {
-                window.playTestSound();
-            }
         });
     }
 }
@@ -452,7 +473,8 @@ window.addEventListener('resize', updateMobileControlsVisibility);
 function updateMobileControlsVisibility() {
     if (!leftButton || !rightButton || gameOverElement?.classList.contains('active')) return;
     
-    if (window.innerWidth <= 767) {
+    // Show controls if device is a phone (small screen) OR a tablet (any screen size with touch capabilities)
+    if (window.innerWidth <= 767 || isTabletDevice()) {
         leftButton.style.display = 'flex';
         rightButton.style.display = 'flex';
     } else {
@@ -502,6 +524,12 @@ export const elements = {
     frogsEatenElement,
     snakesEatenElement,
     settingsButton,
+};
+
+export const deviceDetection = {
+    isMobileDevice,
+    isTabletDevice,
+    updateMobileControlsVisibility
 };
 
 export function updateScore(score) {

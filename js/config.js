@@ -1,5 +1,5 @@
 // --- Configuration Constants ---
-export const GRID_SIZE = 160;
+export const GRID_SIZE = 80;
 export const UNIT_SIZE = 1;
 export const BASE_SNAKE_SPEED = 0.25;
 export const CAMERA_DISTANCE = 9;
@@ -8,7 +8,7 @@ export const CAMERA_LAG = 0.2;
 export const CAMERA_POSITION_SMOOTHNESS = 0.01; // Lower = smoother camera position movement
 export const CAMERA_ROTATION_SMOOTHNESS = 0.06; // Lower = smoother camera rotation
 export const SPRITE_SHEET_DIM = 2;
-export const NUM_INITIAL_FOOD = 300;
+export const NUM_INITIAL_FOOD = 100;
 export const MIN_SNAKE_LENGTH = 3;
 export const NUM_OBSTACLES = 30;
 export const POWERUP_TEXT_ANIMATION_DURATION = 1500; // Keep for CSS sync if needed
@@ -72,7 +72,7 @@ export const AUDIO_ENABLED = {
 export const AUDIO_PRELOAD_ALL = true; // Whether to preload all sound effects at game start
 
 // Enemy snake settings
-export const NUM_ENEMIES = 32;
+export const NUM_ENEMIES = 8;
 export const ENEMY_START_LENGTH = 5;
 export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
@@ -250,7 +250,7 @@ export const MODE_SETTINGS = {
         FOOD_COUNT_MULTIPLIER: 1.0,
         ALPHA_POINTS_THRESHOLD_MULTIPLIER: 1.0,
         ALPHA_MODE_DURATION_MULTIPLIER: 1.0,
-        COLLISION_FORGIVENESS: 0.0 // No forgiveness in normal mode
+        COLLISION_FORGIVENESS: 0.2 // Small buffer for collisions (in grid units)
     },
     [GAME_MODES.CASUAL]: {
         // Casual mode modifiers
@@ -259,6 +259,6 @@ export const MODE_SETTINGS = {
         FOOD_COUNT_MULTIPLIER: 1.5, // 50% more food
         ALPHA_POINTS_THRESHOLD_MULTIPLIER: 0.7, // 30% easier to get into Alpha Mode
         ALPHA_MODE_DURATION_MULTIPLIER: 1.5, // Alpha Mode lasts 50% longer
-        COLLISION_FORGIVENESS: 0.2 // Small buffer for collisions (in grid units)
+        COLLISION_FORGIVENESS: 0.5 // Small buffer for collisions (in grid units)
     }
 };
