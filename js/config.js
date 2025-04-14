@@ -1,16 +1,16 @@
 // --- Configuration Constants ---
-export const GRID_SIZE = 60;
+export const GRID_SIZE = 160;
 export const UNIT_SIZE = 1;
-export const BASE_SNAKE_SPEED = 0.2;
+export const BASE_SNAKE_SPEED = 0.25;
 export const CAMERA_DISTANCE = 9;
 export const CAMERA_HEIGHT = 12;
 export const CAMERA_LAG = 0.2;
 export const CAMERA_POSITION_SMOOTHNESS = 0.01; // Lower = smoother camera position movement
 export const CAMERA_ROTATION_SMOOTHNESS = 0.06; // Lower = smoother camera rotation
 export const SPRITE_SHEET_DIM = 2;
-export const NUM_INITIAL_FOOD = 50;
+export const NUM_INITIAL_FOOD = 300;
 export const MIN_SNAKE_LENGTH = 3;
-export const NUM_OBSTACLES = 17;
+export const NUM_OBSTACLES = 30;
 export const POWERUP_TEXT_ANIMATION_DURATION = 1500; // Keep for CSS sync if needed
 
 // Food speed boost settings
@@ -72,7 +72,7 @@ export const AUDIO_ENABLED = {
 export const AUDIO_PRELOAD_ALL = true; // Whether to preload all sound effects at game start
 
 // Enemy snake settings
-export const NUM_ENEMIES = 6;
+export const NUM_ENEMIES = 32;
 export const ENEMY_START_LENGTH = 5;
 export const ENEMY_SNAKE_SPEED = 0.3; // Time between moves in seconds
 export const ENEMY_START_SAFE_ZONE = 10; // Minimum distance from center
@@ -160,7 +160,10 @@ export const GAME_TEXT = {
             "MILOS SMELLS",
             "MILOS IS THE BEST",
             "MILOS IS A GOOD SNEK",
-            "MILOS IS THE BEST SNEK"
+            "MILOS IS THE BEST SNEK",
+            "MILOS IS BETTER THAN EVERYONE",
+            "YOU ATE FILIP!",
+            "YOU ATE MILOS!"
         ]
     },
     
@@ -227,4 +230,35 @@ export const FOOD_SPAWN_RATIOS = {
     shrink: 1,    // Shrink snake (10% chance)
     score_x2: 3,  // Score multiplier (10% chance)
     ghost: 2      // Ghost mode (10% chance)
+};
+
+// Game Modes Configuration
+export const GAME_MODES = {
+    NORMAL: "normal",
+    CASUAL: "casual"
+};
+
+// Default game mode
+export const DEFAULT_GAME_MODE = GAME_MODES.NORMAL;
+
+// Game Mode Settings
+export const MODE_SETTINGS = {
+    [GAME_MODES.NORMAL]: {
+        // Normal mode uses default values from above constants
+        SNAKE_SPEED_MULTIPLIER: 1.0,
+        OBSTACLE_COUNT_MULTIPLIER: 1.0,
+        FOOD_COUNT_MULTIPLIER: 1.0,
+        ALPHA_POINTS_THRESHOLD_MULTIPLIER: 1.0,
+        ALPHA_MODE_DURATION_MULTIPLIER: 1.0,
+        COLLISION_FORGIVENESS: 0.0 // No forgiveness in normal mode
+    },
+    [GAME_MODES.CASUAL]: {
+        // Casual mode modifiers
+        SNAKE_SPEED_MULTIPLIER: 0.7, // 30% slower snake
+        OBSTACLE_COUNT_MULTIPLIER: 0.7, // 30% fewer obstacles
+        FOOD_COUNT_MULTIPLIER: 1.5, // 50% more food
+        ALPHA_POINTS_THRESHOLD_MULTIPLIER: 0.7, // 30% easier to get into Alpha Mode
+        ALPHA_MODE_DURATION_MULTIPLIER: 1.5, // Alpha Mode lasts 50% longer
+        COLLISION_FORGIVENESS: 0.2 // Small buffer for collisions (in grid units)
+    }
 };

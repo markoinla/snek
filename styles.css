@@ -1194,3 +1194,95 @@ canvas { display: block; }
         font-size: 16px;
     }
 }
+
+/* Game Mode Selection Styles */
+.game-mode-selection {
+    margin: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+
+.game-mode-label {
+    font-size: 1.2em;
+    color: rgba(255, 255, 255, 0.87);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.game-mode-toggle-container {
+    display: flex;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+}
+
+.settings-toggle {
+    margin: 20px auto;
+}
+
+.game-mode-button {
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 8px 24px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.game-mode-button.active {
+    background-color: #BB86FC;
+    color: #121212;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.game-mode-button:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.mode-note {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+    text-align: center;
+    margin-top: 12px;
+}
+
+.game-mode-description {
+    margin-bottom: 24px;
+}
+
+.game-mode-description p {
+    margin-bottom: 16px;
+}
+
+.game-mode-description ul {
+    padding-left: 24px;
+}
+
+.game-mode-description li {
+    margin-bottom: 8px;
+}
+
+.game-mode-description ul ul {
+    margin-top: 8px;
+}
+
+/* Mobile responsiveness for game mode selection */
+@media (max-width: 768px) {
+    .game-mode-toggle-container {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .game-mode-button {
+        flex: 1;
+        text-align: center;
+        padding: 10px 16px;
+    }
+}

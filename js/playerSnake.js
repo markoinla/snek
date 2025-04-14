@@ -10,6 +10,7 @@ import { checkAndEatFood } from './food.js';
 import * as UI from './ui.js'; // For power-up UI updates
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { getAdjustedSetting } from './gameState.js'; // For mode-adjusted settings
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 
@@ -57,7 +58,10 @@ export function initPlayerSnake(gameState) {
     playerSnake.direction = { x: 1, z: 0 };
     playerSnake.lastDirection = { x: 1, z: 0 };
     playerSnake.pendingTurns = [];
-    playerSnake.speed = CONFIG.BASE_SNAKE_SPEED;
+    
+    // Use the mode-adjusted snake speed
+    playerSnake.speed = getAdjustedSetting('BASE_SNAKE_SPEED') || CONFIG.BASE_SNAKE_SPEED;
+    
     playerSnake.moveTimer = 0;
     playerSnake.animationFrame = 0;
     playerSnake.animationTimer = 0;
@@ -377,7 +381,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         if (!playerSnake.ghostModeActive) {
             // Check against segments *excluding* the tail tip that will move
             for (let i = 0; i < playerSnake.segments.length - 1; i++) {
-                if (playerSnake.segments[i].x === newHeadPos.x && playerSnake.segments[i].z === newHeadPos.z) {
+                if (checkPositionCollision(newHeadPos, playerSnake.segments[i], CONFIG.COLLISION_FORGIVENESS)) {
                     Logger.gameplay.info("Collision: Self");
                     triggerPlayerDeath(gameState, 'SELF_COLLISION');
                     return;
@@ -1056,20 +1060,21 @@ export function addAlphaPoints(points, gameState) {
  * @param {object} gameState - Game state object
  * @returns {boolean} - Whether Alpha Mode should be activated
  */
-function checkAlphaModeActivationPoints(currentTime, gameState) {
+export function checkAlphaModeActivationPoints(currentTime, gameState) {
     const { playerSnake } = gameState;
     
-    // If Alpha Mode is already active, no need to check
+    // Don't activate if already active
     if (playerSnake.alphaMode.active) return false;
     
-    // If cooldown is active, don't activate
-    if (playerSnake.alphaMode.cooldownActive && currentTime < playerSnake.alphaMode.cooldownEndTime) {
-        return false;
-    }
+    // Get the adjusted threshold based on game mode
+    const pointsThreshold = getAdjustedSetting('ALPHA_POINTS_THRESHOLD') || 
+                           CONFIG.ALPHA_POINTS_THRESHOLD;
     
-    // Check if player has enough alpha points to activate Alpha Mode
-    if (playerSnake.alphaMode.alphaPoints >= CONFIG.ALPHA_POINTS_THRESHOLD) {
-        // Reset alpha points to 0
+    // Check if we have enough alpha points
+    if (playerSnake.alphaMode.alphaPoints >= pointsThreshold) {
+        Logger.gameplay.info(`Alpha Mode triggered by points (${playerSnake.alphaMode.alphaPoints}/${pointsThreshold})`);
+        
+        // Reset alpha points
         playerSnake.alphaMode.alphaPoints = 0;
         
         // Activate Alpha Mode
@@ -1120,33 +1125,37 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
  * @param {number} currentTime - Current game time
  * @param {object} gameState - Game state object
  */
-function activateAlphaMode(currentTime, gameState) {
+export function activateAlphaMode(currentTime, gameState) {
     const { playerSnake } = gameState;
     
-    // Activate Alpha Mode
+    // Get the duration adjusted for game mode (longer in Casual mode)
+    const alphaDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
+    
+    // Set up Alpha Mode parameters
     playerSnake.alphaMode.active = true;
+    playerSnake.alphaMode.progress = 1.0;  // Start at full progress
     playerSnake.alphaMode.startTime = currentTime;
-    playerSnake.alphaMode.endTime = currentTime + CONFIG.ALPHA_MODE_DURATION;
+    playerSnake.alphaMode.endTime = currentTime + alphaDuration;
     
-    // Reset the alpha kill message counter to start from the first message
-    alphaKillMessageIndex = 0;
+    // Set base score multiplier
+    playerSnake.alphaMode.scoreMultiplier = CONFIG.ALPHA_MODE_SCORE_MULTIPLIER;
     
-    // Reset the alpha kill voice counter to start from the first voice line
-    Audio.resetAlphaKillVoiceCounter();
+    // Add a new score multiplier to the stack
+    addScoreMultiplier(currentTime, gameState);
     
-    // Update the UI
-    UI.showAlphaModeBar();
-    UI.showPowerUpTextEffect(CONFIG.GAME_TEXT.ALPHA_MODE.ACTIVATED_MESSAGE);
-    
-    // Update player speed for Alpha Mode
-    playerSnake.speed = CONFIG.BASE_SNAKE_SPEED / CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
-    
-    // Increment consecutive activations counter
+    // Track consecutive activations
     playerSnake.alphaMode.consecutiveActivations++;
     
-    Logger.gameplay.info("Alpha Mode activated!");
-    Logger.gameplay.info("Consecutive Alpha Mode activations:", playerSnake.alphaMode.consecutiveActivations, 
-              "Max allowed:", CONFIG.ALPHA_MODE_MAX_CONSECUTIVE_ACTIVATIONS);
+    // Show UI effect
+    UI.showAlphaModeActivation();
+    
+    // Play activation sound
+    Audio.playAlphaModeActivation();
+    
+    // Update the UI to show Alpha Mode is active
+    UI.updateAlphaModeUI(1.0, alphaDuration, playerSnake.alphaMode.scoreMultiplier);
+    
+    Logger.gameplay.info(`Alpha Mode activated for ${alphaDuration} seconds, multiplier: ${playerSnake.alphaMode.scoreMultiplier}`);
 }
 
 /**
@@ -1499,4 +1508,17 @@ function calculateActualSpeed(gameState) {
     actualSpeed /= speedMultiplier;
     
     return actualSpeed;
+}
+
+// Function to check for collision with position
+function checkPositionCollision(pos1, pos2, forgiveness = 0) {
+    // Apply collision forgiveness if specified (casual mode)
+    if (forgiveness > 0) {
+        // If the positions are within the forgiveness range, don't count as collision
+        return Math.abs(pos1.x - pos2.x) < (1 - forgiveness) && 
+               Math.abs(pos1.z - pos2.z) < (1 - forgiveness);
+    } else {
+        // Standard collision check (exact position match)
+        return pos1.x === pos2.x && pos1.z === pos2.z;
+    }
 }

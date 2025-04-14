@@ -68,6 +68,7 @@
                     <button class="tab-button active" data-tab="howToPlay">How to Play</button>
                     <button class="tab-button" data-tab="tips">Tips & Tricks</button>
                     <button class="tab-button" data-tab="sounds">Sounds</button>
+                    <button class="tab-button" data-tab="gameMode">Game Mode</button>
                 </div>
                 <div class="tab-content">
                     <!-- How to Play Tab -->
@@ -128,6 +129,34 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Game Mode Tab -->
+                    <div id="gameMode" class="tab-pane">
+                        <h3>Game Mode</h3>
+                        <div class="game-mode-description">
+                            <p>Choose between Normal or Casual game modes:</p>
+                            <ul>
+                                <li><strong>Normal:</strong> The standard ALPHA SNEK experience with challenging gameplay.</li>
+                                <li><strong>Casual:</strong> A more relaxed experience with:
+                                    <ul>
+                                        <li>30% slower snake movement</li>
+                                        <li>30% fewer obstacles</li>
+                                        <li>50% more food and power-ups</li>
+                                        <li>Easier Alpha Mode activation</li>
+                                        <li>Longer Alpha Mode duration</li>
+                                        <li>More forgiving collision detection</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="game-mode-settings">
+                            <div class="game-mode-toggle-container settings-toggle">
+                                <button id="normalModeBtnSettings" class="game-mode-button active">Normal</button>
+                                <button id="casualModeBtnSettings" class="game-mode-button">Casual</button>
+                            </div>
+                            <p class="mode-note">Note: Changing the game mode will take effect on your next game.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -168,6 +197,15 @@
                                 <span class="instruction-label">Alpha Mode</span>
                                 <span id="alphaModeText" class="instruction-text"></span>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Mode Selection -->
+                    <div class="game-mode-selection">
+                        <div class="game-mode-label">Game Mode</div>
+                        <div class="game-mode-toggle-container">
+                            <button id="normalModeBtn" class="game-mode-button active">Normal</button>
+                            <button id="casualModeBtn" class="game-mode-button">Casual</button>
                         </div>
                     </div>
                     

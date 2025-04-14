@@ -15,6 +15,9 @@ export const gameState = {
     clock: null,
     frameCount: 0, // Track frame count for throttling UI updates
 
+    // Game mode - Normal or Casual
+    gameMode: loadGameMode(),
+    
     // Game Objects State
     playerSnake: {
         segments: [],
@@ -110,6 +113,64 @@ export function saveHighScore(score) {
         console.log('High score saved:', score);
     } catch (error) {
         console.warn('Could not save high score to localStorage:', error);
+    }
+}
+
+// Function to save the current game mode to localStorage
+export function saveGameMode(mode) {
+    try {
+        localStorage.setItem('alphaSnek_gameMode', mode);
+        console.log('Game mode saved:', mode);
+        
+        // Update gameState with the new mode
+        gameState.gameMode = mode;
+    } catch (error) {
+        console.warn('Could not save game mode to localStorage:', error);
+    }
+}
+
+// Function to get the current mode settings based on gameState.gameMode
+export function getCurrentModeSettings() {
+    const modeKey = gameState.gameMode === CONFIG.GAME_MODES.CASUAL ? 
+        CONFIG.GAME_MODES.CASUAL : CONFIG.GAME_MODES.NORMAL;
+    
+    return CONFIG.MODE_SETTINGS[modeKey];
+}
+
+// Function to get a game setting adjusted for the current mode
+// For example: getAdjustedSetting('BASE_SNAKE_SPEED') will return the base speed multiplied by the mode's speed multiplier
+export function getAdjustedSetting(settingName) {
+    const modeSettings = getCurrentModeSettings();
+    
+    switch (settingName) {
+        case 'BASE_SNAKE_SPEED':
+            return CONFIG.BASE_SNAKE_SPEED * modeSettings.SNAKE_SPEED_MULTIPLIER;
+        case 'NUM_OBSTACLES':
+            return Math.round(CONFIG.NUM_OBSTACLES * modeSettings.OBSTACLE_COUNT_MULTIPLIER);
+        case 'NUM_INITIAL_FOOD':
+            return Math.round(CONFIG.NUM_INITIAL_FOOD * modeSettings.FOOD_COUNT_MULTIPLIER);
+        case 'ALPHA_POINTS_THRESHOLD':
+            return Math.round(CONFIG.ALPHA_POINTS_THRESHOLD * modeSettings.ALPHA_POINTS_THRESHOLD_MULTIPLIER);
+        case 'ALPHA_MODE_DURATION':
+            return CONFIG.ALPHA_MODE_DURATION * modeSettings.ALPHA_MODE_DURATION_MULTIPLIER;
+        case 'COLLISION_FORGIVENESS':
+            return modeSettings.COLLISION_FORGIVENESS;
+        default:
+            console.warn(`No adjustment found for setting: ${settingName}`);
+            return null;
+    }
+}
+
+// Function to load game mode from localStorage
+function loadGameMode() {
+    try {
+        const savedGameMode = localStorage.getItem('alphaSnek_gameMode');
+        // Make sure we return a valid mode, defaulting to NORMAL if needed
+        return savedGameMode === CONFIG.GAME_MODES.CASUAL ? 
+            CONFIG.GAME_MODES.CASUAL : CONFIG.GAME_MODES.NORMAL;
+    } catch (error) {
+        console.warn('Could not load game mode from localStorage:', error);
+        return CONFIG.GAME_MODES.NORMAL;
     }
 }
 

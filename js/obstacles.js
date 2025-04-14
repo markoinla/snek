@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CONFIG from './config.js';
 import { OBSTACLE_TYPES, GEOMETRIES } from './constants.js';
 import { generateUniquePosition } from './utils.js';
+import { getAdjustedSetting } from './gameState.js'; // Import for mode-adjusted settings
 
 function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
     const trunkMat = materials.obstacle?.tree_trunk;
@@ -126,25 +127,27 @@ function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
 }
 
 export function spawnInitialObstacles(gameState) {
-    const { scene, materials, obstacles } = gameState;
-    if (!scene || !materials?.obstacle || !obstacles) return;
+    const { scene, materials } = gameState;
+    if (!scene || !materials?.obstacle) return;
 
-    // Clear existing first
+    // Reset any existing obstacles
     resetObstacles(gameState);
 
-    // Create the main group container if it doesn't exist
-    if (!obstacles.group) {
-        obstacles.group = new THREE.Group();
-        scene.add(obstacles.group);
-    }
+    // Create a new group for obstacles
+    const obstacleGroup = new THREE.Group();
+    scene.add(obstacleGroup);
 
-    // Initialize obstacles list if needed
-    if (!obstacles.list) {
-        obstacles.list = [];
-    }
+    // Store the group in gameState
+    gameState.obstacles = {
+        list: [],
+        group: obstacleGroup
+    };
 
-    console.log(`Creating ${CONFIG.NUM_OBSTACLES} obstacles...`);
-    for (let i = 0; i < CONFIG.NUM_OBSTACLES; i++) {
+    // Get the adjusted obstacle count based on game mode (30% fewer in casual mode)
+    const obstacleCount = getAdjustedSetting('NUM_OBSTACLES') || CONFIG.NUM_OBSTACLES;
+
+    console.log(`Creating ${obstacleCount} initial obstacles...`);
+    for (let i = 0; i < obstacleCount; i++) {
         // Generate position, avoiding player start area and other obstacles closely
         const newPos = generateUniquePosition(gameState, false, true, false, false, CONFIG.START_SAFE_ZONE);
         if (!newPos) {

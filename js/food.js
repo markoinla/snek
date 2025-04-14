@@ -7,6 +7,7 @@ import { applyPowerUp, addScoreMultiplier, addAlphaPoints } from './playerSnake.
 import * as UI from './ui.js';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { getAdjustedSetting } from './gameState.js'; // Import for mode-adjusted settings
 
 /**
  * Creates a blocky apple model made of a few cubes
@@ -245,14 +246,14 @@ function createBlockyFrog(group, material, type) {
 }
 
 export function spawnInitialFood(gameState) {
-    const { scene, materials } = gameState;
-    if (!scene || !materials?.food) return;
-
-    // Clear existing food first
+    // Get the adjusted food count based on game mode (50% more in casual mode)
+    const foodCount = getAdjustedSetting('NUM_INITIAL_FOOD') || CONFIG.NUM_INITIAL_FOOD;
+    
+    // Clear any existing food
     resetFood(gameState);
-
-    Logger.gameplay.info(`Creating ${CONFIG.NUM_INITIAL_FOOD} initial food...`);
-    for (let i = 0; i < CONFIG.NUM_INITIAL_FOOD; i++) {
+    
+    // Spawn new food
+    for (let i = 0; i < foodCount; i++) {
         addNewFoodItem(gameState);
     }
 }

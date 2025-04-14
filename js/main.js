@@ -15,6 +15,7 @@ import * as Audio from './audioSystem.js';
 import { performanceSettings } from './deviceUtils.js';
 import { initLogger, Logger, isLoggingEnabled } from './debugLogger.js';
 import Stats from '../lib/stats.module.js';
+import * as GameModes from './gameModes.js';
 
 // FPS counter
 let stats;
@@ -157,6 +158,9 @@ async function init() {
     
     // Add restart button event listener
     document.getElementById('restartButton')?.addEventListener('click', requestRestart);
+    
+    // Initialize game modes system
+    GameModes.initGameModeSystem();
 }
 
 /**
