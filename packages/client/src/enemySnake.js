@@ -241,14 +241,20 @@ export function syncEnemyMeshes(gameState) {
             });
             enemyMeshes[enemy.id] = newMeshes;
         } else {
+            const isMultiplayer = gameState.network?.enabled;
+            const lerpFactor = isMultiplayer ? 0.35 : 1.0;
             meshes.forEach((mesh, index) => {
                 const seg = enemy.snake[index];
                 if (!mesh || !seg) return;
-                mesh.position.set(
-                    seg.x * CONFIG.UNIT_SIZE,
-                    CONFIG.UNIT_SIZE / 2,
-                    seg.z * CONFIG.UNIT_SIZE
-                );
+                const targetX = seg.x * CONFIG.UNIT_SIZE;
+                const targetZ = seg.z * CONFIG.UNIT_SIZE;
+                if (lerpFactor >= 1.0) {
+                    mesh.position.set(targetX, CONFIG.UNIT_SIZE / 2, targetZ);
+                } else {
+                    mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
+                    mesh.position.y = CONFIG.UNIT_SIZE / 2;
+                    mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+                }
             });
         }
     });

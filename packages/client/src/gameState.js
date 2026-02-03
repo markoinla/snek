@@ -110,6 +110,8 @@ export const gameState = {
         room: null,
         sessionId: null,
         lastSnapshotTick: 0,
+        lastSnapshotTimeMs: 0,
+        snapshotIntervalMs: 100,
         sendInput: null,
         pendingServerEvents: [],
     },

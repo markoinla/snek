@@ -221,15 +221,24 @@ export function syncPlayerMeshes(gameState) {
         return;
     }
 
+    const isMultiplayer = gameState.network?.enabled;
+    // In multiplayer, lerp mesh positions toward target for smooth rendering
+    const lerpFactor = isMultiplayer ? 0.35 : 1.0;
+
     for (let i = 0; i < playerSnake.segments.length; i++) {
         const segment = playerSnake.segments[i];
         const mesh = playerSnakeMeshes[i];
         if (!mesh) continue;
-        mesh.position.set(
-            segment.x * CONFIG.UNIT_SIZE,
-            CONFIG.UNIT_SIZE / 2,
-            segment.z * CONFIG.UNIT_SIZE
-        );
+        const targetX = segment.x * CONFIG.UNIT_SIZE;
+        const targetY = CONFIG.UNIT_SIZE / 2;
+        const targetZ = segment.z * CONFIG.UNIT_SIZE;
+        if (lerpFactor >= 1.0) {
+            mesh.position.set(targetX, targetY, targetZ);
+        } else {
+            mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
+            mesh.position.y = targetY;
+            mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+        }
     }
 
     updatePlayerSnakeTextures(gameState);
@@ -331,17 +340,18 @@ export function syncAllPlayerMeshes(gameState) {
             return;
         }
 
-        // Update positions
+        // Update positions with lerp for smooth movement
+        const lerpFactor = 0.35;
         for (let i = 0; i < player.segments.length; i++) {
             const seg = player.segments[i];
             const mesh = existingMeshes[i];
             if (!mesh || !seg) continue;
             mesh.visible = true;
-            mesh.position.set(
-                seg.x * CONFIG.UNIT_SIZE,
-                CONFIG.UNIT_SIZE / 2,
-                seg.z * CONFIG.UNIT_SIZE
-            );
+            const targetX = seg.x * CONFIG.UNIT_SIZE;
+            const targetZ = seg.z * CONFIG.UNIT_SIZE;
+            mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
+            mesh.position.y = CONFIG.UNIT_SIZE / 2;
+            mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
         }
     });
 }

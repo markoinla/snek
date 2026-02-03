@@ -449,8 +449,14 @@ function processEventEnvelopes(envelopes, state, isMultiplayer) {
                 Player.playPlayerDeathEffects(state);
                 if (!isMultiplayer) {
                     setGameOver(state, event.payload?.reason || 'DEFAULT');
+                } else {
+                    // In multiplayer, death is temporary — show respawn overlay
+                    UI.showRespawnOverlay(
+                        event.payload?.reason || 'DEFAULT',
+                        CONFIG.PLAYER_RESPAWN_DELAY_TICKS,
+                        state.simulation?.tickRate || 30
+                    );
                 }
-                // In multiplayer, death is temporary — respawn UI handled by 5.4
             }
         }
         if (event.type === EventType.ScoreChanged && isLocalPlayer) {
@@ -507,9 +513,15 @@ function processEventEnvelopes(envelopes, state, isMultiplayer) {
         if (event.type === EventType.PlayerKilledPlayer) {
             if (isLocalPlayer) {
                 Audio.playSoundEffect('eatApple');
+                UI.addKillFeedMessage(`You killed a player!`);
+            } else if (event.payload?.victimId === localId) {
+                UI.addKillFeedMessage(`You were killed!`);
+            } else {
+                UI.addKillFeedMessage(`Player eliminated`);
             }
         }
         if (event.type === EventType.PlayerRespawned && isLocalPlayer) {
+            UI.hideRespawnOverlay();
             Player.syncPlayerMeshes(state);
         }
     });
@@ -586,7 +598,6 @@ function render() {
                 Player.syncAllPlayerMeshes(gameState);
                 Enemy.syncEnemyMeshes(gameState);
                 Food.syncFoodMeshes(gameState);
-                Obstacles.syncObstacleMeshes(gameState);
             } else {
                 Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
                 Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);

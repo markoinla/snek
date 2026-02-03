@@ -1286,3 +1286,179 @@ canvas { display: block; }
         padding: 10px 16px;
     }
 }
+
+/* ================================================
+   MULTIPLAYER UI STYLES
+   ================================================ */
+
+/* Respawn Overlay */
+#respawnOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 500;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+#respawnOverlay.active {
+    display: flex;
+}
+
+.respawn-content {
+    text-align: center;
+    color: white;
+}
+
+.respawn-reason {
+    display: block;
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #ff4444;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+}
+
+.respawn-countdown {
+    display: block;
+    font-size: 1.4em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Multiplayer Scoreboard */
+.mp-scoreboard {
+    display: none;
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 50;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    padding: 8px 12px;
+    min-width: 140px;
+    color: white;
+    font-size: 0.85em;
+    pointer-events: none;
+}
+
+.mp-scoreboard.active {
+    display: block;
+}
+
+.mp-scoreboard-header {
+    font-weight: 700;
+    font-size: 0.75em;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.mp-scoreboard-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mp-scoreboard-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.mp-scoreboard-entry.local {
+    font-weight: 700;
+}
+
+.mp-scoreboard-entry.dead {
+    opacity: 0.4;
+}
+
+.mp-scoreboard-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.mp-scoreboard-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 80px;
+}
+
+.mp-scoreboard-score {
+    font-variant-numeric: tabular-nums;
+    min-width: 30px;
+    text-align: right;
+}
+
+/* Kill Feed */
+.kill-feed {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+}
+
+.kill-feed-entry {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    animation: killFeedFadeIn 0.3s ease-out;
+}
+
+.kill-feed-entry.fade-out {
+    animation: killFeedFadeOut 0.5s ease-in forwards;
+}
+
+@keyframes killFeedFadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes killFeedFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Mobile adjustments for multiplayer UI */
+@media (max-width: 768px) {
+    .mp-scoreboard {
+        top: 60px;
+        right: 10px;
+        font-size: 0.75em;
+        min-width: 110px;
+    }
+
+    .kill-feed {
+        top: 60px;
+        left: 10px;
+    }
+
+    .respawn-reason {
+        font-size: 1.8em;
+    }
+
+    .respawn-countdown {
+        font-size: 1.1em;
+    }
+}

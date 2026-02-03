@@ -45,9 +45,18 @@ const alphaModeText = document.getElementById('alphaModeText');
 // Help button
 const helpButton = document.getElementById('helpButton');
 
+// Multiplayer elements
+const respawnOverlay = document.getElementById('respawnOverlay');
+const respawnReason = document.getElementById('respawnReason');
+const respawnCountdown = document.getElementById('respawnCountdown');
+const multiplayerScoreboard = document.getElementById('multiplayerScoreboard');
+const scoreboardEntries = document.getElementById('scoreboardEntries');
+const killFeed = document.getElementById('killFeed');
+
 // Game state variables
 let gameStarted = false;
 let firstTimeUser = true; // Track if this is the first time playing
+let respawnTimerInterval = null;
 
 // Initialize UI elements with text from config - wrapped in a function to ensure DOM is ready
 function initializeUIText() {
@@ -963,7 +972,148 @@ export function hideSettingsMenu() {
     if (settingsMenu) {
         settingsMenu.classList.remove('active');
     }
-    
+
     // Resume the game when settings menu is closed
     window.dispatchEvent(new Event('gameResumed'));
+}
+
+// ================================================
+// MULTIPLAYER UI FUNCTIONS
+// ================================================
+
+// Player colors matching PLAYER_COLORS in playerSnake.js
+const SCOREBOARD_COLORS = ['#4CAF50', '#2196F3', '#F44336', '#FFEB3B'];
+
+/**
+ * Shows the respawn overlay when the local player dies in multiplayer.
+ * @param {string} reason - Death reason code
+ * @param {number} respawnTicks - Ticks until respawn
+ * @param {number} tickRate - Ticks per second (default 30)
+ */
+export function showRespawnOverlay(reason, respawnTicks, tickRate = 30) {
+    if (!respawnOverlay) return;
+
+    // Look up the death message from config
+    let deathMessage = 'YOU DIED!';
+    if (reason && CONFIG.GAME_TEXT?.UI?.GAME_OVER?.DEATH_REASONS?.[reason]) {
+        deathMessage = CONFIG.GAME_TEXT.UI.GAME_OVER.DEATH_REASONS[reason];
+    }
+    if (respawnReason) respawnReason.textContent = deathMessage;
+
+    let remaining = Math.ceil(respawnTicks / tickRate);
+    if (respawnCountdown) respawnCountdown.textContent = `Respawning in ${remaining}...`;
+
+    respawnOverlay.classList.add('active');
+
+    // Clear any previous timer
+    if (respawnTimerInterval) clearInterval(respawnTimerInterval);
+
+    respawnTimerInterval = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearInterval(respawnTimerInterval);
+            respawnTimerInterval = null;
+            hideRespawnOverlay();
+            return;
+        }
+        if (respawnCountdown) respawnCountdown.textContent = `Respawning in ${remaining}...`;
+    }, 1000);
+}
+
+/**
+ * Hides the respawn overlay.
+ */
+export function hideRespawnOverlay() {
+    if (!respawnOverlay) return;
+    respawnOverlay.classList.remove('active');
+    if (respawnTimerInterval) {
+        clearInterval(respawnTimerInterval);
+        respawnTimerInterval = null;
+    }
+}
+
+/**
+ * Updates the multiplayer scoreboard.
+ * @param {Object} players - Map of playerId -> PlayerState
+ * @param {string} localPlayerId - The local player's ID
+ */
+export function updateScoreboard(players, localPlayerId) {
+    if (!multiplayerScoreboard || !scoreboardEntries) return;
+    if (!players || Object.keys(players).length <= 1) {
+        multiplayerScoreboard.classList.remove('active');
+        return;
+    }
+
+    multiplayerScoreboard.classList.add('active');
+
+    // Build sorted list by score descending
+    const entries = Object.entries(players)
+        .map(([id, p]) => ({
+            id,
+            score: p.score?.current ?? 0,
+            colorIndex: p.colorIndex ?? 0,
+            dead: !!p.dead,
+            isLocal: id === localPlayerId,
+        }))
+        .sort((a, b) => b.score - a.score);
+
+    scoreboardEntries.innerHTML = '';
+    entries.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'mp-scoreboard-entry';
+        if (entry.isLocal) row.classList.add('local');
+        if (entry.dead) row.classList.add('dead');
+
+        const colorDot = document.createElement('div');
+        colorDot.className = 'mp-scoreboard-color';
+        colorDot.style.backgroundColor = SCOREBOARD_COLORS[entry.colorIndex % SCOREBOARD_COLORS.length];
+
+        const name = document.createElement('span');
+        name.className = 'mp-scoreboard-name';
+        name.textContent = entry.isLocal ? 'You' : `P${entry.colorIndex + 1}`;
+
+        const score = document.createElement('span');
+        score.className = 'mp-scoreboard-score';
+        score.textContent = entry.score;
+
+        row.appendChild(colorDot);
+        row.appendChild(name);
+        row.appendChild(score);
+        scoreboardEntries.appendChild(row);
+    });
+}
+
+/**
+ * Hides the multiplayer scoreboard.
+ */
+export function hideScoreboard() {
+    if (multiplayerScoreboard) {
+        multiplayerScoreboard.classList.remove('active');
+    }
+}
+
+/**
+ * Adds a message to the kill feed.
+ * @param {string} message - The kill feed message
+ */
+export function addKillFeedMessage(message) {
+    if (!killFeed) return;
+
+    const entry = document.createElement('div');
+    entry.className = 'kill-feed-entry';
+    entry.textContent = message;
+    killFeed.appendChild(entry);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        entry.classList.add('fade-out');
+        setTimeout(() => {
+            if (entry.parentNode) entry.parentNode.removeChild(entry);
+        }, 500);
+    }, 4000);
+
+    // Keep max 5 entries
+    while (killFeed.children.length > 5) {
+        killFeed.removeChild(killFeed.children[0]);
+    }
 }

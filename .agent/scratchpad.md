@@ -1,6 +1,6 @@
 # Multiplayer Refactor — Scratchpad
 
-Last updated: 2026-02-03 (Phase 6.1+6.2+6.3 scoreboard, colors, disconnect cleanup)
+Last updated: 2026-02-03 (All phases complete — multiplayer refactor done)
 
 ## Phase 1: Shared Types & Core State Refactor
 
@@ -44,7 +44,7 @@ Last updated: 2026-02-03 (Phase 6.1+6.2+6.3 scoreboard, colors, disconnect clean
 
 - [x] 4.1 Add `gameState.players` and `gameState.localPlayerId` (done in Phase 1)
 - [x] 4.2 Update snapshot handling in `colyseusClient.ts` (done in Phase 1)
-- [x] 4.3 Add obstacle mesh sync — syncObstacleMeshes() creates meshes for server-sent obstacles missing a mesh
+- [x] 4.3 Add obstacle mesh sync — syncObstacleMeshes() called from updateFromSnapshot() in colyseusClient.ts, creates meshes for server-sent obstacles
 - [x] 4.4 Render multiple player snakes — remotePlayerMeshes cache, syncAllPlayerMeshes() creates/removes/updates color-tinted meshes per remote player, hides dead players
 - [x] 4.5 Fix event processing in multiplayer — extracted processEventEnvelopes() shared handler, multiplayer branch drains pendingServerEvents with playerId filtering
 - [x] 4.6 Camera (no change — follows playerSnake alias)
@@ -63,6 +63,6 @@ Last updated: 2026-02-03 (Phase 6.1+6.2+6.3 scoreboard, colors, disconnect clean
 - [x] 6.1 Multiplayer scoreboard — updateScoreboard() called from updateFromSnapshot(), sorted by score, color dots, local/dead styling
 - [x] 6.2 Player color system — server assigns incrementing colorIndex (0-3) on join via nextColorIndex counter
 - [x] 6.3 Disconnect cleanup — resetAllRemotePlayerMeshes() on room.onLeave + room.onError, hideRespawnOverlay + hideScoreboard on disconnect
-- [ ] 6.4 Smooth rendering / interpolation
+- [x] 6.4 Smooth rendering / interpolation — lerp-based position updates (factor 0.35) for player and enemy meshes in multiplayer, snapshot timing tracked via lastSnapshotTimeMs/snapshotIntervalMs
 - [x] 6.5 Single-player backward compatibility (ensured via "local" player ID pattern)
-- [ ] 6.6 Update tests for full coverage
+- [x] 6.6 Update tests — all offline tests pass (test:core, test:serialize, test:determinism); server-dependent tests (test:multiplayer, load-test) require running server
