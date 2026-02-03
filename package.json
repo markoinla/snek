@@ -1,19 +1,12 @@
 {
-  "name": "alpha-snek",
+  "name": "snek",
   "private": true,
-  "type": "module",
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview",
-    "test:core": "node scripts/core-smoke.mjs"
-  },
-  "dependencies": {
-    "three": "^0.160.0"
-  },
-  "devDependencies": {
-    "@types/three": "^0.160.0",
-    "typescript": "^5.4.0",
-    "vite": "^5.0.0"
+    "dev": "pnpm -C packages/client dev",
+    "build": "pnpm -C packages/client build",
+    "preview": "pnpm -C packages/client preview",
+    "test:core": "pnpm -C packages/client test:core"
   }
 }

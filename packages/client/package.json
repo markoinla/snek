@@ -1,0 +1,19 @@
+{
+  "name": "snek-client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "test:core": "node scripts/core-smoke.mjs"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
+  }
+}

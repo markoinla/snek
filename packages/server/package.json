@@ -1,0 +1,9 @@
+{
+  "name": "snek-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/index.js"
+  },
+  "dependencies": {}
+}
