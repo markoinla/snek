@@ -561,16 +561,41 @@ function render() {
         gameState.flags.audioHealthCheckRun = false;
     }
 
-    let subSteps = 0;
-    while (gameState.simulation.accumulator >= gameState.simulation.fixedDelta && subSteps < gameState.simulation.maxSubSteps) {
-        const deltaTime = gameState.simulation.fixedDelta;
-        gameState.simulation.time += deltaTime;
+    const isMultiplayer = gameState.network?.enabled;
 
-        // Update game state only if running
+    if (isMultiplayer) {
+        // Multiplayer: no local simulation stepping needed.
+        // Drain server events once per frame and advance the timer.
+        const consumed = Math.min(
+            Math.floor(gameState.simulation.accumulator / gameState.simulation.fixedDelta),
+            gameState.simulation.maxSubSteps
+        );
+        if (consumed > 0) {
+            gameState.simulation.accumulator -= consumed * gameState.simulation.fixedDelta;
+            gameState.simulation.time += consumed * gameState.simulation.fixedDelta;
+        }
+
         if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
-            if (gameState.flags.useCoreSimulation) {
-                if (!gameState.network?.enabled) {
-                    // Single-player: apply queued input and step simulation locally
+            // Drain server events once per frame
+            if (gameState.network.pendingServerEvents?.length) {
+                const events = gameState.network.pendingServerEvents.splice(0);
+                processEventEnvelopes(events, gameState, true);
+            }
+            Player.updatePlayerStateOnly(frameTime, gameState.simulation.time, gameState);
+            Player.updatePowerUps(gameState);
+            Enemy.checkEnemyRespawns(gameState);
+        }
+        Particles.updateParticles(frameTime, gameState.scene);
+        Food.updateFoodAnimations(gameState, frameTime);
+    } else {
+        // Single-player / offline: fixed-timestep simulation loop
+        let subSteps = 0;
+        while (gameState.simulation.accumulator >= gameState.simulation.fixedDelta && subSteps < gameState.simulation.maxSubSteps) {
+            const deltaTime = gameState.simulation.fixedDelta;
+            gameState.simulation.time += deltaTime;
+
+            if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
+                if (gameState.flags.useCoreSimulation) {
                     if (gameState.inputQueue.length > 1) {
                         gameState.inputQueue.sort((a, b) => a.tick - b.tick);
                     }
@@ -586,38 +611,25 @@ function render() {
                     if (coreResult?.events?.length) {
                         processEventEnvelopes(coreResult.events, gameState, false);
                     }
+
+                    Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
                 } else {
-                    // Multiplayer: drain server events
-                    if (gameState.network.pendingServerEvents?.length) {
-                        const events = gameState.network.pendingServerEvents.splice(0);
-                        processEventEnvelopes(events, gameState, true);
-                    }
+                    Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
+                    Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);
                 }
 
-                Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
-                // Mesh sync moved outside substep loop for smooth 60fps interpolation
+                Player.updatePowerUps(gameState);
+                Enemy.checkEnemyRespawns(gameState);
+                Particles.updateParticles(deltaTime, gameState.scene);
+                Food.updateFoodAnimations(gameState, deltaTime);
             } else {
-                Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
-                Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);
+                Particles.updateParticles(deltaTime, gameState.scene);
+                Food.updateFoodAnimations(gameState, deltaTime);
             }
 
-            // Update power-up timers and UI display
-            Player.updatePowerUps(gameState);
-            Enemy.checkEnemyRespawns(gameState); // Check if any enemies need to respawn
-            Particles.updateParticles(deltaTime, gameState.scene); // Update particles regardless of game over? Your choice.
-            
-            // Update frog animations
-            Food.updateFoodAnimations(gameState, deltaTime);
-        } else {
-            // Still update particles even if game is over?
-            Particles.updateParticles(deltaTime, gameState.scene);
-            
-            // Continue animating frogs even when game is paused for visual appeal
-            Food.updateFoodAnimations(gameState, deltaTime);
+            subSteps += 1;
+            gameState.simulation.accumulator -= gameState.simulation.fixedDelta;
         }
-
-        subSteps += 1;
-        gameState.simulation.accumulator -= gameState.simulation.fixedDelta;
     }
 
     // Mesh interpolation runs once per render frame (60fps) for smooth visuals.

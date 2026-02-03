@@ -242,11 +242,14 @@ export function syncPlayerMeshes(gameState, frameDelta) {
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
         }
     }
-
-    updatePlayerSnakeTextures(gameState);
+    // Texture updates are driven by animation timer in updatePlayerStateOnly,
+    // no need to call updatePlayerSnakeTextures every render frame.
 }
 
 // --- Remote / Multiplayer Player Mesh Sync ---
+
+// Shared geometry for all remote player segments (avoids per-segment allocation)
+const _sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
 
 function createRemotePlayerMeshes(playerId, segments, colorIndex, scene, materials) {
     const meshes = [];
@@ -257,10 +260,7 @@ function createRemotePlayerMeshes(playerId, segments, colorIndex, scene, materia
         if (!baseMat) return;
         const mat = baseMat.clone();
         mat.color = new THREE.Color(color);
-        const mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            mat
-        );
+        const mesh = new THREE.Mesh(_sharedBoxGeometry, mat);
         mesh.scale.setScalar(CONFIG.UNIT_SIZE);
         mesh.position.set(
             pos.x * CONFIG.UNIT_SIZE,
@@ -832,44 +832,45 @@ function growSnakeSegments(gameState, numSegments) {
 }
 
 // --- Camera ---
+
+// Reusable objects to avoid per-frame allocations
+const _lookDir = new THREE.Vector3();
+const _targetLookAt = new THREE.Vector3();
+const _targetCamPos = new THREE.Vector3();
+const _targetQuat = new THREE.Quaternion();
+const _dummyMatrix = new THREE.Matrix4();
+const _up = new THREE.Vector3(0, 1, 0);
+
 export function updateCamera(gameState) {
-    const { camera, playerSnake, scene } = gameState; // Assuming directionalLight is in scene's scope or passed in gameState
-    // Access lights from gameState
+    const { camera, playerSnake, scene } = gameState;
     const directionalLight = gameState.lights?.directionalLight;
 
     if (!camera || !playerSnake || playerSnake.segments.length === 0 || playerSnakeMeshes.length === 0 || !directionalLight) return;
 
     const headMesh = playerSnakeMeshes[0];
-    const headPos = headMesh.position; // Use the mesh position for smoother camera
+    const headPos = headMesh.position;
 
     // Target for camera to look at (slightly ahead of the snake)
     const lookAheadFactor = Math.max(2, CONFIG.CAMERA_DISTANCE * 0.2);
-    const lookDirection = new THREE.Vector3(playerSnake.direction.x, 0, playerSnake.direction.z).normalize();
-    const targetLookAt = headPos.clone().addScaledVector(lookDirection, lookAheadFactor);
+    _lookDir.set(playerSnake.direction.x, 0, playerSnake.direction.z).normalize();
+    _targetLookAt.copy(headPos).addScaledVector(_lookDir, lookAheadFactor);
 
     // Target for directional light (follows the head more closely)
-    if (directionalLight.target) { // Ensure target exists
-        // Smoothly move the light's target towards the snake head
-        directionalLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5); // Light target leads slightly less than camera
-        // Ensure the light source itself also updates if needed, although its position is usually fixed relative to the world
+    if (directionalLight.target) {
+        directionalLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5);
     }
 
     // Target position for the camera (behind the snake)
-    const cameraOffsetDirection = lookDirection.clone().multiplyScalar(-1); // Opposite direction
-    const targetCamPos = headPos.clone().addScaledVector(cameraOffsetDirection, CONFIG.CAMERA_DISTANCE);
-    targetCamPos.y = CONFIG.CAMERA_HEIGHT; // Maintain fixed height
+    _targetCamPos.copy(headPos).addScaledVector(_lookDir, -CONFIG.CAMERA_DISTANCE);
+    _targetCamPos.y = CONFIG.CAMERA_HEIGHT;
 
-    // Smoothly interpolate camera position using the new position smoothness setting
-    // Lower value = smoother movement
-    camera.position.lerp(targetCamPos, CONFIG.CAMERA_POSITION_SMOOTHNESS);
+    // Smoothly interpolate camera position
+    camera.position.lerp(_targetCamPos, CONFIG.CAMERA_POSITION_SMOOTHNESS);
 
-    // Smooth LookAt using Quaternion slerp for nicer rotation
-    const tempCam = camera.clone(); // Clone current camera state
-    tempCam.lookAt(targetLookAt);   // Point the clone at the target
-    
-    // Slerp the actual camera's quaternion towards the clone's quaternion
-    // Using the new rotation smoothness setting - lower value = smoother rotation
-    camera.quaternion.slerp(tempCam.quaternion, CONFIG.CAMERA_ROTATION_SMOOTHNESS);
+    // Smooth LookAt using Quaternion slerp — compute target quaternion without cloning camera
+    _dummyMatrix.lookAt(camera.position, _targetLookAt, _up);
+    _targetQuat.setFromRotationMatrix(_dummyMatrix);
+    camera.quaternion.slerp(_targetQuat, CONFIG.CAMERA_ROTATION_SMOOTHNESS);
 }
 
 // --- Power-ups ---

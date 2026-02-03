@@ -1,8 +1,10 @@
-# Multiplayer Refactor — Scratchpad
+# Loop Summary
 
-Last updated: 2026-02-03 (6.4 upgraded: frame-rate-independent interpolation)
+**Status:** Completed successfully
+**Iterations:** 9
+**Duration:** 52m 7s
 
-## Phase 1: Shared Types & Core State Refactor
+## Tasks
 
 - [x] 1.1 Update `CoreState` type: `player` → `players: Record<string, PlayerState>`, add `dead`/`respawnAt`/`score`/`colorIndex` to `PlayerState`, remove top-level `score`
 - [x] 1.2 Update events: add `playerId` to `EventEnvelope`, add `playerId` to player-specific event payloads, add `PlayerRespawned` event type, bump EVENT_SCHEMA_VERSION to 2
@@ -15,9 +17,6 @@ Last updated: 2026-02-03 (6.4 upgraded: frame-rate-independent interpolation)
 - [x] Server: player creation on join, removal on leave, input routing with playerId stamp
 - [x] Client: main.ts creates local player, gameState.js has players/localPlayerId, inputHandler stamps playerId
 - [x] Tests pass: test:core, test:serialize, test:determinism
-
-## Phase 2: Core Simulation — Multi-Player Loop
-
 - [x] 2.1 Refactor `player.ts`: accept `playerId` param (done in Phase 1)
 - [x] 2.2 Refactor `step.ts`: multi-player loop with sorted playerIds for determinism (done in Phase 1)
 - [x] 2.3 Add player-vs-player collision in `combat.ts` (checkPlayerCollisionCore + PvP in step.ts, PlayerKilledPlayer event, PVP_COLLISION death reason)
@@ -27,9 +26,6 @@ Last updated: 2026-02-03 (6.4 upgraded: frame-rate-independent interpolation)
 - [x] 2.7 Refactor `spawn.ts`: iterate all players in `isPositionOccupiedCore()` (done in Phase 1)
 - [x] 2.8 Death/respawn fields in PlayerState (done in Phase 1.1)
 - [x] Run all tests after PvP collision (test:core, test:serialize, test:determinism all pass)
-
-## Phase 3: Server — Multi-Player Lifecycle
-
 - [x] 3.1 Player creation on join (done in Phase 1)
 - [x] 3.2 Player removal on leave (done in Phase 1)
 - [x] 3.3 Input routing with playerId stamp (done in Phase 1)
@@ -39,9 +35,6 @@ Last updated: 2026-02-03 (6.4 upgraded: frame-rate-independent interpolation)
 - [x] 3.7 Broadcast events alongside snapshot — added `Events` message type, server accumulates stepCore events and broadcasts on snapshot interval, client stores in `pendingServerEvents` queue
 - [x] Fix TS build errors — added `allowImportingTsExtensions` to tsconfig, typed callback params in colyseusClient.ts
 - [x] Build + all tests pass (test:core, test:serialize, test:determinism)
-
-## Phase 4: Client — Multi-Player Rendering
-
 - [x] 4.1 Add `gameState.players` and `gameState.localPlayerId` (done in Phase 1)
 - [x] 4.2 Update snapshot handling in `colyseusClient.ts` (done in Phase 1)
 - [x] 4.3 Add obstacle mesh sync — syncObstacleMeshes() called from updateFromSnapshot() in colyseusClient.ts, creates meshes for server-sent obstacles
@@ -49,20 +42,27 @@ Last updated: 2026-02-03 (6.4 upgraded: frame-rate-independent interpolation)
 - [x] 4.5 Fix event processing in multiplayer — extracted processEventEnvelopes() shared handler, multiplayer branch drains pendingServerEvents with playerId filtering
 - [x] 4.6 Camera (no change — follows playerSnake alias)
 - [x] 4.7 Input sending: stamp `playerId` (done in Phase 1)
-
-## Phase 5: Death, Respawn & Per-Player Score
-
 - [x] 5.1 Player death in simulation — `killPlayerCore()` sets `dead=true` + `respawnAt` on all death types (wall/self/obstacle/enemy/PvP)
 - [x] 5.2 Player respawn logic — `processPlayerRespawnsCore()` resets dead players after PLAYER_RESPAWN_DELAY_TICKS, emits PlayerRespawned
 - [x] 5.3 Per-player score (done in Phase 1 — score now in PlayerState)
 - [x] 5.4 Client death/respawn UI — showRespawnOverlay/hideRespawnOverlay wired into PlayerDead/PlayerRespawned events, countdown timer included
 - [x] 5.5 Config constants — PLAYER_RESPAWN_DELAY_TICKS=90 (3s at 30Hz), PLAYER_RESPAWN_LENGTH=3
-
-## Phase 6: Polish & Stability
-
 - [x] 6.1 Multiplayer scoreboard — updateScoreboard() called from updateFromSnapshot(), sorted by score, color dots, local/dead styling
 - [x] 6.2 Player color system — server assigns incrementing colorIndex (0-3) on join via nextColorIndex counter
 - [x] 6.3 Disconnect cleanup — resetAllRemotePlayerMeshes() on room.onLeave + room.onError, hideRespawnOverlay + hideScoreboard on disconnect
 - [x] 6.4 Smooth rendering / interpolation — frame-rate-independent exponential smoothing (1-e^(-speed*dt)) via MULTIPLAYER_LERP_SPEED=12; mesh sync moved outside 30Hz substep loop to run once per 60fps render frame; snapshot handler delegates interpolation to render loop
 - [x] 6.5 Single-player backward compatibility (ensured via "local" player ID pattern)
 - [x] 6.6 Update tests — all offline tests pass (test:core, test:serialize, test:determinism); server-dependent tests (test:multiplayer, load-test) require running server
+
+## Events
+
+- 13 total events
+- 7 task.done
+- 3 loop.complete
+- 1 loop.terminate
+- 1 task.resume
+- 1 task.start
+
+## Final Commit
+
+f65fbb1: feat: frame-rate-independent interpolation for multiplayer rendering

@@ -198,9 +198,11 @@ class SnekRoom extends Colyseus.Room<RoomState> {
       while (queue.length && queue[0].tick <= tick) {
         const input = queue.shift();
         if (!input) break;
-        if (input.tick === tick) {
-          collected.push(input);
-        }
+        // Accept inputs for this tick AND slightly-late inputs (arrived
+        // after their target tick but still within the lag window).
+        // This prevents keypresses from being silently dropped due to
+        // network jitter or stale client-side tick counters.
+        collected.push(input);
       }
     }
     return collected;
