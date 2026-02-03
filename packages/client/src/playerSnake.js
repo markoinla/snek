@@ -211,7 +211,7 @@ export function updatePlayerStateOnly(deltaTime, currentTime, gameState) {
     }
 }
 
-export function syncPlayerMeshes(gameState) {
+export function syncPlayerMeshes(gameState, frameDelta) {
     const { playerSnake, scene, materials } = gameState;
     if (!playerSnake?.segments || !scene || !materials?.snake) return;
 
@@ -222,8 +222,10 @@ export function syncPlayerMeshes(gameState) {
     }
 
     const isMultiplayer = gameState.network?.enabled;
-    // In multiplayer, lerp mesh positions toward target for smooth rendering
-    const lerpFactor = isMultiplayer ? 0.35 : 1.0;
+    // In multiplayer, use frame-rate-independent exponential smoothing
+    const lerpFactor = isMultiplayer && frameDelta != null
+        ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
+        : 1.0;
 
     for (let i = 0; i < playerSnake.segments.length; i++) {
         const segment = playerSnake.segments[i];
@@ -291,14 +293,14 @@ function removeRemotePlayerMeshes(playerId, scene) {
     delete remotePlayerMeshes[playerId];
 }
 
-export function syncAllPlayerMeshes(gameState) {
+export function syncAllPlayerMeshes(gameState, frameDelta) {
     const { scene, materials, players, localPlayerId } = gameState;
     if (!scene || !materials?.snake || !players) return;
 
     const localId = localPlayerId || 'local';
 
     // Sync local player via existing path
-    syncPlayerMeshes(gameState);
+    syncPlayerMeshes(gameState, frameDelta);
 
     // Determine which remote players exist
     const remoteIds = Object.keys(players).filter(id => id !== localId);
@@ -309,6 +311,11 @@ export function syncAllPlayerMeshes(gameState) {
             removeRemotePlayerMeshes(id, scene);
         }
     });
+
+    // Frame-rate-independent exponential smoothing for remote players
+    const lerpFactor = frameDelta != null
+        ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
+        : 0.35;
 
     // Sync each remote player
     remoteIds.forEach(id => {
@@ -340,8 +347,7 @@ export function syncAllPlayerMeshes(gameState) {
             return;
         }
 
-        // Update positions with lerp for smooth movement
-        const lerpFactor = 0.35;
+        // Update positions with frame-rate-independent lerp
         for (let i = 0; i < player.segments.length; i++) {
             const seg = player.segments[i];
             const mesh = existingMeshes[i];

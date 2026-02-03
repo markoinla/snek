@@ -21,6 +21,7 @@ const CONFIG = {
     MULTIPLAYER_DEFAULT_ENABLED: false,
     MULTIPLAYER_SERVER_URL: 'ws://localhost:2567',
     MULTIPLAYER_TICK_RATE: 30,
+    MULTIPLAYER_LERP_SPEED: 12, // Interpolation speed (higher = snappier, 0 = no smoothing)
 
     // Food speed boost settings
     FOOD_SPEED_BOOST_DURATION: 7.0,

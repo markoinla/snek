@@ -12,8 +12,6 @@ import { createRng } from '../core/rng.ts';
 import { applyCoreStateToGameState } from '../core/sync.ts';
 import { Logger } from '../debugLogger.js';
 import * as UI from '../ui.js';
-import * as Food from '../food.js';
-import * as Enemy from '../enemySnake.js';
 import * as Player from '../playerSnake.js';
 import * as Obstacles from '../obstacles.js';
 import CONFIG from '../config.js';
@@ -61,9 +59,8 @@ function updateFromSnapshot(gameState: any, buffer: ArrayBuffer | Uint8Array) {
   gameState.network.lastSnapshotTick = core.tick;
   gameState.network.lastSnapshotTimeMs = nowMs;
 
-  Player.syncAllPlayerMeshes(gameState);
-  Enemy.syncEnemyMeshes(gameState);
-  Food.syncFoodMeshes(gameState);
+  // Mesh interpolation is handled by the render loop (once per frame at 60fps).
+  // Only sync obstacles here since they don't interpolate — they just appear/disappear.
   Obstacles.syncObstacleMeshes(gameState);
 
   // Score is now per-player; use local player's score

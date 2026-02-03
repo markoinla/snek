@@ -190,7 +190,7 @@ export function renderEnemyKillEffects(enemyId, gameState) {
     });
 }
 
-export function syncEnemyMeshes(gameState) {
+export function syncEnemyMeshes(gameState, frameDelta) {
     const { scene, materials, enemies } = gameState;
     if (!scene || !materials?.enemy || !enemies?.list) return;
 
@@ -214,6 +214,11 @@ export function syncEnemyMeshes(gameState) {
     });
 
     // Sync meshes for existing enemies
+    const isMultiplayer = gameState.network?.enabled;
+    const lerpFactor = isMultiplayer && frameDelta != null
+        ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
+        : 1.0;
+
     enemies.list.forEach(enemy => {
         const meshes = enemyMeshes[enemy.id];
         if (!meshes || meshes.length !== enemy.snake.length) {
@@ -241,8 +246,6 @@ export function syncEnemyMeshes(gameState) {
             });
             enemyMeshes[enemy.id] = newMeshes;
         } else {
-            const isMultiplayer = gameState.network?.enabled;
-            const lerpFactor = isMultiplayer ? 0.35 : 1.0;
             meshes.forEach((mesh, index) => {
                 const seg = enemy.snake[index];
                 if (!mesh || !seg) return;

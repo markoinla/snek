@@ -595,9 +595,7 @@ function render() {
                 }
 
                 Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
-                Player.syncAllPlayerMeshes(gameState);
-                Enemy.syncEnemyMeshes(gameState);
-                Food.syncFoodMeshes(gameState);
+                // Mesh sync moved outside substep loop for smooth 60fps interpolation
             } else {
                 Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
                 Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);
@@ -620,6 +618,15 @@ function render() {
 
         subSteps += 1;
         gameState.simulation.accumulator -= gameState.simulation.fixedDelta;
+    }
+
+    // Mesh interpolation runs once per render frame (60fps) for smooth visuals.
+    // In multiplayer mode, frameTime drives the exponential smoothing.
+    if (gameState.flags.useCoreSimulation && gameState.flags.gameRunning && !gameState.flags.gameOver) {
+        const interpolationDelta = gameState.network?.enabled ? frameTime : undefined;
+        Player.syncAllPlayerMeshes(gameState, interpolationDelta);
+        Enemy.syncEnemyMeshes(gameState, interpolationDelta);
+        Food.syncFoodMeshes(gameState);
     }
 
     // Update camera (even slightly after game over for effect?)
