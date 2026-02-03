@@ -84,6 +84,10 @@ const CONFIG = {
     ENEMY_RESPAWN_TIME: 5,
     ENEMY_KILL_SEGMENTS: 5,
 
+    // Player respawn settings (multiplayer)
+    PLAYER_RESPAWN_DELAY_TICKS: 90, // 3 seconds at 30 Hz
+    PLAYER_RESPAWN_LENGTH: 3,       // segments on respawn
+
     // Player powerup settings
     ENLARGED_HEAD_DURATION: 0,
     ENLARGED_HEAD_SCALE: 1,
