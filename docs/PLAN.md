@@ -1,50 +1,88 @@
-# Refactor Plan
+# Multiplayer Prep Plan
 
 Last updated: 2026-02-03
 
-## Goals
-- Complete Phase 1 refactor: deterministic core + render-only client
-- Make Phase 2 (multiplayer/Colyseus) a straightforward server-side port
+## Objectives
+1. Event schema hardening (server ↔ client contract)
+2. CoreState serialization (snapshot + delta)
+3. Input protocol + tick tracking
 
-## Current Status Summary
-- Core simulation exists and is enabled
-- Core handles player movement, collisions, food spawn/eat, enemy AI/move/respawn
-- Render layer syncs meshes from core state
-- Input queue feeds core
+## 1) Event Schema Hardening
 
-## In Progress
-- Core event wiring and render-only effects
+### Goals
+- Freeze a stable, versioned event contract shared by server and client.
+- Clearly separate simulation events (authoritative) from render-only hints.
 
-## Remaining Work (Phase 1)
+### Tasks
+1. Create `src/shared/events.ts`
+   - Define `EventType` enum
+   - Define strict payload types per event
+   - Add `EventEnvelope` with `tick`, `eventId`, `version`
+2. Refactor core to emit typed events only
+   - Replace ad-hoc string events in `core/step.ts`
+   - Ensure every emitted event has a corresponding payload type
+3. Add compatibility guard
+   - Add `EVENT_SCHEMA_VERSION` constant
+   - Validate client/server event version match at runtime
 
-### 1) Core/Render Parity
-- Emit events for: power-up application, alpha kill FX, score popup (done)
-- Render layer applies visuals/audio only (done)
-- Remove any remaining logic that mutates core state in render code (done)
+### Deliverables
+- `src/shared/events.ts`
+- All core emissions updated to use typed events
+- Version handshake validated
 
-### 2) Power-ups in Core
-- Apply power-up effects authoritatively in core (done)
-- Ensure timers are advanced in core, not in render layer (done)
+---
 
-### 3) Enemy Kill Rewards
-- Ensure alpha points and kill count are strictly updated in core (done)
-- Render layer reads from core events/state only (done)
+## 2) CoreState Serialization
 
-### 4) Input & Turn Rules
-- Prevent illegal reversals and multi-turns per tick in core (done)
-- Move pending-turn queue into core (done)
+### Goals
+- Efficiently encode/decode CoreState for network transport.
+- Support full snapshot + delta updates.
 
-### 5) Deterministic Seed
-- Accept a session seed and store it in core (done)
-- Log/serialize seed for reproducible sessions (done)
+### Tasks
+1. Create `src/shared/serialize.ts`
+   - `encodeSnapshot(state): Uint8Array`
+   - `decodeSnapshot(buffer): CoreState`
+   - `encodeDelta(prev, next): Uint8Array`
+   - `applyDelta(state, delta): CoreState`
+2. Decide format
+   - Start with JSON + typed arrays for performance
+   - Add `StateVersion` and `schemaHash`
+3. Add unit tests for round‑trip integrity
 
-### 6) Test Harness (Headless Core)
-- Minimal core-only test runner (done)
-- Smoke tests: wall collision, food eat + respawn, enemy kill + respawn (partial)
+### Deliverables
+- `serialize.ts` with snapshot + delta
+- Tests: snapshot round‑trip, delta application
 
-### 7) Documentation
-- Update README with new architecture (done)
-- Document core event schema for Phase 2 server integration (done)
+---
 
-## Progress Log
-- 2026-02-03: Core sim enabled; food/enemy logic moved to core; render sync implemented.
+## 3) Input Protocol + Tick Tracking
+
+### Goals
+- Deterministic inputs per tick.
+- Server authoritative reconciliation.
+
+### Tasks
+1. Define input types in `src/shared/input.ts`
+   - `InputMessage { playerId, tick, turn }`
+   - `InputQueue` per player
+2. Add tick counter to core
+   - `core.tick` increments per step
+   - Tick exposed to client events
+3. Update input handling to queue by tick
+   - Server drops late or duplicate input
+
+### Deliverables
+- `input.ts` protocol
+- Tick tracking in core
+- Input validation rules
+
+---
+
+## Milestones
+1. Schema + event refactor
+2. Snapshot + delta serialization
+3. Input protocol + tick handling
+
+## Notes
+- Keep shared protocol types under `src/shared/` for reuse by server and client.
+- Avoid render‑layer dependencies in shared code.
