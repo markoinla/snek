@@ -34,11 +34,23 @@ export type EnemyState = {
   speed: number;
 };
 
+export type FoodMovement = {
+  directionX: number;
+  directionZ: number;
+  timer: number;
+  moveInterval: number;
+  maxDistance: number;
+  originX: number;
+  originZ: number;
+  changeProbability: number;
+};
+
 export type FoodItem = {
   x: number;
   y: number;
   z: number;
   type: string;
+  movement?: FoodMovement;
 };
 
 export type ObstaclesState = {
@@ -77,6 +89,11 @@ export type CoreEvent =
   | { type: 'ENEMY_MOVED'; payload: { enemyId: number } }
   | { type: 'ENEMY_KILLED'; payload: { enemyId: number; viaTail: boolean } }
   | { type: 'ENEMY_RESPAWNED'; payload: { enemyId: number } }
+  | { type: 'POWERUP_APPLIED'; payload: { type: string; duration: number } }
+  | { type: 'ALPHA_MODE_ACTIVATED'; payload: { duration: number } }
+  | { type: 'ALPHA_MODE_ENDED' }
+  | { type: 'ALPHA_POINTS_CHANGED'; payload: { points: number } }
+  | { type: 'SCORE_POPUP'; payload: { text: string; color: number } }
   | { type: 'SCORE_CHANGED'; payload: { score: number } }
   | { type: 'DEBUG'; payload: { message: string } };
 

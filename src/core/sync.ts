@@ -6,7 +6,7 @@ export function bindCoreState(gameState: any): CoreState {
 
   core.player = gameState.playerSnake;
   core.enemies = gameState.enemies;
-  core.food = { positions: gameState.food.positions };
+  core.food.positions = gameState.food.positions;
   core.obstacles = gameState.obstacles;
   core.score = gameState.score;
   core.flags = gameState.flags;

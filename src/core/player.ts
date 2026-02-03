@@ -6,6 +6,11 @@ export type PlayerInput = {
   turn: 'left' | 'right' | null;
 };
 
+export type TurnQueueState = {
+  queue: Array<{ x: number; y: number; z: number }>;
+  lastDirection: { x: number; y: number; z: number };
+};
+
 export type PlayerMoveResult = {
   newHead: { x: number; y: number; z: number };
   collisionReason: 'WALL' | 'SELF' | 'OBSTACLE' | null;
@@ -67,10 +72,12 @@ function checkPositionCollision(
 export function applyPlayerInput(state: CoreState, input: PlayerInput) {
   if (state.flags.gameOver) return;
 
+  initTurnQueue(state.player);
+
   if (input.turn === 'left') {
-    turnLeft(state);
+    queueTurn(state, turnLeftDir);
   } else if (input.turn === 'right') {
-    turnRight(state);
+    queueTurn(state, turnRightDir);
   }
 }
 
@@ -80,61 +87,81 @@ export function updatePlayerCore(state: CoreState, delta: number): StepResult {
 
   player.moveTimer += delta;
 
-  if (player.moveTimer < player.speed) {
+  let speedMultiplier = 1;
+  if (player.speedBoostUntil && state.time < player.speedBoostUntil) {
+    speedMultiplier *= CONFIG.FOOD_SPEED_BOOST_MULTIPLIER;
+  }
+  if (player.alphaMode?.active) {
+    speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
+  }
+  const effectiveSpeed = player.speed / speedMultiplier;
+
+  if (player.moveTimer < effectiveSpeed) {
     return { events };
   }
 
   player.moveTimer = 0;
 
-  // Apply pending direction
-  player.direction = { ...player.nextDirection };
+  initTurnQueue(player);
+
+  if (player.turnQueue.queue.length > 0) {
+    player.direction = { ...player.turnQueue.queue.shift() };
+  } else {
+    player.direction = { ...player.nextDirection };
+  }
 
   const head = player.segments[0];
   if (!head) {
-    state.flags.gameOver = true;
     events.push({ type: 'PLAYER_ERROR', payload: { reason: 'NO_HEAD' } });
     return { events };
   }
 
   const { newHead, collisionReason } = evaluatePlayerMove(state);
   if (collisionReason === 'WALL') {
-    state.flags.gameOver = true;
     events.push({ type: 'PLAYER_DEAD', payload: { reason: 'WALL_COLLISION' } });
     return { events };
   }
   if (collisionReason === 'SELF') {
-    state.flags.gameOver = true;
     events.push({ type: 'PLAYER_DEAD', payload: { reason: 'SELF_COLLISION' } });
     return { events };
   }
   if (collisionReason === 'OBSTACLE') {
-    state.flags.gameOver = true;
     events.push({ type: 'PLAYER_DEAD', payload: { reason: 'OBSTACLE_COLLISION' } });
     return { events };
   }
 
   // Movement update
   player.segments.unshift(newHead);
+  player.turnQueue.lastDirection = { ...player.direction };
   player.segments.pop();
 
   events.push({ type: 'PLAYER_MOVED' });
   return { events };
 }
 
-function turnLeft(state: CoreState) {
-  const player = state.player;
-  const currentDir = player.direction;
-  const nextDir = { x: currentDir.z, y: 0, z: -currentDir.x };
-  // Prevent 180-degree turns
-  if (nextDir.x === -currentDir.x && nextDir.z === -currentDir.z) return;
+function initTurnQueue(player: any) {
+  if (!player.turnQueue) {
+    player.turnQueue = { queue: [], lastDirection: { ...player.direction } };
+  }
+}
+
+function queueTurn(state: CoreState, directionFn: (dir: { x: number; y: number; z: number }) => { x: number; y: number; z: number }) {
+  const player: any = state.player;
+  const reference = player.turnQueue.queue.length > 0 ? player.turnQueue.queue[player.turnQueue.queue.length - 1] : player.turnQueue.lastDirection;
+  const nextDir = directionFn(reference);
+
+  if (nextDir.x === -reference.x && nextDir.z === -reference.z) {
+    return;
+  }
+
+  player.turnQueue.queue.push({ ...nextDir });
   player.nextDirection = nextDir;
 }
 
-function turnRight(state: CoreState) {
-  const player = state.player;
-  const currentDir = player.direction;
-  const nextDir = { x: -currentDir.z, y: 0, z: currentDir.x };
-  // Prevent 180-degree turns
-  if (nextDir.x === -currentDir.x && nextDir.z === -currentDir.z) return;
-  player.nextDirection = nextDir;
+function turnLeftDir(currentDir: { x: number; y: number; z: number }) {
+  return { x: currentDir.z, y: 0, z: -currentDir.x };
+}
+
+function turnRightDir(currentDir: { x: number; y: number; z: number }) {
+  return { x: -currentDir.z, y: 0, z: currentDir.x };
 }

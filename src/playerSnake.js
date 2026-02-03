@@ -153,6 +153,44 @@ export function resetPlayer(gameState) {
      Logger.gameplay.info("Player reset complete.");
 }
 
+export function updatePlayerStateOnly(deltaTime, currentTime, gameState) {
+    const { playerSnake, score, flags } = gameState;
+    if (flags.gameOver || !playerSnake) return;
+
+    if (!flags.useCoreSimulation) {
+        if (!playerSnake.alphaMode.active) {
+            decayAlphaPoints(currentTime, gameState);
+        }
+
+        updateAlphaModeProgressPoints(gameState);
+        updateAlphaModeProgress(score.current, gameState);
+        checkAlphaModeActivation(score.current, currentTime, gameState);
+        checkAlphaModeActivationPoints(currentTime, gameState);
+
+        if (playerSnake.alphaMode.active) {
+            updateAlphaMode(currentTime, gameState);
+        } else if (playerSnake.alphaMode.cooldownActive) {
+            UI.showAlphaModeCooldown(playerSnake.alphaMode.cooldownEndTime, currentTime);
+        }
+
+        updatePowerUpState(currentTime, gameState);
+    }
+
+    if (playerSnake.enlargedHeadUntil > 0 && currentTime > playerSnake.enlargedHeadUntil) {
+        playerSnake.enlargedHeadUntil = 0;
+        if (playerSnakeMeshes.length > 0 && playerSnakeMeshes[0]) {
+            playerSnakeMeshes[0].scale.set(1, 1, 1);
+        }
+    }
+
+    playerSnake.animationTimer += deltaTime;
+    if (playerSnake.animationTimer >= 0.25) {
+        playerSnake.animationTimer = 0;
+        playerSnake.animationFrame = playerSnake.animationFrame === 0 ? 1 : 0;
+        updatePlayerSnakeTextures(gameState);
+    }
+}
+
 export function syncPlayerMeshes(gameState) {
     const { playerSnake, scene, materials } = gameState;
     if (!playerSnake?.segments || !scene || !materials?.snake) return;
@@ -690,7 +728,7 @@ export function applyPowerUp(type, gameState) {
         playerSnake.activePowerUps = [];
     }
 
-    const currentTime = clock.getElapsedTime();
+    const currentTime = gameState.flags?.useCoreSimulation ? gameState.simulation.time : clock.getElapsedTime();
     const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === type);
     
     if (!foodTypeInfo) {
@@ -1349,21 +1387,26 @@ function triggerPlayerDeath(gameState, reason) {
      const { scene, playerSnake, camera } = gameState;
      if (!scene || !playerSnake || !camera) return; // Check camera
 
-     // Play player death sound
-     Audio.playSoundEffect('playerDeath');
-
-     if (playerSnakeMeshes.length > 0) {
-         // *** UPDATED CALL ***
-         createExplosion(
-             scene,
-             camera, // Pass camera
-             playerSnakeMeshes[0].position,
-             CONFIG.PARTICLE_COUNT_DEATH,
-             0xff4444
-         );
-     }
+     playPlayerDeathEffects(gameState);
      // Call the main game over handler
      setGameOver(gameState, reason);
+}
+
+export function playPlayerDeathEffects(gameState) {
+    const { scene, playerSnake, camera } = gameState;
+    if (!scene || !playerSnake || !camera) return;
+
+    Audio.playSoundEffect('playerDeath');
+
+    if (playerSnakeMeshes.length > 0) {
+        createExplosion(
+            scene,
+            camera,
+            playerSnakeMeshes[0].position,
+            CONFIG.PARTICLE_COUNT_DEATH,
+            0xff4444
+        );
+    }
 }
 
 // Update Alpha Mode progress based on score

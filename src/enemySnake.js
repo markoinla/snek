@@ -170,6 +170,26 @@ export function resetEnemies(gameState) {
     Logger.gameplay.info("Enemies reset completely.");
 }
 
+export function renderEnemyKillEffects(enemyId, gameState) {
+    const { scene, camera } = gameState;
+    const meshes = enemyMeshes[enemyId];
+    if (!scene || !camera || !meshes) return;
+
+    meshes.forEach((mesh, index) => {
+        if (index === 0) {
+            createKillEffect(scene, camera, mesh.position.clone());
+        } else {
+            createExplosion(
+                scene,
+                camera,
+                mesh.position.clone(),
+                CONFIG.PARTICLE_COUNT_KILL / meshes.length,
+                CONFIG.PARTICLE_COLOR_KILL
+            );
+        }
+    });
+}
+
 export function syncEnemyMeshes(gameState) {
     const { scene, materials, enemies } = gameState;
     if (!scene || !materials?.enemy || !enemies?.list) return;

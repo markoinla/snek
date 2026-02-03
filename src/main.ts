@@ -450,6 +450,7 @@ function render() {
                 if (coreResult?.events?.length) {
                     coreResult.events.forEach(event => {
                         if (event.type === 'PLAYER_DEAD') {
+                            Player.playPlayerDeathEffects(gameState);
                             setGameOver(gameState, event.payload?.reason || 'DEFAULT');
                         }
                         if (event.type === 'SCORE_CHANGED') {
@@ -463,40 +464,45 @@ function render() {
                             if (event.payload.type === 'normal') {
                                 gameState.stats.applesEaten++;
                                 Audio.playSoundEffect('eatApple');
-                                if (gameState.playerSnake) {
-                                    const currentTime = gameState.clock.getElapsedTime();
-                                    gameState.playerSnake.speedBoostUntil = currentTime + event.payload.effects.speedBoostDuration;
+                                if (event.payload.effects.speedBoostDuration > 0) {
                                     UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF);
-                                    Player.addAlphaPoints(event.payload.effects.alphaPoints, gameState);
-
-                                    if (gameState.playerSnake.alphaMode?.active) {
-                                        gameState.playerSnake.alphaMode.endTime += event.payload.effects.alphaModeExtension;
-                                        if (event.payload.effects.addScoreMultiplier) {
-                                            Player.addScoreMultiplier(currentTime, gameState);
-                                        }
-                                    }
                                 }
                             } else {
                                 gameState.stats.frogsEaten++;
                                 Audio.playSoundEffect('eatFrog');
-                                Player.addAlphaPoints(event.payload.effects.alphaPoints, gameState);
-                                if (foodTypeInfo) {
-                                    Player.applyPowerUp(foodTypeInfo.type, gameState);
-                                }
                             }
                             if (foodTypeInfo?.effectText) {
                                 UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
                             }
                         }
                         if (event.type === 'ENEMY_KILLED') {
-                            if (event.payload.viaTail) {
-                                Player.addAlphaPoints(CONFIG.ALPHA_POINTS_ENEMY, gameState);
+                            Enemy.renderEnemyKillEffects(event.payload.enemyId, gameState);
+                            if (gameState.playerSnake?.alphaMode?.active) {
+                                Audio.playSoundEffect('alphaKillExplode1');
+                                Audio.playAlphaKillVoice();
                             }
                             UI.updateKills(gameState.enemies.kills);
+                        }
+                        if (event.type === 'POWERUP_APPLIED') {
+                            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
+                            if (foodTypeInfo?.effectText) {
+                                UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
+                            }
+                        }
+                        if (event.type === 'ALPHA_MODE_ACTIVATED') {
+                            UI.showAlphaModeActivation();
+                            Audio.playAlphaModeActivation();
+                        }
+                        if (event.type === 'ALPHA_MODE_ENDED') {
+                            UI.showPowerUpTextEffect("Alpha Mode ended");
+                        }
+                        if (event.type === 'ENEMY_RESPAWNED') {
+                            Enemy.syncEnemyMeshes(gameState);
                         }
                     });
                 }
 
+                Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
                 Player.syncPlayerMeshes(gameState);
                 Enemy.syncEnemyMeshes(gameState);
                 Food.syncFoodMeshes(gameState);

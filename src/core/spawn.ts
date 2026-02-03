@@ -1,5 +1,5 @@
 import * as CONFIG from '../config.js';
-import type { CoreState } from './types';
+import type { CoreState, FoodItem } from './types';
 
 export function generateUniquePositionCore(state: CoreState, safeZoneRadius = 0) {
   const halfGrid = Math.floor(CONFIG.GRID_SIZE / 2);
@@ -76,7 +76,34 @@ export function spawnFoodCore(state: CoreState, count: number, safeZoneRadius = 
 export function addFoodCore(state: CoreState, safeZoneRadius = 0) {
   const pos = generateUniquePositionCore(state, safeZoneRadius);
   const type = selectFoodTypeByRatioCore(state.rng);
-  const spawned = { ...pos, type };
+  const spawned: FoodItem = { ...pos, type };
+
+  if (type !== 'normal') {
+    const direction = randomCardinalDirection(state);
+    const intervalVariance = 0.8 + state.rng.nextFloat() * 0.4;
+    const distanceVariance = (state.rng.nextFloat() * 2 - 1) * CONFIG.FROG_MOVEMENT.DISTANCE_VARIATION;
+    spawned.movement = {
+      directionX: direction.x,
+      directionZ: direction.z,
+      timer: 0,
+      moveInterval: CONFIG.FROG_MOVEMENT.MOVE_INTERVAL * intervalVariance,
+      maxDistance: Math.max(1, CONFIG.FROG_MOVEMENT.MAX_DISTANCE + distanceVariance),
+      originX: spawned.x,
+      originZ: spawned.z,
+      changeProbability: CONFIG.FROG_MOVEMENT.DIRECTION_CHANGE_PROBABILITY,
+    };
+  }
+
   state.food.positions.push(spawned);
   return spawned;
+}
+
+export function randomCardinalDirection(state: CoreState) {
+  const dirs = [
+    { x: 1, z: 0 },
+    { x: -1, z: 0 },
+    { x: 0, z: 1 },
+    { x: 0, z: -1 },
+  ];
+  return dirs[state.rng.nextInt(dirs.length)];
 }

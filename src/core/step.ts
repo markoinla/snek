@@ -1,9 +1,11 @@
 import type { CoreState, StepResult } from './types';
 import { updatePlayerCore } from './player';
-import { checkAndEatFoodCore } from './food';
+import { checkAndEatFoodCore, updateFoodMovementCore } from './food';
 import { addFoodCore } from './spawn';
 import { updateEnemiesCore, spawnEnemyCore } from './enemy';
 import { checkEnemyCollisionCoreDetailed, killEnemyCore, processEnemyRespawnsCore } from './combat';
+import { addAlphaPointsCore, activateAlphaModeCore, addScoreMultiplierCore, checkAlphaModeActivationPointsCore, decayAlphaPointsCore, updateAlphaModeCore } from './alpha';
+import { applyPowerUpCore, updatePowerUpTimersCore } from './powerups';
 
 export function stepCore(state: CoreState, delta: number): StepResult {
   state.time += delta;
@@ -21,13 +23,15 @@ export function stepCore(state: CoreState, delta: number): StepResult {
 
         if (canEat) {
           if (killEnemyCore(state, enemyCollision.enemyId)) {
+            if (enemyCollision.isTail && !alphaActive) {
+              addAlphaPointsCore(state, CONFIG.ALPHA_POINTS_ENEMY, result.events);
+            }
             result.events.push({
               type: 'ENEMY_KILLED',
               payload: { enemyId: enemyCollision.enemyId, viaTail: enemyCollision.isTail },
             });
           }
         } else if (!ghostActive) {
-          state.flags.gameOver = true;
           result.events.push({ type: 'PLAYER_DEAD', payload: { reason: 'ENEMY_COLLISION' } });
           return result;
         }
@@ -51,6 +55,33 @@ export function stepCore(state: CoreState, delta: number): StepResult {
           payload: { score: state.score.current },
         });
 
+        // Grow snake if the food effect allows it
+        if (foodResult.grow) {
+          const tail = state.player.segments[state.player.segments.length - 1];
+          if (tail) {
+            state.player.segments.push({ ...tail });
+          }
+        }
+
+        // Apply food effects to core state
+        if (foodResult.effects.speedBoostDuration > 0) {
+          state.player.speedBoostUntil = state.time + foodResult.effects.speedBoostDuration;
+        }
+        if (foodResult.effects.alphaModeExtension > 0 && state.player.alphaMode.active) {
+          state.player.alphaMode.endTime += foodResult.effects.alphaModeExtension;
+          if (foodResult.effects.addScoreMultiplier) {
+            addScoreMultiplierCore(state, state.time);
+          }
+        }
+        if (foodResult.effects.alphaPoints > 0) {
+          addAlphaPointsCore(state, foodResult.effects.alphaPoints, result.events);
+        }
+
+        if (foodResult.type !== 'normal') {
+          const powerup = applyPowerUpCore(foodResult.type, state, state.time);
+          result.events.push({ type: 'POWERUP_APPLIED', payload: { type: foodResult.type, duration: powerup.duration } });
+        }
+
         // Respawn food deterministically in core
         const spawned = addFoodCore(state);
         if (spawned) {
@@ -63,8 +94,15 @@ export function stepCore(state: CoreState, delta: number): StepResult {
     }
   }
 
+  decayAlphaPointsCore(state, state.time);
+  checkAlphaModeActivationPointsCore(state, state.time, result.events);
+  updateAlphaModeCore(state, state.time, result.events);
+  updatePowerUpTimersCore(state, state.time);
+
   const enemyResult = updateEnemiesCore(state, delta);
   result.events.push(...enemyResult.events);
+
+  updateFoodMovementCore(state, delta);
 
   const respawned = processEnemyRespawnsCore(state);
   respawned.forEach(enemyId => {

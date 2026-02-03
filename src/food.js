@@ -212,7 +212,13 @@ export function syncFoodMeshes(gameState) {
     const { scene, materials, food } = gameState;
     if (!scene || !materials?.food || !food?.positions) return;
 
-    if (!food.meshes || food.meshes.length !== food.positions.length || food.meshes.some(m => !m)) {
+    const needsRebuild =
+        !food.meshes ||
+        food.meshes.length !== food.positions.length ||
+        food.meshes.some(m => !m) ||
+        food.meshes.some((mesh, index) => mesh?.userData?.foodType !== food.positions[index]?.type);
+
+    if (needsRebuild) {
         clearFoodMeshes(gameState);
         food.positions.forEach(pos => {
             const mesh = createFoodMeshInstance(pos, pos.type, materials);
@@ -221,6 +227,18 @@ export function syncFoodMeshes(gameState) {
                 scene.add(mesh);
             }
         });
+    }
+
+    // Update positions for existing meshes
+    for (let i = 0; i < food.positions.length; i++) {
+        const pos = food.positions[i];
+        const mesh = food.meshes[i];
+        if (!mesh) continue;
+        mesh.position.set(
+            pos.x * CONFIG.UNIT_SIZE,
+            0,
+            pos.z * CONFIG.UNIT_SIZE
+        );
     }
 }
 
@@ -601,9 +619,17 @@ export function resetFood(gameState) {
         }
     }
 
-    // Reset arrays
-    food.meshes = [];
-    food.positions = [];
+    // Reset arrays (preserve references for core sync)
+    if (food.meshes) {
+        food.meshes.length = 0;
+    } else {
+        food.meshes = [];
+    }
+    if (food.positions) {
+        food.positions.length = 0;
+    } else {
+        food.positions = [];
+    }
     
     // Log cleanup for debugging
     Logger.system.info("Food system reset, all food items removed and resources disposed");
