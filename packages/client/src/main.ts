@@ -430,6 +430,91 @@ export function requestRestart() {
     }
 }
 
+// --- Event Processing ---
+// Shared event handler for both single-player (local sim) and multiplayer (server events)
+function processEventEnvelopes(envelopes, state, isMultiplayer) {
+    const localId = state.localPlayerId || 'local';
+
+    envelopes.forEach(envelope => {
+        if (envelope.version !== EVENT_SCHEMA_VERSION) {
+            Logger.system.warn(`Event schema mismatch. Expected ${EVENT_SCHEMA_VERSION}, got ${envelope.version}`);
+            return;
+        }
+
+        const event = envelope.event;
+        const isLocalPlayer = !event.playerId || event.playerId === localId;
+
+        if (event.type === EventType.PlayerDead) {
+            if (isLocalPlayer) {
+                Player.playPlayerDeathEffects(state);
+                if (!isMultiplayer) {
+                    setGameOver(state, event.payload?.reason || 'DEFAULT');
+                }
+                // In multiplayer, death is temporary — respawn UI handled by 5.4
+            }
+        }
+        if (event.type === EventType.ScoreChanged && isLocalPlayer) {
+            UI.updateScore(event.payload.score);
+        }
+        if (event.type === EventType.FoodSpawned) {
+            Food.syncFoodMeshes(state);
+        }
+        if (event.type === EventType.FoodEaten) {
+            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
+            if (isLocalPlayer) {
+                if (event.payload.type === 'normal') {
+                    state.stats.applesEaten++;
+                    Audio.playSoundEffect('eatApple');
+                    if (event.payload.effects.speedBoostDuration > 0) {
+                        UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF);
+                    }
+                } else {
+                    state.stats.frogsEaten++;
+                    Audio.playSoundEffect('eatFrog');
+                }
+                if (foodTypeInfo?.effectText) {
+                    UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
+                }
+            }
+        }
+        if (event.type === EventType.EnemyKilled) {
+            Enemy.renderEnemyKillEffects(event.payload.enemyId, state);
+            if (isLocalPlayer && state.playerSnake?.alphaMode?.active) {
+                Audio.playSoundEffect('alphaKillExplode1');
+                Audio.playAlphaKillVoice();
+            }
+            if (isLocalPlayer) {
+                state.stats.snakesEaten++;
+            }
+            UI.updateKills(state.enemies.kills);
+        }
+        if (event.type === EventType.PowerupApplied && isLocalPlayer) {
+            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
+            if (foodTypeInfo?.effectText) {
+                UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
+            }
+        }
+        if (event.type === EventType.AlphaModeActivated && isLocalPlayer) {
+            UI.showAlphaModeActivation();
+            Audio.playAlphaModeActivation();
+        }
+        if (event.type === EventType.AlphaModeEnded && isLocalPlayer) {
+            UI.showPowerUpTextEffect("Alpha Mode ended");
+        }
+        if (event.type === EventType.EnemyRespawned) {
+            Enemy.syncEnemyMeshes(state);
+        }
+        if (event.type === EventType.PlayerKilledPlayer) {
+            if (isLocalPlayer) {
+                Audio.playSoundEffect('eatApple');
+            }
+        }
+        if (event.type === EventType.PlayerRespawned && isLocalPlayer) {
+            Player.syncPlayerMeshes(state);
+        }
+    });
+}
+
 // --- Main Loop ---
 function animate() {
     requestAnimationFrame(animate);
@@ -473,7 +558,7 @@ function render() {
         if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
             if (gameState.flags.useCoreSimulation) {
                 if (!gameState.network?.enabled) {
-                    // Apply queued input
+                    // Single-player: apply queued input and step simulation locally
                     if (gameState.inputQueue.length > 1) {
                         gameState.inputQueue.sort((a, b) => a.tick - b.tick);
                     }
@@ -487,65 +572,13 @@ function render() {
 
                     const coreResult = stepCore(gameState.core, deltaTime);
                     if (coreResult?.events?.length) {
-                        coreResult.events.forEach(envelope => {
-                            if (envelope.version !== EVENT_SCHEMA_VERSION) {
-                                Logger.system.warn(`Event schema mismatch. Expected ${EVENT_SCHEMA_VERSION}, got ${envelope.version}`);
-                                return;
-                            }
-
-                            const event = envelope.event;
-                            if (event.type === EventType.PlayerDead) {
-                                Player.playPlayerDeathEffects(gameState);
-                                setGameOver(gameState, event.payload?.reason || 'DEFAULT');
-                            }
-                            if (event.type === EventType.ScoreChanged) {
-                                UI.updateScore(event.payload.score);
-                            }
-                            if (event.type === EventType.FoodSpawned) {
-                                Food.syncFoodMeshes(gameState);
-                            }
-                            if (event.type === EventType.FoodEaten) {
-                                const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
-                                if (event.payload.type === 'normal') {
-                                    gameState.stats.applesEaten++;
-                                    Audio.playSoundEffect('eatApple');
-                                    if (event.payload.effects.speedBoostDuration > 0) {
-                                        UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF);
-                                    }
-                                } else {
-                                    gameState.stats.frogsEaten++;
-                                    Audio.playSoundEffect('eatFrog');
-                                }
-                                if (foodTypeInfo?.effectText) {
-                                    UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
-                                }
-                            }
-                            if (event.type === EventType.EnemyKilled) {
-                                Enemy.renderEnemyKillEffects(event.payload.enemyId, gameState);
-                                if (gameState.playerSnake?.alphaMode?.active) {
-                                    Audio.playSoundEffect('alphaKillExplode1');
-                                    Audio.playAlphaKillVoice();
-                                }
-                                gameState.stats.snakesEaten++;
-                                UI.updateKills(gameState.enemies.kills);
-                            }
-                            if (event.type === EventType.PowerupApplied) {
-                                const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
-                                if (foodTypeInfo?.effectText) {
-                                    UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
-                                }
-                            }
-                            if (event.type === EventType.AlphaModeActivated) {
-                                UI.showAlphaModeActivation();
-                                Audio.playAlphaModeActivation();
-                            }
-                            if (event.type === EventType.AlphaModeEnded) {
-                                UI.showPowerUpTextEffect("Alpha Mode ended");
-                            }
-                            if (event.type === EventType.EnemyRespawned) {
-                                Enemy.syncEnemyMeshes(gameState);
-                            }
-                        });
+                        processEventEnvelopes(coreResult.events, gameState, false);
+                    }
+                } else {
+                    // Multiplayer: drain server events
+                    if (gameState.network.pendingServerEvents?.length) {
+                        const events = gameState.network.pendingServerEvents.splice(0);
+                        processEventEnvelopes(events, gameState, true);
                     }
                 }
 
