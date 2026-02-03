@@ -276,6 +276,37 @@ export function addNewObstacle(gameState, type, pos) {
     }
 }
 
+export function syncObstacleMeshes(gameState) {
+    const { scene, materials, obstacles } = gameState;
+    if (!scene || !materials?.obstacle || !obstacles?.list) return;
+
+    // Ensure obstacle group exists
+    if (!obstacles.group) {
+        obstacles.group = new THREE.Group();
+        scene.add(obstacles.group);
+    }
+
+    // Build a set of existing meshed obstacles by position key
+    const meshedKeys = new Set();
+    obstacles.list.forEach(obs => {
+        if (obs.mesh) {
+            meshedKeys.add(`${obs.x},${obs.z}`);
+        }
+    });
+
+    // Create meshes for obstacles that arrived from the server without one
+    obstacles.list.forEach(obs => {
+        if (obs.mesh) return; // Already has a mesh
+        const data = createObstacleMeshInstance(
+            { x: obs.x, z: obs.z }, obs.type, materials, obstacles.group
+        );
+        if (data) {
+            obs.mesh = data.meshGroup;
+            obs.occupiedCells = obs.occupiedCells || data.cells;
+        }
+    });
+}
+
 export function checkObstacleCollision(position, gameState) {
      return checkObstacleCollisionCore(gameState.obstacles, position) || false;
 }

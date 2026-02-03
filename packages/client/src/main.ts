@@ -583,9 +583,10 @@ function render() {
                 }
 
                 Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
-                Player.syncPlayerMeshes(gameState);
+                Player.syncAllPlayerMeshes(gameState);
                 Enemy.syncEnemyMeshes(gameState);
                 Food.syncFoodMeshes(gameState);
+                Obstacles.syncObstacleMeshes(gameState);
             } else {
                 Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
                 Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);

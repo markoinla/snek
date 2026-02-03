@@ -13,6 +13,15 @@ import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState.js'; // For mode-adjusted settings
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
+let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }
+
+// Colors for multiplayer players (indexed by colorIndex)
+const PLAYER_COLORS = [
+    0x4CAF50, // green  (index 0 — local player default)
+    0x2196F3, // blue
+    0xF44336, // red
+    0xFFEB3B, // yellow
+];
 
 // --- Player State (managed within gameState.playerSnake) ---
 // gameState.playerSnake = {
@@ -226,6 +235,124 @@ export function syncPlayerMeshes(gameState) {
     updatePlayerSnakeTextures(gameState);
 }
 
+// --- Remote / Multiplayer Player Mesh Sync ---
+
+function createRemotePlayerMeshes(playerId, segments, colorIndex, scene, materials) {
+    const meshes = [];
+    const color = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length] || PLAYER_COLORS[1];
+    segments.forEach((pos, index) => {
+        const isHead = index === 0;
+        const baseMat = isHead ? materials.snake.head1 : materials.snake.body1;
+        if (!baseMat) return;
+        const mat = baseMat.clone();
+        mat.color = new THREE.Color(color);
+        const mesh = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            mat
+        );
+        mesh.scale.setScalar(CONFIG.UNIT_SIZE);
+        mesh.position.set(
+            pos.x * CONFIG.UNIT_SIZE,
+            CONFIG.UNIT_SIZE / 2,
+            pos.z * CONFIG.UNIT_SIZE
+        );
+        mesh.castShadow = true;
+        mesh.receiveShadow = false;
+        mesh.name = `remotePlayer_${playerId}_${index}`;
+        meshes.push(mesh);
+        scene.add(mesh);
+    });
+    return meshes;
+}
+
+function removeRemotePlayerMeshes(playerId, scene) {
+    const meshes = remotePlayerMeshes[playerId];
+    if (!meshes) return;
+    meshes.forEach(mesh => {
+        scene.remove(mesh);
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(m => m.dispose());
+            } else {
+                mesh.material.dispose();
+            }
+        }
+    });
+    delete remotePlayerMeshes[playerId];
+}
+
+export function syncAllPlayerMeshes(gameState) {
+    const { scene, materials, players, localPlayerId } = gameState;
+    if (!scene || !materials?.snake || !players) return;
+
+    const localId = localPlayerId || 'local';
+
+    // Sync local player via existing path
+    syncPlayerMeshes(gameState);
+
+    // Determine which remote players exist
+    const remoteIds = Object.keys(players).filter(id => id !== localId);
+
+    // Remove meshes for players that left
+    Object.keys(remotePlayerMeshes).forEach(id => {
+        if (!players[id]) {
+            removeRemotePlayerMeshes(id, scene);
+        }
+    });
+
+    // Sync each remote player
+    remoteIds.forEach(id => {
+        const player = players[id];
+        if (!player || !player.segments || player.segments.length === 0) {
+            // Player has no segments (possibly dead or not yet spawned) — hide
+            if (remotePlayerMeshes[id]) {
+                remotePlayerMeshes[id].forEach(m => { m.visible = false; });
+            }
+            return;
+        }
+
+        if (player.dead) {
+            // Dead player — hide meshes
+            if (remotePlayerMeshes[id]) {
+                remotePlayerMeshes[id].forEach(m => { m.visible = false; });
+            }
+            return;
+        }
+
+        const existingMeshes = remotePlayerMeshes[id];
+
+        // Recreate meshes if segment count changed or meshes don't exist
+        if (!existingMeshes || existingMeshes.length !== player.segments.length) {
+            removeRemotePlayerMeshes(id, scene);
+            remotePlayerMeshes[id] = createRemotePlayerMeshes(
+                id, player.segments, player.colorIndex || 1, scene, materials
+            );
+            return;
+        }
+
+        // Update positions
+        for (let i = 0; i < player.segments.length; i++) {
+            const seg = player.segments[i];
+            const mesh = existingMeshes[i];
+            if (!mesh || !seg) continue;
+            mesh.visible = true;
+            mesh.position.set(
+                seg.x * CONFIG.UNIT_SIZE,
+                CONFIG.UNIT_SIZE / 2,
+                seg.z * CONFIG.UNIT_SIZE
+            );
+        }
+    });
+}
+
+export function resetAllRemotePlayerMeshes(gameState) {
+    const { scene } = gameState;
+    Object.keys(remotePlayerMeshes).forEach(id => {
+        removeRemotePlayerMeshes(id, scene);
+    });
+    remotePlayerMeshes = {};
+}
 
 // --- Movement and Input ---
 
