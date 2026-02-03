@@ -8,6 +8,33 @@ export type EnemyCollisionResult = {
   isHead: boolean;
 } | null;
 
+export type PlayerCollisionResult = {
+  targetPlayerId: string;
+  segmentIndex: number;
+  isHead: boolean;
+} | null;
+
+/**
+ * Check if a position collides with any other player's segments.
+ * Skips the player identified by `excludePlayerId` and any dead players.
+ */
+export function checkPlayerCollisionCore(
+  state: CoreState,
+  pos: { x: number; z: number },
+  excludePlayerId: string
+): PlayerCollisionResult {
+  for (const [pid, player] of Object.entries(state.players)) {
+    if (pid === excludePlayerId || player.dead) continue;
+    for (let i = 0; i < player.segments.length; i++) {
+      const seg = player.segments[i];
+      if (seg.x === pos.x && seg.z === pos.z) {
+        return { targetPlayerId: pid, segmentIndex: i, isHead: i === 0 };
+      }
+    }
+  }
+  return null;
+}
+
 export function checkEnemyCollisionCoreDetailed(state: CoreState, pos: { x: number; z: number }): EnemyCollisionResult {
   for (const enemy of state.enemies.list) {
     for (let i = 0; i < enemy.snake.length; i++) {

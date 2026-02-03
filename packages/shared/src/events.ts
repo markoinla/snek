@@ -4,6 +4,7 @@ export enum EventType {
   PlayerMoved = 'PLAYER_MOVED',
   PlayerDead = 'PLAYER_DEAD',
   PlayerRespawned = 'PLAYER_RESPAWNED',
+  PlayerKilledPlayer = 'PLAYER_KILLED_PLAYER',
   FoodEaten = 'FOOD_EATEN',
   FoodSpawned = 'FOOD_SPAWNED',
   EnemyMoved = 'ENEMY_MOVED',
@@ -22,6 +23,7 @@ export type CoreEvent =
   | { type: EventType.PlayerMoved; playerId: string }
   | { type: EventType.PlayerDead; playerId: string; payload: { reason: string } }
   | { type: EventType.PlayerRespawned; playerId: string }
+  | { type: EventType.PlayerKilledPlayer; playerId: string; payload: { victimId: string; headOn: boolean } }
   | { type: EventType.FoodEaten; playerId: string; payload: { type: string; score: number; effects: { alphaPoints: number; speedBoostDuration: number; alphaModeExtension: number; addScoreMultiplier: boolean } } }
   | { type: EventType.FoodSpawned; payload: { type: string; x: number; z: number } }
   | { type: EventType.EnemyMoved; payload: { enemyId: number } }

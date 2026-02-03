@@ -5,7 +5,7 @@ import { updatePlayerCore } from './player';
 import { checkAndEatFoodCore, updateFoodMovementCore } from './food';
 import { addFoodCore } from './spawn';
 import { updateEnemiesCore, spawnEnemyCore } from './enemy';
-import { checkEnemyCollisionCoreDetailed, killEnemyCore, processEnemyRespawnsCore } from './combat';
+import { checkEnemyCollisionCoreDetailed, checkPlayerCollisionCore, killEnemyCore, processEnemyRespawnsCore } from './combat';
 import { addAlphaPointsCore, addScoreMultiplierCore, checkAlphaModeActivationPointsCore, decayAlphaPointsCore, updateAlphaModeCore } from './alpha';
 import { applyPowerUpCore, updatePowerUpTimersCore } from './powerups';
 
@@ -57,6 +57,57 @@ export function stepCore(state: CoreState, delta: number): StepResult {
           } else if (!ghostActive) {
             allEvents.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'ENEMY_COLLISION' } });
             continue;
+          }
+        }
+
+        // Player-vs-player collision (per player)
+        const pvpCollision = checkPlayerCollisionCore(state, { x: head.x, z: head.z }, playerId);
+        if (pvpCollision) {
+          const attackerAlpha = !!player.alphaMode?.active;
+          const attackerGhost = player.ghostModeActive;
+          const victim = state.players[pvpCollision.targetPlayerId];
+          const victimAlpha = !!victim?.alphaMode?.active;
+
+          if (pvpCollision.isHead) {
+            // Head-on collision
+            if (attackerAlpha && !victimAlpha) {
+              // Attacker wins — victim dies
+              victim.dead = true;
+              addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
+              allEvents.push({ type: EventType.PlayerKilledPlayer, playerId, payload: { victimId: pvpCollision.targetPlayerId, headOn: true } });
+              allEvents.push({ type: EventType.PlayerDead, playerId: pvpCollision.targetPlayerId, payload: { reason: 'PVP_COLLISION' } });
+            } else if (!attackerAlpha && victimAlpha) {
+              // Victim wins — attacker dies
+              if (!attackerGhost) {
+                allEvents.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'PVP_COLLISION' } });
+                allEvents.push({ type: EventType.PlayerKilledPlayer, playerId: pvpCollision.targetPlayerId, payload: { victimId: playerId, headOn: true } });
+                addAlphaPointsCore(state, pvpCollision.targetPlayerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
+                continue;
+              }
+            } else {
+              // Both alpha or both non-alpha: mutual kill (ghost bypasses for attacker)
+              if (!attackerGhost) {
+                allEvents.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'PVP_COLLISION' } });
+              }
+              if (!victim.ghostModeActive) {
+                victim.dead = true;
+                allEvents.push({ type: EventType.PlayerDead, playerId: pvpCollision.targetPlayerId, payload: { reason: 'PVP_COLLISION' } });
+              }
+              if (!attackerGhost) continue;
+            }
+          } else {
+            // Head hits other player's body segment
+            if (attackerAlpha) {
+              // Alpha attacker kills victim
+              victim.dead = true;
+              addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
+              allEvents.push({ type: EventType.PlayerKilledPlayer, playerId, payload: { victimId: pvpCollision.targetPlayerId, headOn: false } });
+              allEvents.push({ type: EventType.PlayerDead, playerId: pvpCollision.targetPlayerId, payload: { reason: 'PVP_COLLISION' } });
+            } else if (!attackerGhost) {
+              // Non-alpha attacker dies
+              allEvents.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'PVP_COLLISION' } });
+              continue;
+            }
           }
         }
 

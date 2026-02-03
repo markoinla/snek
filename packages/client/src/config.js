@@ -160,7 +160,8 @@ const CONFIG = {
                     ENEMY_COLLISION: "You choked on a snek",
                     OBSTACLE_COLLISION: "You crashed into an obstacle",
                     TREE_COLLISION: "You tried to eat a tree",
-                    BUSH_COLLISION: "You got tangled in a bush"
+                    BUSH_COLLISION: "You got tangled in a bush",
+                    PVP_COLLISION: "Another snek got you"
                 }
             },
         },
