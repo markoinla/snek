@@ -244,7 +244,20 @@ export function syncFoodMeshes(gameState) {
 
 // Function to create a blocky frog made of multiple cubes
 function createBlockyFrog(group, material, type) {
-    const unitSize = CONFIG.UNIT_SIZE * 0.5; // Half unit size for frog blocks
+    const unitSize = CONFIG.UNIT_SIZE * 0.4; // Slightly smaller frog blocks
+
+    const cloneMaterialWithTint = (source, scalar) => {
+        const mat = source.clone();
+        if (mat.color) {
+            mat.color = mat.color.clone().multiplyScalar(scalar);
+        }
+        return mat;
+    };
+
+    const bellyMat = cloneMaterialWithTint(material, 1.1);
+    const darkMat = cloneMaterialWithTint(material, 0.8);
+    const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
     
     // Create the body (main block)
     const body = new THREE.Mesh(GEOMETRIES.cube, material);
@@ -252,6 +265,13 @@ function createBlockyFrog(group, material, type) {
     body.position.set(0, unitSize / 2, 0);
     body.castShadow = true;
     group.add(body);
+
+    // Belly plate for a bit of shape
+    const belly = new THREE.Mesh(GEOMETRIES.cube, bellyMat);
+    belly.scale.set(unitSize * 1.6, unitSize * 0.35, unitSize * 1.6);
+    belly.position.set(0, unitSize * 0.2, unitSize * 0.1);
+    belly.castShadow = true;
+    group.add(belly);
     
     // Create the head - position it at the front of the body
     const head = new THREE.Mesh(GEOMETRIES.cube, material);
@@ -260,21 +280,38 @@ function createBlockyFrog(group, material, type) {
     head.position.set(0, unitSize / 2, -unitSize * 1.5);
     head.castShadow = true;
     group.add(head);
+
+    // Simple snout/mouth block
+    const snout = new THREE.Mesh(GEOMETRIES.cube, darkMat);
+    snout.scale.set(unitSize * 1.2, unitSize * 0.3, unitSize * 0.4);
+    snout.position.set(0, unitSize * 0.35, -unitSize * 2);
+    snout.castShadow = true;
+    group.add(snout);
     
-    // Create eyes (black cubes)
-    const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    
-    const leftEye = new THREE.Mesh(GEOMETRIES.cube, eyeMaterial);
-    leftEye.scale.set(unitSize * 0.4, unitSize * 0.4, unitSize * 0.4);
-    leftEye.position.set(-unitSize * 0.5, unitSize, -unitSize * 1.8);
+    // Create eyes (white cubes with black pupils)
+    const leftEye = new THREE.Mesh(GEOMETRIES.cube, eyeWhiteMat);
+    leftEye.scale.set(unitSize * 0.45, unitSize * 0.45, unitSize * 0.45);
+    leftEye.position.set(-unitSize * 0.55, unitSize, -unitSize * 1.8);
     leftEye.castShadow = true;
     group.add(leftEye);
     
-    const rightEye = new THREE.Mesh(GEOMETRIES.cube, eyeMaterial);
-    rightEye.scale.set(unitSize * 0.4, unitSize * 0.4, unitSize * 0.4);
-    rightEye.position.set(unitSize * 0.5, unitSize, -unitSize * 1.8);
+    const rightEye = new THREE.Mesh(GEOMETRIES.cube, eyeWhiteMat);
+    rightEye.scale.set(unitSize * 0.45, unitSize * 0.45, unitSize * 0.45);
+    rightEye.position.set(unitSize * 0.55, unitSize, -unitSize * 1.8);
     rightEye.castShadow = true;
     group.add(rightEye);
+
+    const leftPupil = new THREE.Mesh(GEOMETRIES.cube, eyeBlackMat);
+    leftPupil.scale.set(unitSize * 0.18, unitSize * 0.18, unitSize * 0.18);
+    leftPupil.position.set(-unitSize * 0.55, unitSize * 0.98, -unitSize * 2.02);
+    leftPupil.castShadow = true;
+    group.add(leftPupil);
+
+    const rightPupil = new THREE.Mesh(GEOMETRIES.cube, eyeBlackMat);
+    rightPupil.scale.set(unitSize * 0.18, unitSize * 0.18, unitSize * 0.18);
+    rightPupil.position.set(unitSize * 0.55, unitSize * 0.98, -unitSize * 2.02);
+    rightPupil.castShadow = true;
+    group.add(rightPupil);
     
     // Create legs
     // Front legs positioned toward the head
@@ -289,24 +326,48 @@ function createBlockyFrog(group, material, type) {
     frontRightLeg.position.set(unitSize, unitSize * 0.3, -unitSize);
     frontRightLeg.castShadow = true;
     group.add(frontRightLeg);
+
+    const frontLeftFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
+    frontLeftFoot.scale.set(unitSize * 0.8, unitSize * 0.2, unitSize * 0.9);
+    frontLeftFoot.position.set(-unitSize, unitSize * 0.05, -unitSize * 1.2);
+    frontLeftFoot.castShadow = true;
+    group.add(frontLeftFoot);
+
+    const frontRightFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
+    frontRightFoot.scale.set(unitSize * 0.8, unitSize * 0.2, unitSize * 0.9);
+    frontRightFoot.position.set(unitSize, unitSize * 0.05, -unitSize * 1.2);
+    frontRightFoot.castShadow = true;
+    group.add(frontRightFoot);
     
     // Back legs positioned toward the rear
     const backLeftLeg = new THREE.Mesh(GEOMETRIES.cube, material);
-    backLeftLeg.scale.set(unitSize * 0.6, unitSize * 0.6, unitSize * 0.8);
-    backLeftLeg.position.set(-unitSize, unitSize * 0.3, unitSize);
+    backLeftLeg.scale.set(unitSize * 0.9, unitSize * 0.7, unitSize * 1.2);
+    backLeftLeg.position.set(-unitSize * 1.1, unitSize * 0.35, unitSize * 0.9);
     backLeftLeg.castShadow = true;
     group.add(backLeftLeg);
     
     const backRightLeg = new THREE.Mesh(GEOMETRIES.cube, material);
-    backRightLeg.scale.set(unitSize * 0.6, unitSize * 0.6, unitSize * 0.8);
-    backRightLeg.position.set(unitSize, unitSize * 0.3, unitSize);
+    backRightLeg.scale.set(unitSize * 0.9, unitSize * 0.7, unitSize * 1.2);
+    backRightLeg.position.set(unitSize * 1.1, unitSize * 0.35, unitSize * 0.9);
     backRightLeg.castShadow = true;
     group.add(backRightLeg);
+
+    const backLeftFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
+    backLeftFoot.scale.set(unitSize * 1.1, unitSize * 0.2, unitSize * 1.2);
+    backLeftFoot.position.set(-unitSize * 1.1, unitSize * 0.05, unitSize * 1.4);
+    backLeftFoot.castShadow = true;
+    group.add(backLeftFoot);
+
+    const backRightFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
+    backRightFoot.scale.set(unitSize * 1.1, unitSize * 0.2, unitSize * 1.2);
+    backRightFoot.position.set(unitSize * 1.1, unitSize * 0.05, unitSize * 1.4);
+    backRightFoot.castShadow = true;
+    group.add(backRightFoot);
     
     // For ghost frogs, make them semi-transparent
     if (type === 'ghost') {
         group.traverse(child => {
-            if (child.isMesh && child.material !== eyeMaterial) {
+            if (child.isMesh && child.material !== eyeBlackMat) {
                 child.material = child.material.clone();
                 child.material.transparent = true;
                 child.material.opacity = 0.7;
@@ -658,7 +719,21 @@ export function updateFoodAnimations(gameState, deltaTime) {
             }
         } else if (foodMesh.userData.foodType !== 'normal' && foodMesh.userData.movementProperties) {
             if (gameState.flags.useCoreSimulation) {
-                // Keep power-ups static while core simulation is authoritative
+                // Keep power-ups static in X/Z while core simulation is authoritative,
+                // but still allow hopping for visual feedback.
+                const props = foodMesh.userData.movementProperties;
+                const time = gameState.simulation?.time ?? gameState.clock.getElapsedTime();
+                const baseHop = Math.abs(
+                    Math.sin((time + props.phaseOffset1) * props.hopFrequency * 2)
+                );
+                const secondaryBounce = Math.abs(
+                    Math.sin((time + props.phaseOffset2) * props.hopFrequency * 4)
+                ) * 0.2;
+                const hopHeight =
+                    (baseHop + secondaryBounce) *
+                    CONFIG.FROG_MOVEMENT.HOP_HEIGHT *
+                    CONFIG.UNIT_SIZE;
+                foodMesh.position.y = hopHeight;
                 continue;
             }
             const props = foodMesh.userData.movementProperties;
