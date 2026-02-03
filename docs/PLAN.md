@@ -18,33 +18,33 @@ Last updated: 2026-02-03
 ## Remaining Work (Phase 1)
 
 ### 1) Core/Render Parity
-- Emit events for: power-up application, alpha kill FX, score popup (partially done)
-- Render layer applies visuals/audio only (in progress)
-- Remove any remaining logic that mutates core state in render code (in progress)
+- Emit events for: power-up application, alpha kill FX, score popup (done)
+- Render layer applies visuals/audio only (done)
+- Remove any remaining logic that mutates core state in render code (done)
 
 ### 2) Power-ups in Core
-- Apply power-up effects authoritatively in core (in progress)
-- Ensure timers are advanced in core, not in render layer (in progress)
+- Apply power-up effects authoritatively in core (done)
+- Ensure timers are advanced in core, not in render layer (done)
 
 ### 3) Enemy Kill Rewards
-- Ensure alpha points and kill count are strictly updated in core (in progress)
-- Render layer reads from core events/state only (in progress)
+- Ensure alpha points and kill count are strictly updated in core (done)
+- Render layer reads from core events/state only (done)
 
 ### 4) Input & Turn Rules
-- Prevent illegal reversals and multi-turns per tick in core (in progress)
-- Move pending-turn queue into core (in progress)
+- Prevent illegal reversals and multi-turns per tick in core (done)
+- Move pending-turn queue into core (done)
 
 ### 5) Deterministic Seed
-- Accept a session seed and store it in core
-- Log/serialize seed for reproducible sessions
+- Accept a session seed and store it in core (done)
+- Log/serialize seed for reproducible sessions (done)
 
 ### 6) Test Harness (Headless Core)
-- Minimal core-only test runner
-- Smoke tests: wall collision, food eat + respawn, enemy kill + respawn
+- Minimal core-only test runner (done)
+- Smoke tests: wall collision, food eat + respawn, enemy kill + respawn (partial)
 
 ### 7) Documentation
-- Update README with new architecture
-- Document core event schema for Phase 2 server integration
+- Update README with new architecture (done)
+- Document core event schema for Phase 2 server integration (done)
 
 ## Progress Log
 - 2026-02-03: Core sim enabled; food/enemy logic moved to core; render sync implemented.

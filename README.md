@@ -18,6 +18,20 @@ A classic snake game implementation built with HTML, CSS, and JavaScript.
 3. Collect food to grow and increase your score
 4. Avoid hitting walls and your own tail
 
+## Core Simulation
+- Core logic runs deterministically and can be seeded with `?seed=123` in the URL.
+- Core events drive visuals, audio, and UI.
+- Headless smoke test: `npm run test:core`
+
+## Core Events (Phase 2 Reference)
+Core emits events used by the render layer:
+- `PLAYER_DEAD`
+- `FOOD_EATEN`, `FOOD_SPAWNED`
+- `ENEMY_KILLED`, `ENEMY_RESPAWNED`
+- `POWERUP_APPLIED`
+- `ALPHA_MODE_ACTIVATED`, `ALPHA_MODE_ENDED`
+- `SCORE_CHANGED`
+
 ## Directory Structure
 - `/assets` - Contains game images and resources
 - `/js` - JavaScript files for game logic

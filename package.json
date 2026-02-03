@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:core": "node scripts/core-smoke.mjs"
   },
   "dependencies": {
     "three": "^0.160.0"

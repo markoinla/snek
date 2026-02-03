@@ -90,7 +90,10 @@ async function init() {
     gameState.camera = SceneSetup.createCamera();
     gameState.renderer = SceneSetup.createRenderer(canvas);
     gameState.clock = new THREE.Clock();
-    gameState.core = createInitialCoreState();
+    const urlSeed = new URLSearchParams(window.location.search).get('seed');
+    const seed = urlSeed ? Number(urlSeed) : Date.now();
+    gameState.core = createInitialCoreState(seed);
+    Logger.system.info(`Core RNG seed: ${seed}`);
     bindCoreState(gameState);
     gameState.simulation.fixedDelta = 1 / gameState.simulation.tickRate;
     gameState.simulation.lastTimeMs = performance.now();
@@ -481,6 +484,7 @@ function render() {
                                 Audio.playSoundEffect('alphaKillExplode1');
                                 Audio.playAlphaKillVoice();
                             }
+                            gameState.stats.snakesEaten++;
                             UI.updateKills(gameState.enemies.kills);
                         }
                         if (event.type === 'POWERUP_APPLIED') {
