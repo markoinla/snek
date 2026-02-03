@@ -14,8 +14,9 @@
   },
   "dependencies": {
     "colyseus.js": "^0.15.27",
-    "three": "^0.160.0",
-    "snek-shared": "workspace:*"
+    "lil-gui": "^0.21.0",
+    "snek-shared": "workspace:*",
+    "three": "^0.160.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
