@@ -85,7 +85,7 @@
         async function loadConfigValues() {
             try {
                 // Dynamic import to get the latest config
-                const configModule = await import('./js/config.js?v=' + Date.now());
+                const configModule = await import('./src/config.js?v=' + Date.now());
                 const configList = document.getElementById('configValues');
                 
                 // Display relevant config values
