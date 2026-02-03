@@ -4,6 +4,8 @@ import { createRng } from './rng';
 export function createInitialCoreState(seed = Date.now()): CoreState {
   return {
     time: 0,
+    tick: 0,
+    eventIdCounter: 0,
     rng: createRng(seed),
     player: {
       segments: [],
@@ -15,13 +17,21 @@ export function createInitialCoreState(seed = Date.now()): CoreState {
       animationTimer: 0,
       scoreMultiplier: 1,
       ghostModeActive: false,
-      activePowerUp: null,
+      activePowerUps: [],
       enlargedHeadUntil: 0,
       alphaMode: {
         active: false,
         startTime: 0,
         endTime: 0,
         lastScoreThreshold: 0,
+        alphaPoints: 0,
+        lastDecayTime: 0,
+        scoreMultiplier: 1,
+        scoreMultiplierStack: [],
+        consecutiveActivations: 0,
+        cooldownActive: false,
+        cooldownEndTime: 0,
+        progress: 0,
       },
     },
     enemies: {

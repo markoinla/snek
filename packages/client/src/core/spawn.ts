@@ -29,22 +29,22 @@ export function generateUniquePositionCore(state: CoreState, safeZoneRadius = 0)
 }
 
 export function isPositionOccupiedCore(state: CoreState, targetPos: { x: number; z: number }) {
-  if (state.player?.segments?.some(segment => segment.x === targetPos.x && segment.z === targetPos.z)) {
+  if (state.player?.segments?.some((segment: { x: number; z: number }) => segment.x === targetPos.x && segment.z === targetPos.z)) {
     return true;
   }
-  if (state.food?.positions?.some(f => f.x === targetPos.x && f.z === targetPos.z)) {
+  if (state.food?.positions?.some((f: { x: number; z: number }) => f.x === targetPos.x && f.z === targetPos.z)) {
     return true;
   }
   if (state.obstacles?.list) {
     for (const obs of state.obstacles.list) {
-      if (obs.occupiedCells?.some(cell => cell.x === targetPos.x && cell.z === targetPos.z)) {
+      if (obs.occupiedCells?.some((cell: { x: number; z: number }) => cell.x === targetPos.x && cell.z === targetPos.z)) {
         return true;
       }
     }
   }
   if (state.enemies?.list) {
     for (const enemy of state.enemies.list) {
-      if (enemy.snake.some(segment => segment.x === targetPos.x && segment.z === targetPos.z)) {
+      if (enemy.snake.some((segment: { x: number; z: number }) => segment.x === targetPos.x && segment.z === targetPos.z)) {
         return true;
       }
     }
@@ -56,7 +56,7 @@ export function selectFoodTypeByRatioCore(rng: { nextFloat: () => number }) {
   const randomValue = Math.floor(rng.nextFloat() * 100) + 1;
   let cumulativeProbability = 0;
 
-  for (const key of Object.keys(CONFIG.FOOD_SPAWN_RATIOS)) {
+  for (const key of Object.keys(CONFIG.FOOD_SPAWN_RATIOS) as Array<keyof typeof CONFIG.FOOD_SPAWN_RATIOS>) {
     const ratio = CONFIG.FOOD_SPAWN_RATIOS[key] || 0;
     cumulativeProbability += ratio;
     if (randomValue <= cumulativeProbability) {

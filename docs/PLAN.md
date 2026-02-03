@@ -30,6 +30,8 @@ Last updated: 2026-02-03
 - All core emissions updated to use typed events
 - Version handshake validated
 
+Status: complete
+
 ---
 
 ## 2) CoreState Serialization
@@ -53,6 +55,8 @@ Last updated: 2026-02-03
 - `serialize.ts` with snapshot + delta
 - Tests: snapshot round‑trip, delta application
 
+Status: complete (delta is full-state for now; TODO optimize)
+
 ---
 
 ## 3) Input Protocol + Tick Tracking
@@ -75,6 +79,8 @@ Last updated: 2026-02-03
 - `input.ts` protocol
 - Tick tracking in core
 - Input validation rules
+
+Status: complete
 
 ---
 

@@ -22,7 +22,7 @@ export function checkEnemyCollisionCoreDetailed(state: CoreState, pos: { x: numb
 }
 
 export function killEnemyCore(state: CoreState, enemyId: number) {
-  const enemyIndex = state.enemies.list.findIndex(e => e.id === enemyId);
+  const enemyIndex = state.enemies.list.findIndex((e: { id: number }) => e.id === enemyId);
   if (enemyIndex === -1) return false;
   state.enemies.list.splice(enemyIndex, 1);
   state.enemies.kills = (state.enemies.kills || 0) + 1;

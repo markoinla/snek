@@ -654,8 +654,9 @@ export function updateEnemyMaterialsAfterMove(enemy, gameState) {
                     materials.enemy.body1.clone() : 
                     materials.enemy.body2.clone();
                 
-                // Set to the configured color from config
-                mesh.material.color.setHex(CONFIG.ENEMY_TAIL_COLOR);
+                // Set to a slightly darker tail color for edible segments
+                const tailColor = new THREE.Color(CONFIG.ENEMY_TAIL_COLOR).multiplyScalar(0.7);
+                mesh.material.color.copy(tailColor);
                 
                 // Add emissive glow to make it more noticeable
                 mesh.material.emissive.setHex(0x4DD0E1);

@@ -1,17 +1,29 @@
-import type { CoreState, StepResult } from './types';
+import * as CONFIG from '../config.js';
+import type { CoreState, CoreStepResult, StepResult } from './types';
+import { EventType, EVENT_SCHEMA_VERSION } from 'snek-shared';
 import { updatePlayerCore } from './player';
 import { checkAndEatFoodCore, updateFoodMovementCore } from './food';
 import { addFoodCore } from './spawn';
 import { updateEnemiesCore, spawnEnemyCore } from './enemy';
 import { checkEnemyCollisionCoreDetailed, killEnemyCore, processEnemyRespawnsCore } from './combat';
-import { addAlphaPointsCore, activateAlphaModeCore, addScoreMultiplierCore, checkAlphaModeActivationPointsCore, decayAlphaPointsCore, updateAlphaModeCore } from './alpha';
+import { addAlphaPointsCore, addScoreMultiplierCore, checkAlphaModeActivationPointsCore, decayAlphaPointsCore, updateAlphaModeCore } from './alpha';
 import { applyPowerUpCore, updatePowerUpTimersCore } from './powerups';
+
+function wrapEvents(state: CoreState, events: CoreStepResult['events']): StepResult['events'] {
+  return events.map(event => ({
+    tick: state.tick,
+    eventId: state.eventIdCounter++,
+    version: EVENT_SCHEMA_VERSION,
+    event
+  }));
+}
 
 export function stepCore(state: CoreState, delta: number): StepResult {
   state.time += delta;
+  state.tick += 1;
   const result = updatePlayerCore(state, delta);
 
-  const moved = result.events.some(event => event.type === 'PLAYER_MOVED');
+  const moved = result.events.some(event => event.type === EventType.PlayerMoved);
   if (moved) {
     const head = state.player.segments[0];
     if (head) {
@@ -27,13 +39,13 @@ export function stepCore(state: CoreState, delta: number): StepResult {
               addAlphaPointsCore(state, CONFIG.ALPHA_POINTS_ENEMY, result.events);
             }
             result.events.push({
-              type: 'ENEMY_KILLED',
+              type: EventType.EnemyKilled,
               payload: { enemyId: enemyCollision.enemyId, viaTail: enemyCollision.isTail },
             });
           }
         } else if (!ghostActive) {
-          result.events.push({ type: 'PLAYER_DEAD', payload: { reason: 'ENEMY_COLLISION' } });
-          return result;
+          result.events.push({ type: EventType.PlayerDead, payload: { reason: 'ENEMY_COLLISION' } });
+          return { events: wrapEvents(state, result.events) };
         }
       }
 
@@ -47,11 +59,11 @@ export function stepCore(state: CoreState, delta: number): StepResult {
         state.score.current += scoreDelta;
 
         result.events.push({
-          type: 'FOOD_EATEN',
+          type: EventType.FoodEaten,
           payload: { type: foodResult.type, score: scoreDelta, effects: foodResult.effects },
         });
         result.events.push({
-          type: 'SCORE_CHANGED',
+          type: EventType.ScoreChanged,
           payload: { score: state.score.current },
         });
 
@@ -79,16 +91,16 @@ export function stepCore(state: CoreState, delta: number): StepResult {
 
         if (foodResult.type !== 'normal') {
           const powerup = applyPowerUpCore(foodResult.type, state, state.time);
-          result.events.push({ type: 'POWERUP_APPLIED', payload: { type: foodResult.type, duration: powerup.duration } });
+          result.events.push({ type: EventType.PowerupApplied, payload: { type: foodResult.type, duration: powerup.duration } });
         }
 
         // Respawn food deterministically in core
         const spawned = addFoodCore(state);
         if (spawned) {
-          result.events.push({
-            type: 'FOOD_SPAWNED',
-            payload: { type: spawned.type, x: spawned.x, z: spawned.z },
-          });
+            result.events.push({
+              type: EventType.FoodSpawned,
+              payload: { type: spawned.type, x: spawned.x, z: spawned.z },
+            });
         }
       }
     }
@@ -107,8 +119,8 @@ export function stepCore(state: CoreState, delta: number): StepResult {
   const respawned = processEnemyRespawnsCore(state);
   respawned.forEach(enemyId => {
     spawnEnemyCore(state, enemyId);
-    result.events.push({ type: 'ENEMY_RESPAWNED', payload: { enemyId } });
+    result.events.push({ type: EventType.EnemyRespawned, payload: { enemyId } });
   });
 
-  return result;
+  return { events: wrapEvents(state, result.events) };
 }

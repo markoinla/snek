@@ -1,13 +1,14 @@
 import * as CONFIG from '../config.js';
 import { getAdjustedSetting } from '../gameState.js';
-import type { CoreState, StepResult } from './types';
+import type { CoreState, CoreStepResult } from './types';
+import { EventType } from 'snek-shared';
 
-export function addAlphaPointsCore(state: CoreState, points: number, events: StepResult['events']) {
+export function addAlphaPointsCore(state: CoreState, points: number, events: CoreStepResult['events']) {
   const player = state.player;
   if (player.alphaMode.active) return;
 
   player.alphaMode.alphaPoints += points;
-  events.push({ type: 'ALPHA_POINTS_CHANGED', payload: { points: player.alphaMode.alphaPoints } });
+  events.push({ type: EventType.AlphaPointsChanged, payload: { points: player.alphaMode.alphaPoints } });
 }
 
 export function decayAlphaPointsCore(state: CoreState, currentTime: number) {
@@ -29,7 +30,7 @@ export function decayAlphaPointsCore(state: CoreState, currentTime: number) {
   player.alphaMode.lastDecayTime = currentTime;
 }
 
-export function checkAlphaModeActivationPointsCore(state: CoreState, currentTime: number, events: StepResult['events']) {
+export function checkAlphaModeActivationPointsCore(state: CoreState, currentTime: number, events: CoreStepResult['events']) {
   const player = state.player;
   if (player.alphaMode.active) return false;
 
@@ -42,7 +43,7 @@ export function checkAlphaModeActivationPointsCore(state: CoreState, currentTime
   return false;
 }
 
-export function activateAlphaModeCore(state: CoreState, currentTime: number, events: StepResult['events']) {
+export function activateAlphaModeCore(state: CoreState, currentTime: number, events: CoreStepResult['events']) {
   const player = state.player;
   const alphaDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
 
@@ -54,10 +55,10 @@ export function activateAlphaModeCore(state: CoreState, currentTime: number, eve
   player.alphaMode.consecutiveActivations = (player.alphaMode.consecutiveActivations || 0) + 1;
   player.alphaMode.scoreMultiplierStack = [];
 
-  events.push({ type: 'ALPHA_MODE_ACTIVATED', payload: { duration: alphaDuration } });
+  events.push({ type: EventType.AlphaModeActivated, payload: { duration: alphaDuration } });
 }
 
-export function updateAlphaModeCore(state: CoreState, currentTime: number, events: StepResult['events']) {
+export function updateAlphaModeCore(state: CoreState, currentTime: number, events: CoreStepResult['events']) {
   const player = state.player;
   if (!player.alphaMode.active) return;
 
@@ -65,7 +66,7 @@ export function updateAlphaModeCore(state: CoreState, currentTime: number, event
     player.alphaMode.active = false;
     player.alphaMode.scoreMultiplier = 1.0;
     player.alphaMode.scoreMultiplierStack = [];
-    events.push({ type: 'ALPHA_MODE_ENDED' });
+    events.push({ type: EventType.AlphaModeEnded });
     return;
   }
 

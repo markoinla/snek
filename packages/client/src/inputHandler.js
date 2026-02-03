@@ -20,7 +20,7 @@ export function setupInputListeners(gameState, uiElements) {
             case 'arrowleft':
             case 'a':
                 if (gameState.flags.useCoreSimulation) {
-                    gameState.inputQueue.push({ turn: 'left' });
+                    gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'left' });
                 } else {
                     playerTurnLeft(gameState); // Pass gameState
                     // Set flag for immediate direction change
@@ -30,7 +30,7 @@ export function setupInputListeners(gameState, uiElements) {
             case 'arrowright':
             case 'd':
                 if (gameState.flags.useCoreSimulation) {
-                    gameState.inputQueue.push({ turn: 'right' });
+                    gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'right' });
                 } else {
                     playerTurnRight(gameState); // Pass gameState
                     // Set flag for immediate direction change
@@ -47,7 +47,7 @@ export function setupInputListeners(gameState, uiElements) {
         if (gameState.flags.gameOver) return;
         e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
-            gameState.inputQueue.push({ turn: 'left' });
+            gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'left' });
         } else {
             playerTurnLeft(gameState);
             // Set flag for immediate direction change
@@ -59,7 +59,7 @@ export function setupInputListeners(gameState, uiElements) {
          if (gameState.flags.gameOver) return;
          e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
-            gameState.inputQueue.push({ turn: 'right' });
+            gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'right' });
         } else {
             playerTurnRight(gameState);
             // Set flag for immediate direction change

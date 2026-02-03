@@ -1,5 +1,6 @@
 import * as CONFIG from '../config.js';
-import type { CoreState, StepResult } from './types';
+import type { CoreState, CoreStepResult } from './types';
+import { EventType } from 'snek-shared';
 import { checkObstacleCollisionCore } from './collision';
 
 export type PlayerInput = {
@@ -81,8 +82,8 @@ export function applyPlayerInput(state: CoreState, input: PlayerInput) {
   }
 }
 
-export function updatePlayerCore(state: CoreState, delta: number): StepResult {
-  const events: StepResult['events'] = [];
+export function updatePlayerCore(state: CoreState, delta: number): CoreStepResult {
+  const events: CoreStepResult['events'] = [];
   const player = state.player;
 
   player.moveTimer += delta;
@@ -104,38 +105,43 @@ export function updatePlayerCore(state: CoreState, delta: number): StepResult {
 
   initTurnQueue(player);
 
-  if (player.turnQueue.queue.length > 0) {
-    player.direction = { ...player.turnQueue.queue.shift() };
+  if (player.turnQueue!.queue.length > 0) {
+    const nextDir = player.turnQueue!.queue.shift();
+    if (nextDir) {
+      player.direction = { ...nextDir };
+    } else {
+      player.direction = { ...player.nextDirection };
+    }
   } else {
     player.direction = { ...player.nextDirection };
   }
 
   const head = player.segments[0];
   if (!head) {
-    events.push({ type: 'PLAYER_ERROR', payload: { reason: 'NO_HEAD' } });
+    events.push({ type: EventType.Debug, payload: { message: 'NO_HEAD' } });
     return { events };
   }
 
   const { newHead, collisionReason } = evaluatePlayerMove(state);
   if (collisionReason === 'WALL') {
-    events.push({ type: 'PLAYER_DEAD', payload: { reason: 'WALL_COLLISION' } });
+    events.push({ type: EventType.PlayerDead, payload: { reason: 'WALL_COLLISION' } });
     return { events };
   }
   if (collisionReason === 'SELF') {
-    events.push({ type: 'PLAYER_DEAD', payload: { reason: 'SELF_COLLISION' } });
+    events.push({ type: EventType.PlayerDead, payload: { reason: 'SELF_COLLISION' } });
     return { events };
   }
   if (collisionReason === 'OBSTACLE') {
-    events.push({ type: 'PLAYER_DEAD', payload: { reason: 'OBSTACLE_COLLISION' } });
+    events.push({ type: EventType.PlayerDead, payload: { reason: 'OBSTACLE_COLLISION' } });
     return { events };
   }
 
   // Movement update
   player.segments.unshift(newHead);
-  player.turnQueue.lastDirection = { ...player.direction };
+  player.turnQueue!.lastDirection = { ...player.direction };
   player.segments.pop();
 
-  events.push({ type: 'PLAYER_MOVED' });
+  events.push({ type: EventType.PlayerMoved });
   return { events };
 }
 

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALPHA SNEK</title>
+    <!-- Adding Google Fonts for Material Design -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-BNxuc6E9.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CCJQ4goq.css">
+</head>
+<body>
+    <!-- Game Info UI -->
+    <div id="highScoreInfo">High Score: 0</div>
+    <div id="info">Score: 0</div>
+    <div id="kills">Kills: 0</div>
+    <div id="powerUpInfo"></div>
+    <div id="powerUpTextEffect"></div>
+    <div id="gameOver" class="modal-screen">
+        <div class="modal-content">
+            <span id="deathReason">GAME OVER!</span>
+            <div class="score-container">
+                <span class="score-label">Score:</span>
+                <span id="finalScore" class="score-value">0</span>
+            </div>
+            <div class="score-container">
+                <span class="score-label">High Score:</span>
+                <span id="highScore" class="score-value">0</span>
+            </div>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">🍎</span>
+                    <span id="applesEaten" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">🐸</span>
+                    <span id="frogsEaten" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">🐍</span>
+                    <span id="snakesEaten" class="stat-value">0</span>
+                </div>
+            </div>
+            <button id="restartButton">PLAY AGAIN</button>
+        </div>
+    </div>
+    
+    <!-- Game controls -->
+    <div class="game-controls">
+        <button id="musicToggleButton" class="control-button">
+            <img src="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20fill='none'%20viewBox='0%200%2024%2024'%20stroke-width='1.5'%20stroke='white'%20class='size-6'%3e%3cpath%20stroke-linecap='round'%20stroke-linejoin='round'%20d='m9%209%2010.5-3m0%206.553v3.75a2.25%202.25%200%200%201-1.632%202.163l-1.32.377a1.803%201.803%200%201%201-.99-3.467l2.31-.66a2.25%202.25%200%200%200%201.632-2.163Zm0%200V2.25L9%205.25v10.303m0%200v3.75a2.25%202.25%200%200%201-1.632%202.163l-1.32.377a1.803%201.803%200%200%201-.99-3.467l2.31-.66A2.25%202.25%200%200%200%209%2015.553Z'%20/%3e%3c/svg%3e" alt="Toggle Music" class="music-icon">
+        </button>
+        <button id="settingsButton" class="control-button">
+            <img src="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20fill='none'%20viewBox='0%200%2024%2024'%20stroke-width='1.5'%20stroke='white'%20class='size-6'%3e%3cpath%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M9.594%203.94c.09-.542.56-.94%201.11-.94h2.593c.55%200%201.02.398%201.11.94l.213%201.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257%201.075.124l1.217-.456a1.125%201.125%200%200%201%201.37.49l1.296%202.247a1.125%201.125%200%200%201-.26%201.431l-1.003.827c-.293.241-.438.613-.43.992a7.723%207.723%200%200%201%200%20.255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26%201.43l-1.298%202.247a1.125%201.125%200%200%201-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47%206.47%200%200%201-.22.128c-.331.183-.581.495-.644.869l-.213%201.281c-.09.543-.56.94-1.11.94h-2.594c-.55%200-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52%206.52%200%200%201-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125%201.125%200%200%201-1.369-.49l-1.297-2.247a1.125%201.125%200%200%201%20.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932%206.932%200%200%201%200-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125%201.125%200%200%201-.26-1.43l1.297-2.247a1.125%201.125%200%200%201%201.37-.491l1.216.456c.356.133.751.072%201.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z'%20/%3e%3cpath%20stroke-linecap='round'%20stroke-linejoin='round'%20d='M15%2012a3%203%200%201%201-6%200%203%203%200%200%201%206%200Z'%20/%3e%3c/svg%3e" alt="Settings" class="gear-icon">
+        </button>
+    </div>
+    
+    <!-- Settings Menu -->
+    <div id="settingsMenu" class="modal-screen">
+        <div class="settings-content modal-content">
+            <div class="settings-header">
+                <h2>Settings</h2>
+                <button id="closeSettings" class="close-button">&times;</button>
+            </div>
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="howToPlay">How to Play</button>
+                    <button class="tab-button" data-tab="tips">Tips & Tricks</button>
+                    <button class="tab-button" data-tab="sounds">Sounds</button>
+                    <button class="tab-button" data-tab="gameMode">Game Mode</button>
+                </div>
+                <div class="tab-content">
+                    <!-- How to Play Tab -->
+                    <div id="howToPlay" class="tab-pane active">
+                        <h3>How to Play</h3>
+                        <p>Use the arrow keys or WASD to control your snake.</p>
+                        <p>Eat apples to grow longer and increase your score.</p>
+                        <p>Avoid hitting the walls, other snakes, or yourself.</p>
+                        <p>Collect power-ups to gain special abilities:</p>
+                        <ul>
+                            <li><strong>Speed Boost:</strong> Move faster for a short time</li>
+                            <li><strong>Shield:</strong> Temporary invincibility</li>
+                            <li><strong>Alpha Mode:</strong> Eat other snakes and gain points</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Tips & Tricks Tab -->
+                    <div id="tips" class="tab-pane">
+                        <h3>Tips & Tricks</h3>
+                        <ul>
+                            <li>Plan your route ahead to avoid getting trapped</li>
+                            <li>Use Alpha Mode to clear the board when surrounded</li>
+                            <li>Stay near the center to have more escape options</li>
+                            <li>Watch for power-up spawns and plan accordingly</li>
+                            <li>In Alpha Mode, target longer snakes for more points</li>
+                            <li>Use the walls to trap enemy snakes</li>
+                            <li>Keep track of your tail to avoid self-collisions</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Sounds Tab -->
+                    <div id="sounds" class="tab-pane">
+                        <div class="sound-settings">
+                            <div class="sound-setting-item">
+                                <div class="sound-label">Background Music</div>
+                                <div class="sound-controls">
+                                    <button id="musicToggle" class="toggle-button">
+                                        <i class="fas fa-music toggle-icon"></i>
+                                        <span class="toggle-status">ON</span>
+                                    </button>
+                                    <div class="volume-slider-container">
+                                        <input type="range" id="musicVolume" class="volume-slider" min="0" max="100" value="30">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="sound-setting-item">
+                                <div class="sound-label">Sound Effects</div>
+                                <div class="sound-controls">
+                                    <button id="soundToggle" class="toggle-button">
+                                        <i class="fas fa-volume-up toggle-icon"></i>
+                                        <span class="toggle-status">ON</span>
+                                    </button>
+                                    <div class="volume-slider-container">
+                                        <input type="range" id="soundVolume" class="volume-slider" min="0" max="100" value="80">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Mode Tab -->
+                    <div id="gameMode" class="tab-pane">
+                        <h3>Game Mode</h3>
+                        <div class="game-mode-description">
+                            <p>Choose between Normal or Casual game modes:</p>
+                            <ul>
+                                <li><strong>Normal:</strong> The standard ALPHA SNEK experience with challenging gameplay.</li>
+                                <li><strong>Casual:</strong> A more relaxed experience with:
+                                    <ul>
+                                        <li>30% slower snake movement</li>
+                                        <li>30% fewer obstacles</li>
+                                        <li>50% more food and power-ups</li>
+                                        <li>Easier Alpha Mode activation</li>
+                                        <li>Longer Alpha Mode duration</li>
+                                        <li>More forgiving collision detection</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="game-mode-settings">
+                            <div class="game-mode-toggle-container settings-toggle">
+                                <button id="normalModeBtnSettings" class="game-mode-button active">Normal</button>
+                                <button id="casualModeBtnSettings" class="game-mode-button">Casual</button>
+                            </div>
+                            <p class="mode-note">Note: Changing the game mode will take effect on your next game.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alpha Mode UI -->
+    <div id="alphaModeContainer" class="ui-element">
+        <div id="alphaModeBar">
+            <div id="alphaModeProgress"></div>
+        </div>
+        <div id="alphaModeCooldown">COOLDOWN: <span id="alphaModeCooldownTimer">0.0</span>s
+            <button id="resetAlphaModeCooldown" class="debug-button">Reset Cooldown</button>
+        </div>
+    </div>
+
+    <!-- Intro Screen -->
+    <div id="introScreen" class="modal-screen">
+        <div class="intro-content modal-content login-style">
+            <div class="intro-split-layout">
+                <div class="intro-image-container">
+                    <img src="./assets/alpha_snek-BOWnsVCG.jpg" alt="Alpha Snek" class="intro-image">
+                </div>
+                <div class="intro-content-container">
+                    <h1>ALPHA SNEK</h1>
+                    
+                    <div class="instructions">
+                        <h2>How to Play</h2>
+                        <div class="instruction-list">
+                            <div class="instruction-item">
+                                <span class="instruction-label">Controls</span>
+                                <span id="controlsText" class="instruction-text"></span>
+                            </div>
+                            <div class="instruction-item">
+                                <span class="instruction-label">Objective</span>
+                                <span id="objectiveText" class="instruction-text"></span>
+                            </div>
+                            <div class="instruction-item">
+                                <span class="instruction-label">Alpha Mode</span>
+                                <span id="alphaModeText" class="instruction-text"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Game Mode Selection -->
+                    <div class="game-mode-selection">
+                        <div class="game-mode-label">Game Mode</div>
+                        <div class="game-mode-toggle-container">
+                            <button id="normalModeBtn" class="game-mode-button active">Normal</button>
+                            <button id="casualModeBtn" class="game-mode-button">Casual</button>
+                        </div>
+                    </div>
+                    
+                    <button id="startButton">START GAME</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile Buttons -->
+    <div id="leftButton" class="mobile-button">↶</div>
+    <div id="rightButton" class="mobile-button">↷</div>
+
+    <!-- Canvas Target -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Main Game Logic Entry Point -->
+
+</body>
+</html>

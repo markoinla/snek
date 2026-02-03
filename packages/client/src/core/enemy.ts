@@ -1,10 +1,11 @@
 import * as CONFIG from '../config.js';
-import type { CoreState, StepResult, Vec3 } from './types';
+import type { CoreState, CoreStepResult, Vec3 } from './types';
+import { EventType } from 'snek-shared';
 import { checkObstacleCollisionCore } from './collision';
 import { addFoodCore, generateUniquePositionCore } from './spawn';
 
-export function updateEnemiesCore(state: CoreState, delta: number): StepResult {
-  const events: StepResult['events'] = [];
+export function updateEnemiesCore(state: CoreState, delta: number): CoreStepResult {
+  const events: CoreStepResult['events'] = [];
 
   for (const enemy of state.enemies.list) {
     // Animation timing (core just updates counters)
@@ -20,11 +21,11 @@ export function updateEnemiesCore(state: CoreState, delta: number): StepResult {
       const moveResult = moveEnemyCore(enemy, state);
       enemy.lastMoveTime = state.time;
       if (moveResult.moved) {
-        events.push({ type: 'ENEMY_MOVED', payload: { enemyId: enemy.id } });
+        events.push({ type: EventType.EnemyMoved, payload: { enemyId: enemy.id } });
       }
       if (moveResult.foodSpawned) {
         events.push({
-          type: 'FOOD_SPAWNED',
+          type: EventType.FoodSpawned,
           payload: {
             type: moveResult.foodSpawned.type,
             x: moveResult.foodSpawned.x,
@@ -257,7 +258,7 @@ export function spawnEnemyCore(state: CoreState, id: number) {
     direction: { ...initialDirection },
     nextDirection: { ...initialDirection },
     targetFoodIndex: null,
-    state: 'seeking',
+    state: 'seeking' as const,
     lastMoveTime: state.time + state.rng.nextFloat() * CONFIG.ENEMY_SNAKE_SPEED,
     animationFrame: 0,
     animationTimer: state.time,

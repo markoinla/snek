@@ -19,6 +19,7 @@ import { initLogger, Logger, isLoggingEnabled } from './debugLogger.js';
 import Stats from '../lib/stats.module.js';
 import * as GameModes from './gameModes.js';
 import { createInitialCoreState } from './core/state.ts';
+import { EVENT_SCHEMA_VERSION, EventType } from 'snek-shared';
 import { bindCoreState } from './core/sync.ts';
 import { stepCore } from './core/step.ts';
 import { applyPlayerInput } from './core/player.ts';
@@ -94,6 +95,7 @@ async function init() {
     const seed = urlSeed ? Number(urlSeed) : Date.now();
     gameState.core = createInitialCoreState(seed);
     Logger.system.info(`Core RNG seed: ${seed}`);
+    Logger.system.info(`Event schema version: ${EVENT_SCHEMA_VERSION}`);
     bindCoreState(gameState);
     gameState.simulation.fixedDelta = 1 / gameState.simulation.tickRate;
     gameState.simulation.lastTimeMs = performance.now();
@@ -444,25 +446,37 @@ function render() {
         if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
             if (gameState.flags.useCoreSimulation) {
                 // Apply queued input
+                if (gameState.inputQueue.length > 1) {
+                    gameState.inputQueue.sort((a, b) => a.tick - b.tick);
+                }
                 while (gameState.inputQueue.length > 0) {
                     const input = gameState.inputQueue.shift();
+                    if (input.tick < gameState.core.tick) {
+                        continue;
+                    }
                     applyPlayerInput(gameState.core, input);
                 }
 
                 const coreResult = stepCore(gameState.core, deltaTime);
                 if (coreResult?.events?.length) {
-                    coreResult.events.forEach(event => {
-                        if (event.type === 'PLAYER_DEAD') {
+                    coreResult.events.forEach(envelope => {
+                        if (envelope.version !== EVENT_SCHEMA_VERSION) {
+                            Logger.system.warn(`Event schema mismatch. Expected ${EVENT_SCHEMA_VERSION}, got ${envelope.version}`);
+                            return;
+                        }
+
+                        const event = envelope.event;
+                        if (event.type === EventType.PlayerDead) {
                             Player.playPlayerDeathEffects(gameState);
                             setGameOver(gameState, event.payload?.reason || 'DEFAULT');
                         }
-                        if (event.type === 'SCORE_CHANGED') {
+                        if (event.type === EventType.ScoreChanged) {
                             UI.updateScore(event.payload.score);
                         }
-                        if (event.type === 'FOOD_SPAWNED') {
+                        if (event.type === EventType.FoodSpawned) {
                             Food.syncFoodMeshes(gameState);
                         }
-                        if (event.type === 'FOOD_EATEN') {
+                        if (event.type === EventType.FoodEaten) {
                             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
                             if (event.payload.type === 'normal') {
                                 gameState.stats.applesEaten++;
@@ -478,7 +492,7 @@ function render() {
                                 UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
                             }
                         }
-                        if (event.type === 'ENEMY_KILLED') {
+                        if (event.type === EventType.EnemyKilled) {
                             Enemy.renderEnemyKillEffects(event.payload.enemyId, gameState);
                             if (gameState.playerSnake?.alphaMode?.active) {
                                 Audio.playSoundEffect('alphaKillExplode1');
@@ -487,20 +501,20 @@ function render() {
                             gameState.stats.snakesEaten++;
                             UI.updateKills(gameState.enemies.kills);
                         }
-                        if (event.type === 'POWERUP_APPLIED') {
+                        if (event.type === EventType.PowerupApplied) {
                             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
                             if (foodTypeInfo?.effectText) {
                                 UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
                             }
                         }
-                        if (event.type === 'ALPHA_MODE_ACTIVATED') {
+                        if (event.type === EventType.AlphaModeActivated) {
                             UI.showAlphaModeActivation();
                             Audio.playAlphaModeActivation();
                         }
-                        if (event.type === 'ALPHA_MODE_ENDED') {
+                        if (event.type === EventType.AlphaModeEnded) {
                             UI.showPowerUpTextEffect("Alpha Mode ended");
                         }
-                        if (event.type === 'ENEMY_RESPAWNED') {
+                        if (event.type === EventType.EnemyRespawned) {
                             Enemy.syncEnemyMeshes(gameState);
                         }
                     });
