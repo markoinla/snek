@@ -1,6 +1,6 @@
 # Multiplayer Refactor — Scratchpad
 
-Last updated: 2026-02-03 (Phase 3 server lifecycle complete)
+Last updated: 2026-02-03 (Phase 4.3+4.4 multi-player rendering complete)
 
 ## Phase 1: Shared Types & Core State Refactor
 
@@ -44,9 +44,9 @@ Last updated: 2026-02-03 (Phase 3 server lifecycle complete)
 
 - [x] 4.1 Add `gameState.players` and `gameState.localPlayerId` (done in Phase 1)
 - [x] 4.2 Update snapshot handling in `colyseusClient.ts` (done in Phase 1)
-- [ ] 4.3 Add obstacle mesh sync
-- [ ] 4.4 Render multiple player snakes
-- [ ] 4.5 Fix event processing in multiplayer (remove network gate)
+- [x] 4.3 Add obstacle mesh sync — syncObstacleMeshes() creates meshes for server-sent obstacles missing a mesh
+- [x] 4.4 Render multiple player snakes — remotePlayerMeshes cache, syncAllPlayerMeshes() creates/removes/updates color-tinted meshes per remote player, hides dead players
+- [x] 4.5 Fix event processing in multiplayer — extracted processEventEnvelopes() shared handler, multiplayer branch drains pendingServerEvents with playerId filtering
 - [x] 4.6 Camera (no change — follows playerSnake alias)
 - [x] 4.7 Input sending: stamp `playerId` (done in Phase 1)
 
