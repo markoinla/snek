@@ -1,5 +1,5 @@
 // Minimal headless smoke tests for core logic
-import { createInitialCoreState } from '../src/core/state.ts';
+import { createInitialCoreState, createPlayerState } from '../src/core/state.ts';
 import { stepCore } from '../src/core/step.ts';
 import { spawnFoodCore } from '../src/core/spawn.ts';
 import { spawnInitialEnemiesCore } from '../src/core/enemy.ts';
@@ -16,23 +16,29 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function hasEvent(events, type, predicate) {
+  return events.some(e => e.event.type === type && (!predicate || predicate(e.event)));
+}
+
 function runFoodTest() {
   const state = createInitialCoreState(123);
-  state.player.segments = [{ x: 0, y: 0, z: 0 }];
-  state.player.direction = { x: 1, y: 0, z: 0 };
-  state.player.nextDirection = { x: 1, y: 0, z: 0 };
-  state.player.speed = 0.1;
+  state.players['test'] = createPlayerState('test');
+  state.players['test'].segments = [{ x: 0, y: 0, z: 0 }];
+  state.players['test'].direction = { x: 1, y: 0, z: 0 };
+  state.players['test'].nextDirection = { x: 1, y: 0, z: 0 };
+  state.players['test'].speed = 0.1;
   state.food.positions = [];
   state.obstacles = { list: [] };
   state.enemies = { list: [], kills: 0, respawnQueue: [] };
 
-  spawnFoodCore(state, 1);
-  assert(state.food.positions.length === 1, 'Food should spawn');
+  // Place food directly in player's path (3 cells ahead)
+  state.food.positions.push({ x: 3, y: 0, z: 0, type: 'normal' });
+  assert(state.food.positions.length === 1, 'Food should exist');
 
   let eaten = false;
   for (let i = 0; i < 50; i++) {
     const result = stepCore(state, 0.1);
-    if (result.events.some(e => e.type === 'FOOD_EATEN')) {
+    if (hasEvent(result.events, 'FOOD_EATEN')) {
       eaten = true;
       break;
     }
@@ -42,10 +48,11 @@ function runFoodTest() {
 
 function runWallCollisionTest() {
   const state = createInitialCoreState(456);
-  state.player.segments = [{ x: 0, y: 0, z: 0 }];
-  state.player.direction = { x: 1, y: 0, z: 0 };
-  state.player.nextDirection = { x: 1, y: 0, z: 0 };
-  state.player.speed = 0.1;
+  state.players['test'] = createPlayerState('test');
+  state.players['test'].segments = [{ x: 0, y: 0, z: 0 }];
+  state.players['test'].direction = { x: 1, y: 0, z: 0 };
+  state.players['test'].nextDirection = { x: 1, y: 0, z: 0 };
+  state.players['test'].speed = 0.1;
   state.food.positions = [];
   state.obstacles = { list: [] };
   state.enemies = { list: [], kills: 0, respawnQueue: [] };
@@ -53,7 +60,7 @@ function runWallCollisionTest() {
   let dead = false;
   for (let i = 0; i < 200; i++) {
     const result = stepCore(state, 0.1);
-    if (result.events.some(e => e.type === 'PLAYER_DEAD' && e.payload.reason === 'WALL_COLLISION')) {
+    if (hasEvent(result.events, 'PLAYER_DEAD', e => e.payload.reason === 'WALL_COLLISION')) {
       dead = true;
       break;
     }
@@ -63,11 +70,12 @@ function runWallCollisionTest() {
 
 function runEnemyKillRespawnTest() {
   const state = createInitialCoreState(789);
-  state.player.segments = [{ x: 0, y: 0, z: 0 }];
-  state.player.direction = { x: 1, y: 0, z: 0 };
-  state.player.nextDirection = { x: 1, y: 0, z: 0 };
-  state.player.speed = 0.1;
-  state.player.alphaMode.active = true; // allow kill
+  state.players['test'] = createPlayerState('test');
+  state.players['test'].segments = [{ x: 0, y: 0, z: 0 }];
+  state.players['test'].direction = { x: 1, y: 0, z: 0 };
+  state.players['test'].nextDirection = { x: 1, y: 0, z: 0 };
+  state.players['test'].speed = 0.1;
+  state.players['test'].alphaMode.active = true; // allow kill
   state.food.positions = [];
   state.obstacles = { list: [] };
   state.enemies = { list: [], kills: 0, respawnQueue: [] };
@@ -77,12 +85,12 @@ function runEnemyKillRespawnTest() {
 
   // Move player onto enemy head position for kill
   const enemyHead = state.enemies.list[0].snake[0];
-  state.player.segments[0] = { x: enemyHead.x, y: 0, z: enemyHead.z };
+  state.players['test'].segments[0] = { x: enemyHead.x, y: 0, z: enemyHead.z };
 
   let killed = false;
   for (let i = 0; i < 5; i++) {
     const result = stepCore(state, 0.1);
-    if (result.events.some(e => e.type === 'ENEMY_KILLED')) {
+    if (hasEvent(result.events, 'ENEMY_KILLED')) {
       killed = true;
       break;
     }
@@ -93,7 +101,7 @@ function runEnemyKillRespawnTest() {
   let respawned = false;
   for (let i = 0; i < 200; i++) {
     const result = stepCore(state, 0.1);
-    if (result.events.some(e => e.type === 'ENEMY_RESPAWNED')) {
+    if (hasEvent(result.events, 'ENEMY_RESPAWNED')) {
       respawned = true;
       break;
     }

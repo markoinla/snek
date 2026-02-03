@@ -1,8 +1,9 @@
-export const EVENT_SCHEMA_VERSION = 1 as const;
+export const EVENT_SCHEMA_VERSION = 2 as const;
 
 export enum EventType {
   PlayerMoved = 'PLAYER_MOVED',
   PlayerDead = 'PLAYER_DEAD',
+  PlayerRespawned = 'PLAYER_RESPAWNED',
   FoodEaten = 'FOOD_EATEN',
   FoodSpawned = 'FOOD_SPAWNED',
   EnemyMoved = 'ENEMY_MOVED',
@@ -18,24 +19,26 @@ export enum EventType {
 }
 
 export type CoreEvent =
-  | { type: EventType.PlayerMoved }
-  | { type: EventType.PlayerDead; payload: { reason: string } }
-  | { type: EventType.FoodEaten; payload: { type: string; score: number; effects: { alphaPoints: number; speedBoostDuration: number; alphaModeExtension: number; addScoreMultiplier: boolean } } }
+  | { type: EventType.PlayerMoved; playerId: string }
+  | { type: EventType.PlayerDead; playerId: string; payload: { reason: string } }
+  | { type: EventType.PlayerRespawned; playerId: string }
+  | { type: EventType.FoodEaten; playerId: string; payload: { type: string; score: number; effects: { alphaPoints: number; speedBoostDuration: number; alphaModeExtension: number; addScoreMultiplier: boolean } } }
   | { type: EventType.FoodSpawned; payload: { type: string; x: number; z: number } }
   | { type: EventType.EnemyMoved; payload: { enemyId: number } }
-  | { type: EventType.EnemyKilled; payload: { enemyId: number; viaTail: boolean } }
+  | { type: EventType.EnemyKilled; playerId: string; payload: { enemyId: number; viaTail: boolean } }
   | { type: EventType.EnemyRespawned; payload: { enemyId: number } }
-  | { type: EventType.PowerupApplied; payload: { type: string; duration: number } }
-  | { type: EventType.AlphaModeActivated; payload: { duration: number } }
-  | { type: EventType.AlphaModeEnded }
-  | { type: EventType.AlphaPointsChanged; payload: { points: number } }
+  | { type: EventType.PowerupApplied; playerId: string; payload: { type: string; duration: number } }
+  | { type: EventType.AlphaModeActivated; playerId: string; payload: { duration: number } }
+  | { type: EventType.AlphaModeEnded; playerId: string }
+  | { type: EventType.AlphaPointsChanged; playerId: string; payload: { points: number } }
   | { type: EventType.ScorePopup; payload: { text: string; color: number } }
-  | { type: EventType.ScoreChanged; payload: { score: number } }
+  | { type: EventType.ScoreChanged; playerId: string; payload: { score: number } }
   | { type: EventType.Debug; payload: { message: string } };
 
 export type EventEnvelope = {
   tick: number;
   eventId: number;
   version: typeof EVENT_SCHEMA_VERSION;
+  playerId?: string;
   event: CoreEvent;
 };

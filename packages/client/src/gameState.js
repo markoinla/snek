@@ -113,6 +113,10 @@ export const gameState = {
         sendInput: null,
     },
 
+    // Multiplayer player state
+    players: {},
+    localPlayerId: 'local',
+
     // Input cleanup function
     cleanupInput: null,
 };

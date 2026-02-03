@@ -5,7 +5,9 @@ export type {
   Vec2,
   Vec3,
   FoodItem,
-  FoodMovement
+  FoodMovement,
+  PlayerState,
+  ScoreState
 } from 'snek-shared';
 
 export type CoreStepResult = {

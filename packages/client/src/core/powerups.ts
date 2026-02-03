@@ -1,8 +1,8 @@
 import CONFIG from '../config.js';
 import type { CoreState } from './types';
 
-export function applyPowerUpCore(type: string, state: CoreState, currentTime: number) {
-  const player = state.player;
+export function applyPowerUpCore(type: string, state: CoreState, playerId: string, currentTime: number) {
+  const player = state.players[playerId];
 
   if (!player.activePowerUps) {
     player.activePowerUps = [] as any;
@@ -33,8 +33,8 @@ export function applyPowerUpCore(type: string, state: CoreState, currentTime: nu
   }
 }
 
-export function updatePowerUpTimersCore(state: CoreState, currentTime: number) {
-  const player = state.player;
+export function updatePowerUpTimersCore(state: CoreState, playerId: string, currentTime: number) {
+  const player = state.players[playerId];
   if (!player.activePowerUps || player.activePowerUps.length === 0) return;
 
   player.activePowerUps = player.activePowerUps.filter((powerUp: any) => {

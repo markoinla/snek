@@ -53,7 +53,12 @@ function updateFromSnapshot(gameState: any, buffer: ArrayBuffer | Uint8Array) {
   Enemy.syncEnemyMeshes(gameState);
   Food.syncFoodMeshes(gameState);
 
-  UI.updateScore(core.score.current);
+  // Score is now per-player; use local player's score
+  const localId = gameState.localPlayerId || 'local';
+  const localPlayer = core.players?.[localId];
+  if (localPlayer) {
+    UI.updateScore(localPlayer.score.current);
+  }
   UI.updateKills(core.enemies.kills);
 }
 
@@ -61,6 +66,10 @@ function handleMeta(gameState: any, meta: ServerMeta) {
   Logger.system.info(`Connected to multiplayer server v${meta.serverVersion}, tick ${meta.tickRate}`);
   gameState.simulation.tickRate = meta.tickRate;
   gameState.simulation.fixedDelta = 1 / meta.tickRate;
+  // Store session ID as local player ID for rendering/score aliasing
+  if (gameState.network?.sessionId) {
+    gameState.localPlayerId = gameState.network.sessionId;
+  }
 }
 
 export async function connectMultiplayer(gameState: any, options: MultiplayerOptions = {}) {

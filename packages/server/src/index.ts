@@ -15,7 +15,7 @@ import {
 } from 'snek-shared';
 import type { CoreState, SerializableCoreState } from 'snek-shared';
 import CONFIG from '../../client/src/config.js';
-import { createInitialCoreState } from '../../client/src/core/state.ts';
+import { createInitialCoreState, createPlayerState } from '../../client/src/core/state.ts';
 import { applyPlayerInput } from '../../client/src/core/player.ts';
 import { stepCore } from '../../client/src/core/step.ts';
 import { spawnFoodCore } from '../../client/src/core/spawn.ts';
@@ -80,11 +80,14 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     }
 
     metrics.connectedClients += 1;
-    const player = new PlayerMeta();
-    player.id = client.sessionId;
-    player.lastInputTick = this.coreState.tick;
-    this.state.players.set(client.sessionId, player);
+    const playerMeta = new PlayerMeta();
+    playerMeta.id = client.sessionId;
+    playerMeta.lastInputTick = this.coreState.tick;
+    this.state.players.set(client.sessionId, playerMeta);
     this.inputQueues.set(client.sessionId, []);
+
+    // Create player snake in core simulation
+    this.createPlayerSnake(client.sessionId);
 
     const meta: ServerMeta = {
       serverVersion: PROTOCOL_VERSION,
@@ -103,6 +106,7 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     metrics.connectedClients = Math.max(0, metrics.connectedClients - 1);
     this.state.players.delete(client.sessionId);
     this.inputQueues.delete(client.sessionId);
+    delete this.coreState.players[client.sessionId];
   }
 
   onDispose() {
@@ -110,16 +114,22 @@ class SnekRoom extends Colyseus.Room<RoomState> {
   }
 
   private initializeCoreState(state: CoreState) {
-    state.player.segments = [];
-    for (let i = 0; i < CONFIG.MIN_SNAKE_LENGTH; i++) {
-      state.player.segments.push({ x: -i, y: 0, z: 0 });
-    }
-    state.player.direction = { x: 1, y: 0, z: 0 };
-    state.player.nextDirection = { x: 1, y: 0, z: 0 };
-    state.player.speed = CONFIG.BASE_SNAKE_SPEED;
-
+    // Players are created on join — start with empty players map
     spawnFoodCore(state, CONFIG.NUM_INITIAL_FOOD);
     spawnInitialEnemiesCore(state, CONFIG.NUM_ENEMIES);
+  }
+
+  private createPlayerSnake(sessionId: string) {
+    const player = createPlayerState(sessionId);
+    const startPos = { x: 0, y: 0, z: 0 }; // TODO: generateUniquePositionCore
+    player.segments = [];
+    for (let i = 0; i < CONFIG.MIN_SNAKE_LENGTH; i++) {
+      player.segments.push({ x: startPos.x - i, y: 0, z: startPos.z });
+    }
+    player.direction = { x: 1, y: 0, z: 0 };
+    player.nextDirection = { x: 1, y: 0, z: 0 };
+    player.speed = CONFIG.BASE_SNAKE_SPEED;
+    this.coreState.players[sessionId] = player;
   }
 
   private handleInput(sessionId: string, message: InputMessage) {
@@ -135,6 +145,8 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     if (targetTick > this.coreState.tick + MAX_INPUT_AHEAD_TICKS) return;
     if (targetTick < this.coreState.tick - MAX_INPUT_LAG_TICKS) return;
 
+    // Stamp playerId from server-side session (trust server, not client)
+    message.playerId = sessionId;
     queue.push(message);
     if (queue.length > MAX_INPUT_QUEUE) {
       queue.shift();

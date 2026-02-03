@@ -4,7 +4,7 @@ import { requestRestart } from './main.ts'; // Assuming main exports a restart f
 
 export function setupInputListeners(gameState, uiElements) {
     const enqueueInput = (turn) => {
-        const input = { playerId: 'local', tick: gameState.core.tick + 1, turn, version: INPUT_SCHEMA_VERSION };
+        const input = { playerId: gameState.localPlayerId || 'local', tick: gameState.core.tick + 1, turn, version: INPUT_SCHEMA_VERSION };
         if (gameState.network?.enabled && typeof gameState.network.sendInput === 'function') {
             gameState.network.sendInput(input);
             return;

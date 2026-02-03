@@ -18,7 +18,7 @@ import { performanceSettings } from './deviceUtils.js';
 import { initLogger, Logger, isLoggingEnabled } from './debugLogger.js';
 import Stats from '../lib/stats.module.js';
 import * as GameModes from './gameModes.js';
-import { createInitialCoreState } from './core/state.ts';
+import { createInitialCoreState, createPlayerState } from './core/state.ts';
 import { EVENT_SCHEMA_VERSION, EventType } from 'snek-shared';
 import { bindCoreState } from './core/sync.ts';
 import { stepCore } from './core/step.ts';
@@ -104,6 +104,9 @@ async function init() {
     const urlSeed = urlParams.get('seed');
     const seed = urlSeed ? Number(urlSeed) : Date.now();
     gameState.core = createInitialCoreState(seed);
+    // Create local player in single-player mode
+    gameState.core.players['local'] = createPlayerState('local');
+    gameState.localPlayerId = 'local';
     Logger.system.info(`Core RNG seed: ${seed}`);
     Logger.system.info(`Event schema version: ${EVENT_SCHEMA_VERSION}`);
     bindCoreState(gameState);

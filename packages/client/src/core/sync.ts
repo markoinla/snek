@@ -1,14 +1,29 @@
 import type { CoreState } from './types';
-import { createInitialCoreState } from './state';
+import { createInitialCoreState, createPlayerState } from './state';
 
 export function bindCoreState(gameState: any): CoreState {
   const core = gameState.core || createInitialCoreState();
 
-  core.player = gameState.playerSnake;
+  // Bind players map: gameState.players → core.players
+  if (gameState.players && Object.keys(gameState.players).length > 0) {
+    core.players = gameState.players;
+  } else if (gameState.playerSnake) {
+    // Backward compat: single-player mode uses "local" key
+    // Merge gameState.playerSnake into a proper PlayerState
+    const localId = gameState.localPlayerId || 'local';
+    const base = createPlayerState(localId);
+    core.players[localId] = Object.assign(base, gameState.playerSnake);
+  }
+
+  // Ensure local player exists
+  const localId = gameState.localPlayerId || 'local';
+  if (!core.players[localId]) {
+    core.players[localId] = createPlayerState(localId);
+  }
+
   core.enemies = gameState.enemies;
   core.food.positions = gameState.food.positions;
   core.obstacles = gameState.obstacles;
-  core.score = gameState.score;
   core.flags = gameState.flags;
 
   gameState.core = core;
@@ -17,10 +32,22 @@ export function bindCoreState(gameState: any): CoreState {
 
 export function applyCoreStateToGameState(gameState: any, core: CoreState) {
   gameState.core = core;
-  gameState.playerSnake = core.player;
+
+  // Sync players map
+  gameState.players = core.players;
+
+  // Alias local player for backward compat
+  const localId = gameState.localPlayerId || 'local';
+  gameState.playerSnake = core.players[localId] || null;
+
+  // Alias score for backward compat (score is now per-player)
+  const localPlayer = core.players[localId];
+  if (localPlayer) {
+    gameState.score = localPlayer.score;
+  }
+
   gameState.enemies = { ...gameState.enemies, ...core.enemies };
   gameState.food = { ...gameState.food, positions: core.food.positions };
   gameState.obstacles = { ...gameState.obstacles, ...core.obstacles };
-  gameState.score = core.score;
   gameState.flags = { ...gameState.flags, ...core.flags };
 }

@@ -29,8 +29,10 @@ export function generateUniquePositionCore(state: CoreState, safeZoneRadius = 0)
 }
 
 export function isPositionOccupiedCore(state: CoreState, targetPos: { x: number; z: number }) {
-  if (state.player?.segments?.some((segment: { x: number; z: number }) => segment.x === targetPos.x && segment.z === targetPos.z)) {
-    return true;
+  for (const player of Object.values(state.players)) {
+    if (player.segments?.some((segment: { x: number; z: number }) => segment.x === targetPos.x && segment.z === targetPos.z)) {
+      return true;
+    }
   }
   if (state.food?.positions?.some((f: { x: number; z: number }) => f.x === targetPos.x && f.z === targetPos.z)) {
     return true;
