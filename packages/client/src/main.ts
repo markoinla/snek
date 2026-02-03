@@ -98,7 +98,7 @@ async function init() {
     if (urlParams.get('admin') === '1') {
         import('./adminPanel.js').then(({ initAdminPanel }) => {
             initAdminPanel();
-        });
+        }).catch(console.error);
     }
 
     const urlSeed = urlParams.get('seed');
