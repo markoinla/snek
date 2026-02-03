@@ -21,6 +21,11 @@ export function bindCoreState(gameState: any): CoreState {
     core.players[localId] = createPlayerState(localId);
   }
 
+  // Alias gameState.playerSnake to the core player so mutations are shared
+  if (core.players[localId]) {
+    gameState.playerSnake = core.players[localId];
+  }
+
   core.enemies = gameState.enemies;
   core.food.positions = gameState.food.positions;
   core.obstacles = gameState.obstacles;
