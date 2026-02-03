@@ -260,6 +260,9 @@ export function syncEnemyMeshes(gameState, frameDelta) {
                 }
             });
         }
+
+        // Apply edible tail materials (needed when core simulation drives state)
+        updateEnemyMaterialsAfterMove(enemy, gameState);
     });
 }
 
@@ -635,54 +638,52 @@ function moveEnemy(enemy, gameState) {
     updateEnemyMaterialsAfterMove(enemy, gameState);
 }
 
+// Cached material for edible tail segments — created once, reused for all enemies
+let edibleTailMaterial = null;
+
+function getEdibleTailMaterial() {
+    if (!edibleTailMaterial) {
+        edibleTailMaterial = new THREE.MeshLambertMaterial({
+            color: 0xff0000,
+            side: THREE.FrontSide,
+        });
+    }
+    return edibleTailMaterial;
+}
+
 export function updateEnemyMaterialsAfterMove(enemy, gameState) {
     const { materials } = gameState;
     if (!materials?.enemy) return;
-    
+
     const meshes = enemyMeshes[enemy.id];
     if (!meshes) return;
-    
+
+    const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
+    const tailMat = getEdibleTailMaterial();
+
     // Apply materials to each segment
     meshes.forEach((mesh, index) => {
         if (!mesh) return;
-        
+
         if (index === 0) {
             // Head
-            mesh.material = enemy.animationFrame === 0 ? 
-                materials.enemy.head1 : 
+            mesh.material = enemy.animationFrame === 0 ?
+                materials.enemy.head1 :
                 materials.enemy.head2;
-        } else {
-            // Check if this is one of the last N segments (tail)
-            const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
-            if (meshes.length >= tailSegments && 
-                index >= meshes.length - tailSegments) {
-                // This is part of the edible tail
-                // Use the same material but with a cyan overlay to indicate it's edible
-                // The cyan color is already part of our sprite sheet for the edible tail
-                mesh.material = new THREE.MeshLambertMaterial({
-                    color: 0xff0000,
-                    side: THREE.FrontSide,
-                });
-                console.error('EDIBLE TAIL APPLIED', enemy.id, index, meshes.length);
-                
-                // Add a subtle pulsing animation to draw attention to edible segments
-                const pulseSpeed = 1.5; // Speed of pulsing
-                const pulseIntensity = 0.2; // How much the emission changes
-                
-                // Store the current time to use for pulsing
+        } else if (meshes.length >= tailSegments && index >= meshes.length - tailSegments) {
+            // Edible tail segment — use shared cached material
+            if (mesh.material !== tailMat) {
+                mesh.material = tailMat;
                 mesh.userData.pulseStartTime = Date.now() / 1000;
                 mesh.userData.isPulsing = true;
-            } else {
-                // Regular body segment
-                mesh.material = enemy.animationFrame === 0 ? 
-                    materials.enemy.body1 : 
-                    materials.enemy.body2;
             }
+        } else {
+            // Regular body segment
+            mesh.material = enemy.animationFrame === 0 ?
+                materials.enemy.body1 :
+                materials.enemy.body2;
         }
     });
-    
-    // Log for debugging
-    Logger.gameplay.info(`Updated enemy ${enemy.id} materials. Tail segments colored: ${CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS}`);
 }
 
 // --- Collision Check (External) ---
