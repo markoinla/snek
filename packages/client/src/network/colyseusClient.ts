@@ -15,6 +15,7 @@ import * as UI from '../ui.js';
 import * as Food from '../food.js';
 import * as Enemy from '../enemySnake.js';
 import * as Player from '../playerSnake.js';
+import * as Obstacles from '../obstacles.js';
 import CONFIG from '../config.js';
 
 type NetworkStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
@@ -25,6 +26,8 @@ type NetworkState = {
   room: any;
   sessionId: string | null;
   lastSnapshotTick: number;
+  lastSnapshotTimeMs: number;
+  snapshotIntervalMs: number;
   sendInput: ((input: InputMessage) => void) | null;
   pendingServerEvents: import('snek-shared').EventEnvelope[];
 };
@@ -48,11 +51,20 @@ function updateFromSnapshot(gameState: any, buffer: ArrayBuffer | Uint8Array) {
   const core = rehydrateCoreState(snapshot);
   applyCoreStateToGameState(gameState, core);
   gameState.simulation.time = core.time;
-  gameState.network.lastSnapshotTick = core.tick;
 
-  Player.syncPlayerMeshes(gameState);
+  // Track snapshot timing for interpolation
+  const nowMs = performance.now();
+  const prevTick = gameState.network.lastSnapshotTick;
+  if (prevTick > 0 && core.tick > prevTick) {
+    gameState.network.snapshotIntervalMs = nowMs - (gameState.network.lastSnapshotTimeMs || nowMs);
+  }
+  gameState.network.lastSnapshotTick = core.tick;
+  gameState.network.lastSnapshotTimeMs = nowMs;
+
+  Player.syncAllPlayerMeshes(gameState);
   Enemy.syncEnemyMeshes(gameState);
   Food.syncFoodMeshes(gameState);
+  Obstacles.syncObstacleMeshes(gameState);
 
   // Score is now per-player; use local player's score
   const localId = gameState.localPlayerId || 'local';
@@ -61,6 +73,11 @@ function updateFromSnapshot(gameState: any, buffer: ArrayBuffer | Uint8Array) {
     UI.updateScore(localPlayer.score.current);
   }
   UI.updateKills(core.enemies.kills);
+
+  // Update multiplayer scoreboard
+  if (core.players) {
+    UI.updateScoreboard(core.players, localId);
+  }
 }
 
 function handleMeta(gameState: any, meta: ServerMeta) {
@@ -112,6 +129,9 @@ export async function connectMultiplayer(gameState: any, options: MultiplayerOpt
       gameState.network.status = 'disconnected';
       Logger.system.warn(`Disconnected from multiplayer (code ${code}).`);
       UI.showPowerUpTextEffect('Disconnected from server', 0xff4444);
+      UI.hideRespawnOverlay();
+      UI.hideScoreboard();
+      Player.resetAllRemotePlayerMeshes(gameState);
       scheduleReconnect();
     });
 
@@ -119,6 +139,7 @@ export async function connectMultiplayer(gameState: any, options: MultiplayerOpt
       gameState.network.status = 'error';
       Logger.system.error(`Room error ${code}: ${message}`);
       UI.showPowerUpTextEffect('Network error', 0xff4444);
+      Player.resetAllRemotePlayerMeshes(gameState);
       scheduleReconnect();
     });
   };

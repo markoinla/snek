@@ -1,6 +1,6 @@
 # Multiplayer Refactor — Scratchpad
 
-Last updated: 2026-02-03 (Phase 4.3+4.4 multi-player rendering complete)
+Last updated: 2026-02-03 (Phase 6.1+6.2+6.3 scoreboard, colors, disconnect cleanup)
 
 ## Phase 1: Shared Types & Core State Refactor
 
@@ -55,14 +55,14 @@ Last updated: 2026-02-03 (Phase 4.3+4.4 multi-player rendering complete)
 - [x] 5.1 Player death in simulation — `killPlayerCore()` sets `dead=true` + `respawnAt` on all death types (wall/self/obstacle/enemy/PvP)
 - [x] 5.2 Player respawn logic — `processPlayerRespawnsCore()` resets dead players after PLAYER_RESPAWN_DELAY_TICKS, emits PlayerRespawned
 - [x] 5.3 Per-player score (done in Phase 1 — score now in PlayerState)
-- [ ] 5.4 Client death/respawn UI
+- [x] 5.4 Client death/respawn UI — showRespawnOverlay/hideRespawnOverlay wired into PlayerDead/PlayerRespawned events, countdown timer included
 - [x] 5.5 Config constants — PLAYER_RESPAWN_DELAY_TICKS=90 (3s at 30Hz), PLAYER_RESPAWN_LENGTH=3
 
 ## Phase 6: Polish & Stability
 
-- [ ] 6.1 Multiplayer scoreboard
-- [ ] 6.2 Player color system
-- [ ] 6.3 Disconnect cleanup
+- [x] 6.1 Multiplayer scoreboard — updateScoreboard() called from updateFromSnapshot(), sorted by score, color dots, local/dead styling
+- [x] 6.2 Player color system — server assigns incrementing colorIndex (0-3) on join via nextColorIndex counter
+- [x] 6.3 Disconnect cleanup — resetAllRemotePlayerMeshes() on room.onLeave + room.onError, hideRespawnOverlay + hideScoreboard on disconnect
 - [ ] 6.4 Smooth rendering / interpolation
 - [x] 6.5 Single-player backward compatibility (ensured via "local" player ID pattern)
 - [ ] 6.6 Update tests for full coverage

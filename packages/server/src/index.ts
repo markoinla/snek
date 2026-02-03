@@ -122,8 +122,12 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     spawnInitialEnemiesCore(state, CONFIG.NUM_ENEMIES);
   }
 
+  private nextColorIndex = 0;
+
   private createPlayerSnake(sessionId: string) {
     const player = createPlayerState(sessionId);
+    player.colorIndex = this.nextColorIndex;
+    this.nextColorIndex = (this.nextColorIndex + 1) % 4;
     const startPos = { x: 0, y: 0, z: 0 }; // TODO: generateUniquePositionCore
     player.segments = [];
     for (let i = 0; i < CONFIG.MIN_SNAKE_LENGTH; i++) {
