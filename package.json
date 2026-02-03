@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
-    "dev": "pnpm -C packages/client dev",
+    "dev": "pnpm -C packages/server dev & pnpm -C packages/client dev",
     "dev:server": "pnpm -C packages/server dev",
+    "dev:client": "pnpm -C packages/client dev",
     "build": "pnpm -C packages/client build",
     "preview": "pnpm -C packages/client preview",
     "test:core": "pnpm -C packages/client test:core"

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "ADMIN_API_KEY=test tsx src/index.ts",
     "start": "tsx src/index.ts"
   },
   "dependencies": {

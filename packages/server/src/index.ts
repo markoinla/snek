@@ -15,10 +15,12 @@ import {
 } from 'snek-shared';
 import type { CoreState, SerializableCoreState, EventEnvelope } from 'snek-shared';
 import CONFIG from '../../client/src/config.js';
+import { loadConfigOverrides } from './configManager.ts';
+import { createAdminRouter } from './adminRoutes.ts';
 import { createInitialCoreState, createPlayerState } from '../../client/src/core/state.ts';
 import { applyPlayerInput } from '../../client/src/core/player.ts';
 import { stepCore } from '../../client/src/core/step.ts';
-import { spawnFoodCore } from '../../client/src/core/spawn.ts';
+import { spawnFoodCore, spawnObstaclesCore } from '../../client/src/core/spawn.ts';
 import { spawnInitialEnemiesCore } from '../../client/src/core/enemy.ts';
 
 const DEFAULT_PORT = Number(process.env.PORT ?? 2567);
@@ -118,6 +120,7 @@ class SnekRoom extends Colyseus.Room<RoomState> {
 
   private initializeCoreState(state: CoreState) {
     // Players are created on join — start with empty players map
+    spawnObstaclesCore(state, CONFIG.NUM_OBSTACLES, CONFIG.START_SAFE_ZONE);
     spawnFoodCore(state, CONFIG.NUM_INITIAL_FOOD);
     spawnInitialEnemiesCore(state, CONFIG.NUM_ENEMIES);
   }
@@ -220,6 +223,8 @@ class SnekRoom extends Colyseus.Room<RoomState> {
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+app.use(createAdminRouter());
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
@@ -234,6 +239,12 @@ const gameServer = new Colyseus.Server({
 
 gameServer.define('snek', SnekRoom);
 
-httpServer.listen(DEFAULT_PORT, () => {
-  console.log(`Snek Colyseus server listening on :${DEFAULT_PORT}`);
-});
+(async () => {
+  await loadConfigOverrides();
+  httpServer.listen(DEFAULT_PORT, () => {
+    console.log(`Snek Colyseus server listening on :${DEFAULT_PORT}`);
+    if (process.env.ADMIN_API_KEY) {
+      console.log(`Admin panel: http://localhost:${DEFAULT_PORT}/admin?key=${process.env.ADMIN_API_KEY}`);
+    }
+  });
+})();
