@@ -119,6 +119,9 @@ export const gameState = {
 
 // Function to load high score from localStorage
 function loadHighScore() {
+    if (typeof localStorage === 'undefined') {
+        return 0;
+    }
     try {
         const savedHighScore = localStorage.getItem('alphaSnek_highScore');
         return savedHighScore ? parseInt(savedHighScore, 10) : 0;
@@ -130,6 +133,9 @@ function loadHighScore() {
 
 // Function to save high score to localStorage
 export function saveHighScore(score) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
     try {
         localStorage.setItem('alphaSnek_highScore', score.toString());
         console.log('High score saved:', score);
@@ -140,6 +146,9 @@ export function saveHighScore(score) {
 
 // Function to save the current game mode to localStorage
 export function saveGameMode(mode) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
     try {
         localStorage.setItem('alphaSnek_gameMode', mode);
         console.log('Game mode saved:', mode);
@@ -185,6 +194,9 @@ export function getAdjustedSetting(settingName) {
 
 // Function to load game mode from localStorage
 function loadGameMode() {
+    if (typeof localStorage === 'undefined') {
+        return CONFIG.GAME_MODES.NORMAL;
+    }
     try {
         const savedGameMode = localStorage.getItem('alphaSnek_gameMode');
         // Make sure we return a valid mode, defaulting to NORMAL if needed

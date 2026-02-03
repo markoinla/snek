@@ -102,7 +102,7 @@ function initializeEnemy(id, gameState) {
     };
 
     enemies.list.push(newEnemy);
-    updateEnemySnakeTextures(newEnemy, gameState); // Set initial textures
+    updateEnemyMaterialsAfterMove(newEnemy, gameState); // Set initial textures
     Logger.gameplay.info(`Enemy ${id} initialized.`);
 }
 
@@ -267,7 +267,7 @@ export function updateEnemies(deltaTime, currentTime, gameState) {
         if (enemy.animationTimer > 0.25) { // Slower animation than player?
             enemy.animationFrame = (enemy.animationFrame + 1) % 2;
             enemy.animationTimer = 0;
-            updateEnemySnakeTextures(enemy, gameState);
+            updateEnemyMaterialsAfterMove(enemy, gameState);
         }
 
         // Determine next move (AI) - Decouple from movement timing
@@ -650,18 +650,11 @@ export function updateEnemyMaterialsAfterMove(enemy, gameState) {
                 // This is part of the edible tail
                 // Use the same material but with a cyan overlay to indicate it's edible
                 // The cyan color is already part of our sprite sheet for the edible tail
-                mesh.material = enemy.animationFrame === 0 ? 
-                    materials.enemy.body1.clone() : 
-                    materials.enemy.body2.clone();
-                
-                // Set to a noticeably darker tail color for edible segments
-                const tailColor = new THREE.Color(CONFIG.ENEMY_TAIL_COLOR).multiplyScalar(0.45);
-                mesh.material.color.copy(tailColor);
-                mesh.material.needsUpdate = true;
-                
-                // Reduce emissive so the darkening is visible
-                mesh.material.emissive.setHex(0x000000);
-                mesh.material.emissiveIntensity = 0.0;
+                mesh.material = new THREE.MeshLambertMaterial({
+                    color: 0xff0000,
+                    side: THREE.FrontSide,
+                });
+                console.error('EDIBLE TAIL APPLIED', enemy.id, index, meshes.length);
                 
                 // Add a subtle pulsing animation to draw attention to edible segments
                 const pulseSpeed = 1.5; // Speed of pulsing
@@ -798,17 +791,3 @@ export function checkEnemyRespawns(gameState) {
     enemies.respawnQueue = stillWaiting;
 }
 
-function updateEnemySnakeTextures(enemy, gameState) {
-    const { materials } = gameState;
-    const meshes = enemyMeshes[enemy.id];
-     if (!meshes || !materials?.enemy) return;
-
-    meshes.forEach((mesh, index) => {
-        if (!mesh) return;
-        if (index === 0) {
-            mesh.material = (enemy.animationFrame === 0 ? materials.enemy.head1 : materials.enemy.head2);
-        } else {
-            mesh.material = (enemy.animationFrame === 0 ? materials.enemy.body1 : materials.enemy.body2);
-        }
-    });
-}

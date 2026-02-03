@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
-import { Server, Room, Client } from 'colyseus';
+import Colyseus from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { Schema, type, MapSchema } from '@colyseus/schema';
 import {
@@ -48,7 +48,7 @@ class RoomState extends Schema {
   @type({ map: PlayerMeta }) players = new MapSchema<PlayerMeta>();
 }
 
-class SnekRoom extends Room<RoomState> {
+class SnekRoom extends Colyseus.Room<RoomState> {
   private coreState: CoreState;
   private seed: number;
   private inputQueues = new Map<string, InputMessage[]>();
@@ -68,7 +68,7 @@ class SnekRoom extends Room<RoomState> {
     metrics.roomsActive += 1;
   }
 
-  onJoin(client: Client, options: any) {
+  onJoin(client: Colyseus.Client, options: any) {
     if (
       options?.clientVersion !== PROTOCOL_VERSION ||
       options?.stateVersion !== STATE_SCHEMA_VERSION ||
@@ -99,7 +99,7 @@ class SnekRoom extends Room<RoomState> {
     });
   }
 
-  onLeave(client: Client) {
+  onLeave(client: Colyseus.Client) {
     metrics.connectedClients = Math.max(0, metrics.connectedClients - 1);
     this.state.players.delete(client.sessionId);
     this.inputQueues.delete(client.sessionId);
@@ -202,7 +202,7 @@ app.get('/metrics', (_req, res) => {
 });
 
 const httpServer = createServer(app);
-const gameServer = new Server({
+const gameServer = new Colyseus.Server({
   transport: new WebSocketTransport({ server: httpServer }),
 });
 

@@ -12,6 +12,7 @@
     "colyseus": "^0.15.57",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "snek-shared": "workspace:*",
     "tsx": "^4.19.2"
   }
 }

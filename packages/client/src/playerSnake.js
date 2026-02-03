@@ -174,6 +174,17 @@ export function updatePlayerStateOnly(deltaTime, currentTime, gameState) {
         }
 
         updatePowerUpState(currentTime, gameState);
+    } else {
+        // Core simulation handles gameplay logic (decay, activation, etc.)
+        // but we still need to update the UI from the shared state
+        updateAlphaModeProgressPoints(gameState);
+
+        if (playerSnake.alphaMode.active) {
+            const remainingTime = playerSnake.alphaMode.endTime - currentTime;
+            const totalDuration = Math.max(0.001, playerSnake.alphaMode.endTime - playerSnake.alphaMode.startTime);
+            const progress = Math.max(0, Math.min(1, remainingTime / totalDuration));
+            UI.updateAlphaModeUI(progress, remainingTime, playerSnake.alphaMode.scoreMultiplier);
+        }
     }
 
     if (playerSnake.enlargedHeadUntil > 0 && currentTime > playerSnake.enlargedHeadUntil) {
@@ -1247,8 +1258,8 @@ export function updateAlphaMode(currentTime, gameState) {
     
     // Calculate and update remaining time
     const remainingTime = playerSnake.alphaMode.endTime - currentTime;
-    const totalDuration = CONFIG.ALPHA_MODE_DURATION;
-    const progress = remainingTime / totalDuration;
+    const totalDuration = Math.max(0.001, playerSnake.alphaMode.endTime - playerSnake.alphaMode.startTime);
+    const progress = Math.max(0, Math.min(1, remainingTime / totalDuration));
     
     // Update score multiplier stack
     updateScoreMultiplierStack(currentTime, playerSnake);
@@ -1474,10 +1485,11 @@ function updateAlphaModeProgressPoints(gameState) {
     
     // Calculate progress as a percentage of the alpha points threshold
     const pointsProgress = playerSnake.alphaMode.alphaPoints;
-    const pointsNeeded = CONFIG.ALPHA_POINTS_THRESHOLD;
+    const pointsNeeded = getAdjustedSetting('ALPHA_POINTS_THRESHOLD') || CONFIG.ALPHA_POINTS_THRESHOLD;
     
     // Calculate percentage (0-100)
-    const percentage = Math.min(100, Math.floor((pointsProgress / pointsNeeded) * 100));
+    const safePointsNeeded = pointsNeeded > 0 ? pointsNeeded : 1;
+    const percentage = Math.min(100, Math.floor((pointsProgress / safePointsNeeded) * 100));
     
     // Only update the UI if the percentage has changed or every 10 frames
     // This saves performance by reducing DOM updates
@@ -1486,7 +1498,7 @@ function updateAlphaModeProgressPoints(gameState) {
         (gameState.frameCount % 10 === 0)) {
         
         // Update the UI to show alpha points progress
-        UI.updateAlphaModeProgress(percentage, pointsProgress, pointsNeeded);
+        UI.updateAlphaModeProgress(percentage, pointsProgress, safePointsNeeded);
         
         // Store the last displayed percentage to avoid redundant updates
         playerSnake.alphaMode.lastDisplayedPercentage = percentage;
