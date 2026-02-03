@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { FOOD_TYPES } from './constants.js'; // Import FOOD_TYPES for power-ups
 import { createSnakeSegmentMesh } from './utils.js';
 import { createExplosion } from './particleSystem.js';

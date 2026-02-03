@@ -1,4 +1,4 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState, CoreStepResult, StepResult } from './types';
 import { EventType, EVENT_SCHEMA_VERSION } from 'snek-shared';
 import { updatePlayerCore } from './player';

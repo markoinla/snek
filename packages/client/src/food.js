@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { FOOD_TYPES, GEOMETRIES, PATHS } from './constants.js';
 import { generateUniquePosition } from './utils.js';
 import { createExplosion, createNormalFoodEffect, createFrogEffect } from './particleSystem.js';

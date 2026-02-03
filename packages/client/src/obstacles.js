@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { OBSTACLE_TYPES, GEOMETRIES } from './constants.js';
 import { generateUniquePosition } from './utils.js';
 import { getAdjustedSetting } from './gameState.js'; // Import for mode-adjusted settings

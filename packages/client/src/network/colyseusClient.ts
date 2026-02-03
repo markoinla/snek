@@ -15,7 +15,7 @@ import * as UI from '../ui.js';
 import * as Food from '../food.js';
 import * as Enemy from '../enemySnake.js';
 import * as Player from '../playerSnake.js';
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 
 type NetworkStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
 

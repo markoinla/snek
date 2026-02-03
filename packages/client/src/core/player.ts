@@ -1,4 +1,4 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState, CoreStepResult } from './types';
 import { EventType } from 'snek-shared';
 import { checkObstacleCollisionCore } from './collision';

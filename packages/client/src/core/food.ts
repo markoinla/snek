@@ -1,4 +1,4 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState } from './types';
 import { randomCardinalDirection } from './spawn';
 

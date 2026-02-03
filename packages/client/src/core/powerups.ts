@@ -1,4 +1,4 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState } from './types';
 
 export function applyPowerUpCore(type: string, state: CoreState, currentTime: number) {

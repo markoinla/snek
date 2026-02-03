@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { gameState, resetGameStateForNewGame, saveHighScore, getAdjustedSetting } from './gameState.js';
 import * as Utils from './utils.js';
 import * as SceneSetup from './sceneSetup.js';

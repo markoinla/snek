@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 
 // Centralized Game State
 // This object will be passed around to modules that need access to shared state.

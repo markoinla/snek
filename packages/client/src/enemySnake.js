@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { GEOMETRIES } from './constants.js';
 import { createSnakeSegmentMesh, generateUniquePosition, isPositionOccupied } from './utils.js';
 import { findClosestFood, addNewFoodItem } from './food.js';

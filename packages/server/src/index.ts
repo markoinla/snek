@@ -14,7 +14,7 @@ import {
   type ServerMeta,
 } from 'snek-shared';
 import type { CoreState, SerializableCoreState } from 'snek-shared';
-import * as CONFIG from '../../client/src/config.js';
+import CONFIG from '../../client/src/config.js';
 import { createInitialCoreState } from '../../client/src/core/state.ts';
 import { applyPlayerInput } from '../../client/src/core/player.ts';
 import { stepCore } from '../../client/src/core/step.ts';
