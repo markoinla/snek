@@ -33,55 +33,67 @@ function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
     const blockOffset = CONFIG.UNIT_SIZE / 2; // Offset blocks to sit on ground
 
     if (type === 'tree') {
-        const trunkHeightUnits = Math.floor(3 + Math.random() * 2);
-        const trunkHeightWorld = trunkHeightUnits * CONFIG.UNIT_SIZE;
+        const trunkHeightUnits = 4 + Math.floor(Math.random() * 2);
 
-        // Revert back to using blocks for the tree trunk as requested
+        // Trunk blocks
         for (let y = 0; y < trunkHeightUnits; y++) {
             const trunkBlock = new THREE.Mesh(GEOMETRIES.cube, trunkMat);
             trunkBlock.scale.setScalar(CONFIG.UNIT_SIZE);
-            trunkBlock.position.y = y * CONFIG.UNIT_SIZE + blockOffset; // Stack upwards
+            trunkBlock.position.y = y * CONFIG.UNIT_SIZE + blockOffset;
             trunkBlock.castShadow = true;
-            trunkBlock.receiveShadow = true; // Trunk can receive shadow from leaves
+            trunkBlock.receiveShadow = true;
             group.add(trunkBlock);
         }
-        collisionCells.push({ x: pos.x, z: pos.z }); // Tree trunk occupies the base cell
+        collisionCells.push({ x: pos.x, z: pos.z });
 
-        // Canopy
-        const canopyRadius = (1.5 + Math.random()) * CONFIG.UNIT_SIZE; // Canopy radius in world units
-        const canopyBaseHeight = trunkHeightWorld; // Leaves start above trunk
-        const leafCount = 35 + Math.random() * 20; // Increased leaf count for fuller trees
+        // Blocky canopy in a Minecraft-like shape
+        const baseY = trunkHeightUnits - 1;
+        const layers = [
+            { y: 0, radius: 2, cornerDrop: 0.35 },
+            { y: 1, radius: 2, cornerDrop: 0.55 },
+            { y: 2, radius: 1, cornerDrop: 0.15 }
+        ];
 
-        for (let i = 0; i < leafCount; i++) {
-            // Create a leaf plane that always faces the camera instead of a cube
-            const leafPlane = new THREE.PlaneGeometry(CONFIG.UNIT_SIZE * 1.2, CONFIG.UNIT_SIZE * 1.2);
-            const leafMesh = new THREE.Mesh(leafPlane, leavesMat);
-            
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * canopyRadius;
-            const yOff = Math.random() * canopyRadius * 0.8; // Vertical spread
-
-            // Randomize the leaf size a bit
-            const leafScale = (0.8 + Math.random() * 0.6) * CONFIG.UNIT_SIZE;
-            leafMesh.scale.set(leafScale, leafScale, leafScale);
-            
-            leafMesh.position.set(
-                Math.cos(angle) * radius,
-                canopyBaseHeight + yOff + blockOffset, // Position relative to group base
-                Math.sin(angle) * radius
+        const addLeafBlock = (dx, dy, dz) => {
+            const leafBlock = new THREE.Mesh(GEOMETRIES.cube, leavesMat);
+            leafBlock.scale.setScalar(CONFIG.UNIT_SIZE);
+            leafBlock.position.set(
+                dx * CONFIG.UNIT_SIZE,
+                (baseY + dy) * CONFIG.UNIT_SIZE + blockOffset,
+                dz * CONFIG.UNIT_SIZE
             );
-            
-            // Randomly rotate the leaf for variety
-            leafMesh.rotation.x = Math.random() * Math.PI / 4;
-            leafMesh.rotation.y = Math.random() * Math.PI * 2;
-            leafMesh.rotation.z = Math.random() * Math.PI / 4;
-            
-            leafMesh.castShadow = true;
-            leafMesh.receiveShadow = false; // Leaves less likely to receive shadows
-            
-            // Add the leaf to the group
-            group.add(leafMesh);
-        }
+            leafBlock.castShadow = true;
+            leafBlock.receiveShadow = false;
+            group.add(leafBlock);
+        };
+
+        layers.forEach((layer) => {
+            for (let dx = -layer.radius; dx <= layer.radius; dx++) {
+                for (let dz = -layer.radius; dz <= layer.radius; dz++) {
+                    const isCorner = Math.abs(dx) === layer.radius && Math.abs(dz) === layer.radius;
+                    if (isCorner && Math.random() < layer.cornerDrop) {
+                        continue;
+                    }
+                    if (dx === 0 && dz === 0 && layer.y <= 1) {
+                        continue;
+                    }
+                    addLeafBlock(dx, layer.y, dz);
+                }
+            }
+        });
+
+        // Small chance to add hanging leaves for a fuller silhouette
+        const hangingOffsets = [
+            { x: 2, z: 0 },
+            { x: -2, z: 0 },
+            { x: 0, z: 2 },
+            { x: 0, z: -2 }
+        ];
+        hangingOffsets.forEach((offset) => {
+            if (Math.random() < 0.4) {
+                addLeafBlock(offset.x, -1, offset.z);
+            }
+        });
 
     } else if (type === 'bush') {
         collisionCells.push({ x: pos.x, z: pos.z }); // Bush occupies the base cell
