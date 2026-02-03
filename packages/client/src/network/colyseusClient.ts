@@ -26,6 +26,7 @@ type NetworkState = {
   sessionId: string | null;
   lastSnapshotTick: number;
   sendInput: ((input: InputMessage) => void) | null;
+  pendingServerEvents: import('snek-shared').EventEnvelope[];
 };
 
 type MultiplayerOptions = {
@@ -66,8 +67,10 @@ function handleMeta(gameState: any, meta: ServerMeta) {
   Logger.system.info(`Connected to multiplayer server v${meta.serverVersion}, tick ${meta.tickRate}`);
   gameState.simulation.tickRate = meta.tickRate;
   gameState.simulation.fixedDelta = 1 / meta.tickRate;
-  // Store session ID as local player ID for rendering/score aliasing
-  if (gameState.network?.sessionId) {
+  // Server provides authoritative sessionId in meta
+  if (meta.sessionId) {
+    gameState.localPlayerId = meta.sessionId;
+  } else if (gameState.network?.sessionId) {
     gameState.localPlayerId = gameState.network.sessionId;
   }
 }
@@ -94,19 +97,25 @@ export async function connectMultiplayer(gameState: any, options: MultiplayerOpt
     room.onMessage(MessageType.Snapshot, (payload: ArrayBuffer | Uint8Array) => {
       updateFromSnapshot(gameState, payload);
     });
+    room.onMessage(MessageType.Events, (events: import('snek-shared').EventEnvelope[]) => {
+      if (!gameState.network.pendingServerEvents) {
+        gameState.network.pendingServerEvents = [];
+      }
+      gameState.network.pendingServerEvents.push(...events);
+    });
     room.onMessage(MessageType.Error, (payload: { message: string }) => {
       Logger.system.warn(`Server error: ${payload.message}`);
       UI.showPowerUpTextEffect(payload.message, 0xff4444);
     });
 
-    room.onLeave(code => {
+    room.onLeave((code: number) => {
       gameState.network.status = 'disconnected';
       Logger.system.warn(`Disconnected from multiplayer (code ${code}).`);
       UI.showPowerUpTextEffect('Disconnected from server', 0xff4444);
       scheduleReconnect();
     });
 
-    room.onError((code, message) => {
+    room.onError((code: number, message: string) => {
       gameState.network.status = 'error';
       Logger.system.error(`Room error ${code}: ${message}`);
       UI.showPowerUpTextEffect('Network error', 0xff4444);

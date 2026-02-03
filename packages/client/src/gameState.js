@@ -111,6 +111,7 @@ export const gameState = {
         sessionId: null,
         lastSnapshotTick: 0,
         sendInput: null,
+        pendingServerEvents: [],
     },
 
     // Multiplayer player state

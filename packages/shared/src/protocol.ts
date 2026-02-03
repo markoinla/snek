@@ -11,10 +11,12 @@ export type ServerMeta = {
   serverVersion: number;
   tickRate: number;
   seed: number;
+  sessionId: string;
 };
 
 export const MessageType = {
   Snapshot: 'snapshot',
   Meta: 'meta',
   Error: 'error',
+  Events: 'events',
 } as const;

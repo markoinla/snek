@@ -1,6 +1,6 @@
 # Multiplayer Refactor — Scratchpad
 
-Last updated: 2026-02-03
+Last updated: 2026-02-03 (Phase 3 server lifecycle complete)
 
 ## Phase 1: Shared Types & Core State Refactor
 
@@ -20,13 +20,13 @@ Last updated: 2026-02-03
 
 - [x] 2.1 Refactor `player.ts`: accept `playerId` param (done in Phase 1)
 - [x] 2.2 Refactor `step.ts`: multi-player loop with sorted playerIds for determinism (done in Phase 1)
-- [ ] 2.3 Add player-vs-player collision in `combat.ts`
+- [x] 2.3 Add player-vs-player collision in `combat.ts` (checkPlayerCollisionCore + PvP in step.ts, PlayerKilledPlayer event, PVP_COLLISION death reason)
 - [x] 2.4 Refactor `powerups.ts`: accept `playerId` param (done in Phase 1)
 - [x] 2.5 Refactor `alpha.ts`: accept `playerId` param on all functions (done in Phase 1)
 - [x] 2.6 Refactor `food.ts`: accept `isAlphaActive` param instead of `state.player` (done in Phase 1)
 - [x] 2.7 Refactor `spawn.ts`: iterate all players in `isPositionOccupiedCore()` (done in Phase 1)
 - [x] 2.8 Death/respawn fields in PlayerState (done in Phase 1.1)
-- [ ] Run all tests after PvP collision
+- [x] Run all tests after PvP collision (test:core, test:serialize, test:determinism all pass)
 
 ## Phase 3: Server — Multi-Player Lifecycle
 
@@ -34,10 +34,11 @@ Last updated: 2026-02-03
 - [x] 3.2 Player removal on leave (done in Phase 1)
 - [x] 3.3 Input routing with playerId stamp (done in Phase 1)
 - [x] 3.4 Remove single-player init from `initializeCoreState()` (done in Phase 1)
-- [ ] 3.5 Update `ServerMeta` type with `sessionId`
-- [ ] 3.6 Room configuration (`maxClients = 4`)
-- [ ] 3.7 Include events in snapshot
-- [ ] Run server tests
+- [x] 3.5 Update `ServerMeta` type with `sessionId` — added to protocol.ts, server sends it in meta, client uses it for localPlayerId
+- [x] 3.6 Room configuration (`maxClients = 4`) — set in SnekRoom.onCreate()
+- [x] 3.7 Broadcast events alongside snapshot — added `Events` message type, server accumulates stepCore events and broadcasts on snapshot interval, client stores in `pendingServerEvents` queue
+- [x] Fix TS build errors — added `allowImportingTsExtensions` to tsconfig, typed callback params in colyseusClient.ts
+- [x] Build + all tests pass (test:core, test:serialize, test:determinism)
 
 ## Phase 4: Client — Multi-Player Rendering
 
@@ -51,11 +52,11 @@ Last updated: 2026-02-03
 
 ## Phase 5: Death, Respawn & Per-Player Score
 
-- [ ] 5.1 Player death in simulation
-- [ ] 5.2 Player respawn logic
+- [x] 5.1 Player death in simulation — `killPlayerCore()` sets `dead=true` + `respawnAt` on all death types (wall/self/obstacle/enemy/PvP)
+- [x] 5.2 Player respawn logic — `processPlayerRespawnsCore()` resets dead players after PLAYER_RESPAWN_DELAY_TICKS, emits PlayerRespawned
 - [x] 5.3 Per-player score (done in Phase 1 — score now in PlayerState)
 - [ ] 5.4 Client death/respawn UI
-- [ ] 5.5 Config constants (RESPAWN_DELAY_TICKS, etc.)
+- [x] 5.5 Config constants — PLAYER_RESPAWN_DELAY_TICKS=90 (3s at 30Hz), PLAYER_RESPAWN_LENGTH=3
 
 ## Phase 6: Polish & Stability
 

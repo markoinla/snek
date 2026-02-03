@@ -13,7 +13,7 @@ import {
   type InputMessage,
   type ServerMeta,
 } from 'snek-shared';
-import type { CoreState, SerializableCoreState } from 'snek-shared';
+import type { CoreState, SerializableCoreState, EventEnvelope } from 'snek-shared';
 import CONFIG from '../../client/src/config.js';
 import { createInitialCoreState, createPlayerState } from '../../client/src/core/state.ts';
 import { applyPlayerInput } from '../../client/src/core/player.ts';
@@ -53,8 +53,10 @@ class SnekRoom extends Colyseus.Room<RoomState> {
   private seed: number;
   private inputQueues = new Map<string, InputMessage[]>();
   private snapshotCounter = 0;
+  private pendingEvents: EventEnvelope[] = [];
 
   onCreate() {
+    this.maxClients = 4;
     this.seed = Date.now();
     this.coreState = createInitialCoreState(this.seed);
     this.initializeCoreState(this.coreState);
@@ -93,6 +95,7 @@ class SnekRoom extends Colyseus.Room<RoomState> {
       serverVersion: PROTOCOL_VERSION,
       tickRate: TICK_RATE,
       seed: this.seed,
+      sessionId: client.sessionId,
     };
     client.send(MessageType.Meta, meta);
     client.send(MessageType.Snapshot, this.serializeSnapshot());
@@ -167,13 +170,18 @@ class SnekRoom extends Colyseus.Room<RoomState> {
       applyPlayerInput(this.coreState, input);
     }
 
-    stepCore(this.coreState, 1 / TICK_RATE);
+    const result = stepCore(this.coreState, 1 / TICK_RATE);
     this.state.tick = this.coreState.tick;
+    this.pendingEvents.push(...result.events);
 
     this.snapshotCounter += 1;
     if (this.snapshotCounter >= SNAPSHOT_INTERVAL_TICKS) {
       this.snapshotCounter = 0;
       this.broadcast(MessageType.Snapshot, this.serializeSnapshot());
+      if (this.pendingEvents.length > 0) {
+        this.broadcast(MessageType.Events, this.pendingEvents);
+        this.pendingEvents = [];
+      }
     }
 
     metrics.lastTickDurationMs = Date.now() - start;
