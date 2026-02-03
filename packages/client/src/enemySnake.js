@@ -654,13 +654,14 @@ export function updateEnemyMaterialsAfterMove(enemy, gameState) {
                     materials.enemy.body1.clone() : 
                     materials.enemy.body2.clone();
                 
-                // Set to a slightly darker tail color for edible segments
-                const tailColor = new THREE.Color(CONFIG.ENEMY_TAIL_COLOR).multiplyScalar(0.7);
+                // Set to a noticeably darker tail color for edible segments
+                const tailColor = new THREE.Color(CONFIG.ENEMY_TAIL_COLOR).multiplyScalar(0.45);
                 mesh.material.color.copy(tailColor);
+                mesh.material.needsUpdate = true;
                 
-                // Add emissive glow to make it more noticeable
-                mesh.material.emissive.setHex(0x4DD0E1);
-                mesh.material.emissiveIntensity = 0.3;
+                // Reduce emissive so the darkening is visible
+                mesh.material.emissive.setHex(0x000000);
+                mesh.material.emissiveIntensity = 0.0;
                 
                 // Add a subtle pulsing animation to draw attention to edible segments
                 const pulseSpeed = 1.5; // Speed of pulsing
