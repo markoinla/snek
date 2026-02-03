@@ -95,3 +95,11 @@ export type CoreState = {
   score: ScoreState;
   flags: CoreFlags;
 };
+
+export type SerializableRng = {
+  seed: number;
+};
+
+export type SerializableCoreState = Omit<CoreState, 'rng'> & {
+  rng: SerializableRng;
+};

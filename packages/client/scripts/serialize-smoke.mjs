@@ -1,4 +1,4 @@
-import { createInitialCoreState } from '../src/core/state.js';
+import { createInitialCoreState } from '../src/core/state.ts';
 import { encodeSnapshot, decodeSnapshot, encodeDelta, applyDelta } from 'snek-shared';
 
 // Stub localStorage for gameState import side-effects

@@ -16,8 +16,8 @@ export const gameState = {
     clock: null,
     frameCount: 0, // Track frame count for throttling UI updates
     simulation: {
-        tickRate: 15, // Fixed simulation ticks per second
-        fixedDelta: 1 / 15, // 1 / tickRate
+        tickRate: 30, // Fixed simulation ticks per second
+        fixedDelta: 1 / 30, // 1 / tickRate
         accumulator: 0,
         time: 0,
         lastTimeMs: 0,
@@ -104,6 +104,14 @@ export const gameState = {
         useCoreSimulation: true,
     },
     inputQueue: [],
+    network: {
+        enabled: false,
+        status: 'idle',
+        room: null,
+        sessionId: null,
+        lastSnapshotTick: 0,
+        sendInput: null,
+    },
 
     // Input cleanup function
     cleanupInput: null,

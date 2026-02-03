@@ -1,8 +1,8 @@
 // Minimal headless smoke tests for core logic
-import { createInitialCoreState } from '../src/core/state.js';
-import { stepCore } from '../src/core/step.js';
-import { spawnFoodCore } from '../src/core/spawn.js';
-import { spawnInitialEnemiesCore } from '../src/core/enemy.js';
+import { createInitialCoreState } from '../src/core/state.ts';
+import { stepCore } from '../src/core/step.ts';
+import { spawnFoodCore } from '../src/core/spawn.ts';
+import { spawnInitialEnemiesCore } from '../src/core/enemy.ts';
 
 // Stub localStorage for gameState import side-effects
 if (!globalThis.localStorage) {

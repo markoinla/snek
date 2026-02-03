@@ -13,6 +13,11 @@ export const MIN_SNAKE_LENGTH = 3;
 export const NUM_OBSTACLES = 30;
 export const POWERUP_TEXT_ANIMATION_DURATION = 1500; // Keep for CSS sync if needed
 
+// Multiplayer settings
+export const MULTIPLAYER_DEFAULT_ENABLED = false;
+export const MULTIPLAYER_SERVER_URL = 'ws://localhost:2567';
+export const MULTIPLAYER_TICK_RATE = 30;
+
 // Food speed boost settings
 export const FOOD_SPEED_BOOST_DURATION = 7.0; // Duration of speed boost in seconds
 export const FOOD_SPEED_BOOST_MULTIPLIER = 1.5; // How much faster the snake moves during boost

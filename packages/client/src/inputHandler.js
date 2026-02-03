@@ -1,7 +1,16 @@
 import { turnLeft as playerTurnLeft, turnRight as playerTurnRight } from './playerSnake.js';
+import { INPUT_SCHEMA_VERSION } from 'snek-shared';
 import { requestRestart } from './main.ts'; // Assuming main exports a restart function
 
 export function setupInputListeners(gameState, uiElements) {
+    const enqueueInput = (turn) => {
+        const input = { playerId: 'local', tick: gameState.core.tick + 1, turn, version: INPUT_SCHEMA_VERSION };
+        if (gameState.network?.enabled && typeof gameState.network.sendInput === 'function') {
+            gameState.network.sendInput(input);
+            return;
+        }
+        gameState.inputQueue.push(input);
+    };
 
     const handleKeyDown = (event) => {
         if (gameState.flags.gameOver) {
@@ -20,7 +29,7 @@ export function setupInputListeners(gameState, uiElements) {
             case 'arrowleft':
             case 'a':
                 if (gameState.flags.useCoreSimulation) {
-                    gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'left' });
+                    enqueueInput('left');
                 } else {
                     playerTurnLeft(gameState); // Pass gameState
                     // Set flag for immediate direction change
@@ -30,7 +39,7 @@ export function setupInputListeners(gameState, uiElements) {
             case 'arrowright':
             case 'd':
                 if (gameState.flags.useCoreSimulation) {
-                    gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'right' });
+                    enqueueInput('right');
                 } else {
                     playerTurnRight(gameState); // Pass gameState
                     // Set flag for immediate direction change
@@ -47,7 +56,7 @@ export function setupInputListeners(gameState, uiElements) {
         if (gameState.flags.gameOver) return;
         e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
-            gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'left' });
+            enqueueInput('left');
         } else {
             playerTurnLeft(gameState);
             // Set flag for immediate direction change
@@ -59,7 +68,7 @@ export function setupInputListeners(gameState, uiElements) {
          if (gameState.flags.gameOver) return;
          e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
-            gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'right' });
+            enqueueInput('right');
         } else {
             playerTurnRight(gameState);
             // Set flag for immediate direction change
