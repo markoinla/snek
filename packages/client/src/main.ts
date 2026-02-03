@@ -93,6 +93,14 @@ async function init() {
     gameState.renderer = SceneSetup.createRenderer(canvas);
     gameState.clock = new THREE.Clock();
     const urlParams = new URLSearchParams(window.location.search);
+
+    // Admin panel (dev tool) - activate via ?admin=1
+    if (urlParams.get('admin') === '1') {
+        import('./adminPanel.js').then(({ initAdminPanel }) => {
+            initAdminPanel();
+        });
+    }
+
     const urlSeed = urlParams.get('seed');
     const seed = urlSeed ? Number(urlSeed) : Date.now();
     gameState.core = createInitialCoreState(seed);
