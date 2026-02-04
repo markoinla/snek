@@ -502,9 +502,11 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
             UI.showAlphaModeActivation();
             // @ts-expect-error -- function missing from audioSystem.js (pre-existing)
             Audio.playAlphaModeActivation();
+            Player.updatePlayerSnakeTextures(state, true);
         }
         if (event.type === EventType.AlphaModeEnded && isLocalPlayer) {
             UI.showPowerUpTextEffect("Alpha Mode ended");
+            Player.updatePlayerSnakeTextures(state, true);
         }
         if (event.type === EventType.EnemyRespawned) {
             Enemy.syncEnemyMeshes(state);

@@ -52,6 +52,19 @@ export function stepCore(state: CoreState, delta: number): StepResult {
 
           if (canEat) {
             if (killEnemyCore(state, enemyCollision.enemyId)) {
+              const killMultiplier = alphaActive ? player.alphaMode.scoreMultiplier : 1;
+              const killScore = Math.round(CONFIG.ENEMY_KILL_SCORE * killMultiplier);
+              player.score.current += killScore;
+              allEvents.push({ type: EventType.ScoreChanged, playerId, payload: { score: player.score.current } });
+
+              // Grow the snake by the configured number of segments
+              const tail = player.segments[player.segments.length - 1];
+              if (tail) {
+                for (let i = 0; i < CONFIG.ENEMY_KILL_SEGMENTS; i++) {
+                  player.segments.push({ ...tail });
+                }
+              }
+
               if (alphaActive) {
                 player.alphaMode.endTime += CONFIG.ALPHA_MODE_EXTENSION_PER_ENEMY;
                 addScoreMultiplierCore(state, playerId, state.time);
@@ -84,6 +97,9 @@ export function stepCore(state: CoreState, delta: number): StepResult {
             if (attackerAlpha && !victimAlpha) {
               // Attacker wins — victim dies
               killPlayerCore(state, pvpCollision.targetPlayerId);
+              const pvpScore1 = Math.round(CONFIG.ENEMY_KILL_SCORE * player.alphaMode.scoreMultiplier);
+              player.score.current += pvpScore1;
+              allEvents.push({ type: EventType.ScoreChanged, playerId, payload: { score: player.score.current } });
               addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
               allEvents.push({ type: EventType.PlayerKilledPlayer, playerId, payload: { victimId: pvpCollision.targetPlayerId, headOn: true } });
               allEvents.push({ type: EventType.PlayerDead, playerId: pvpCollision.targetPlayerId, payload: { reason: 'PVP_COLLISION' } });
@@ -91,6 +107,9 @@ export function stepCore(state: CoreState, delta: number): StepResult {
               // Victim wins — attacker dies
               if (!attackerGhost) {
                 killPlayerCore(state, playerId);
+                const pvpScore2 = Math.round(CONFIG.ENEMY_KILL_SCORE * victim.alphaMode.scoreMultiplier);
+                victim.score.current += pvpScore2;
+                allEvents.push({ type: EventType.ScoreChanged, playerId: pvpCollision.targetPlayerId, payload: { score: victim.score.current } });
                 allEvents.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'PVP_COLLISION' } });
                 allEvents.push({ type: EventType.PlayerKilledPlayer, playerId: pvpCollision.targetPlayerId, payload: { victimId: playerId, headOn: true } });
                 addAlphaPointsCore(state, pvpCollision.targetPlayerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
@@ -113,6 +132,9 @@ export function stepCore(state: CoreState, delta: number): StepResult {
             if (attackerAlpha || pvpCollision.isTail) {
               // Alpha attacker or tail-eater kills victim
               killPlayerCore(state, pvpCollision.targetPlayerId);
+              const pvpScore3 = Math.round(CONFIG.ENEMY_KILL_SCORE * (attackerAlpha ? player.alphaMode.scoreMultiplier : 1));
+              player.score.current += pvpScore3;
+              allEvents.push({ type: EventType.ScoreChanged, playerId, payload: { score: player.score.current } });
               addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
               allEvents.push({ type: EventType.PlayerKilledPlayer, playerId, payload: { victimId: pvpCollision.targetPlayerId, headOn: false } });
               allEvents.push({ type: EventType.PlayerDead, playerId: pvpCollision.targetPlayerId, payload: { reason: 'PVP_COLLISION' } });
@@ -130,7 +152,7 @@ export function stepCore(state: CoreState, delta: number): StepResult {
         if (foodResult) {
           state.food.positions.splice(foodResult.index, 1);
 
-          const scoreMultiplier = player.alphaMode?.active ? player.scoreMultiplier : 1;
+          const scoreMultiplier = player.alphaMode?.active ? player.alphaMode.scoreMultiplier : 1;
           const scoreDelta = Math.round(foodResult.scoreValue * scoreMultiplier);
           player.score.current += scoreDelta;
 

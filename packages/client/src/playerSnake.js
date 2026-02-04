@@ -1364,6 +1364,9 @@ export function activateAlphaMode(currentTime, gameState) {
     UI.updateAlphaModeUI(1.0, alphaDuration, playerSnake.alphaMode.scoreMultiplier);
     
     Logger.gameplay.info(`Alpha Mode activated for ${alphaDuration} seconds, multiplier: ${playerSnake.alphaMode.scoreMultiplier}`);
+
+    // Force texture update to apply alpha mode color immediately
+    updatePlayerSnakeTextures(gameState, true);
 }
 
 /**
