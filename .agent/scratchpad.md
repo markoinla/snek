@@ -1,6 +1,35 @@
 # Snek — Scratchpad
 
-Last updated: 2026-02-04 (Visual Overhaul — Task 13 complete)
+Last updated: 2026-02-04 (Visual Overhaul — ALL 20 tasks COMPLETE)
+
+## Remaining Tasks — Implementation Notes
+
+### Task 16: Dynamic bloom on powerup (~80% done)
+Alpha bloom spike+ease already works. Missing: bloom pulse on powerup pickup.
+- Add bloom pulse in `applyPowerUp()` in playerSnake.js
+- Reuse getBloomPass() + tween pattern from alpha activation
+- Files: playerSnake.js
+
+### Task 17: Emissive glow on powerup food (~25% done)
+Static emissive colors exist on frog materials. Missing: dynamic pulsing.
+- Add emissiveIntensity oscillation in `updateFoodAnimations()` in food.js
+- Only for powerup frogs (speed/ghost/shrink/score_x2), not apples
+- Files: food.js, possibly materials.js
+
+### Task 18: Respawn assembly animation (~15% done)
+Core respawn logic + tween system exist. Missing: visual assembly effect.
+- Add `playRespawnAssemblyEffect()` in playerSnake.js
+- Staggered scale pop-in per segment with particle burst
+- Trigger from main.ts on PlayerRespawned event
+- Files: playerSnake.js, main.ts
+
+### Task 20: Mobile postprocessing toggle (~10% done)
+Mobile detection + performanceSettings exist. Missing: postprocessing flag + conditional rendering.
+- Add `postprocessing` flag to performanceSettings in deviceUtils.js
+- Conditionally init postprocessing in main.ts
+- Fallback to raw renderer.render() when disabled
+- Guard getBloomPass()/getOutlinePass() calls
+- Files: deviceUtils.js, main.ts, postprocessing.ts
 
 ## Visual Overhaul Plan (20 tasks)
 
@@ -17,13 +46,13 @@ Last updated: 2026-02-04 (Visual Overhaul — Task 13 complete)
 - [x] Task 11: Eating feedback (chomp + food squish)
 - [x] Task 12: Death scatter effect
 - [x] Task 13: Alpha mode activation effects
-- [ ] Task 14: Speed trail particles
-- [ ] Task 15: UI visual integration
-- [ ] Task 16: Dynamic bloom on powerup/alpha
-- [ ] Task 17: Emissive glow on powerup food
-- [ ] Task 18: Respawn assembly animation
-- [ ] Task 19: Consistent shadow casting
-- [ ] Task 20: Mobile postprocessing toggle
+- [x] Task 14: Speed trail particles
+- [x] Task 15: UI visual integration
+- [x] Task 16: Dynamic bloom on powerup/alpha
+- [x] Task 17: Emissive glow on powerup food
+- [x] Task 18: Respawn assembly animation
+- [x] Task 19: Consistent shadow casting (already implemented across all meshes)
+- [x] Task 20: Mobile postprocessing toggle
 
 ---
 
