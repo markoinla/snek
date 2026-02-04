@@ -27,6 +27,7 @@ import { spawnInitialEnemiesCore } from './core/enemy.ts';
 import { connectMultiplayer } from './network/colyseusClient.ts';
 import { initPostprocessing, resizePostprocessing, renderPostprocessing, setOutlinedObjects } from './postprocessing';
 import { PALETTE } from './palette';
+import { updateAnimations } from './animations';
 
 // FPS counter
 let stats: any;
@@ -714,6 +715,9 @@ function render() {
             gameState.simulation.accumulator -= gameState.simulation.fixedDelta;
         }
     }
+
+    // Advance tween animations (frame-rate independent, runs every render frame)
+    updateAnimations(frameTime);
 
     // Mesh interpolation runs once per render frame (60fps) for smooth visuals.
     // In multiplayer mode, frameTime drives the exponential smoothing.
