@@ -21,6 +21,7 @@ export type FoodItem = {
 };
 
 export type PlayerState = {
+  name?: string;
   segments: Vec3[];
   direction: Vec3;
   nextDirection: Vec3;

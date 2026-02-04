@@ -10,6 +10,7 @@ import {
   PROTOCOL_VERSION,
   STATE_SCHEMA_VERSION,
   encodeSnapshot,
+  encodeDelta,
   type InputMessage,
   type ServerMeta,
 } from 'snek-shared';
@@ -20,7 +21,7 @@ import { createAdminRouter } from './adminRoutes.ts';
 import { createInitialCoreState, createPlayerState } from '../../client/src/core/state.ts';
 import { applyPlayerInput } from '../../client/src/core/player.ts';
 import { stepCore } from '../../client/src/core/step.ts';
-import { spawnFoodCore, spawnObstaclesCore } from '../../client/src/core/spawn.ts';
+import { spawnFoodCore, spawnObstaclesCore, generateUniquePositionCore } from '../../client/src/core/spawn.ts';
 import { spawnInitialEnemiesCore } from '../../client/src/core/enemy.ts';
 
 const DEFAULT_PORT = Number(process.env.PORT ?? 2567);
@@ -41,7 +42,26 @@ const metrics = {
 
 class PlayerMeta extends Schema {
   @type('string') id = '';
+  @type('string') name = '';
   @type('number') lastInputTick = 0;
+}
+
+const DEFAULT_NAMES = ['Snek', 'Cobra', 'Viper', 'Python'];
+
+function sanitizePlayerName(raw: string | undefined, colorIndex: number): string {
+  if (!raw || typeof raw !== 'string') return DEFAULT_NAMES[colorIndex % DEFAULT_NAMES.length];
+  const cleaned = raw.replace(/[<>&"']/g, '').trim().slice(0, 16);
+  return cleaned || DEFAULT_NAMES[colorIndex % DEFAULT_NAMES.length];
+}
+
+const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
+
+function generateRoomCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
+  }
+  return code;
 }
 
 class RoomState extends Schema {
@@ -56,8 +76,13 @@ class SnekRoom extends Colyseus.Room<RoomState> {
   private inputQueues = new Map<string, InputMessage[]>();
   private snapshotCounter = 0;
   private pendingEvents: EventEnvelope[] = [];
+  private prevBroadcastState: SerializableCoreState | null = null;
+  private fullSnapshotCounter = 0;
+  private static readonly FULL_SNAPSHOT_INTERVAL = 10;
+  roomCode: string = '';
+  displayName: string = '';
 
-  onCreate() {
+  onCreate(options: any) {
     this.maxClients = 4;
     this.seed = Date.now();
     this.coreState = createInitialCoreState(this.seed);
@@ -66,6 +91,10 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     this.setState(new RoomState());
     this.state.seed = this.seed;
     this.state.tick = this.coreState.tick;
+
+    this.roomCode = generateRoomCode();
+    this.displayName = `Room ${this.roomCode}`;
+    this.setMetadata({ roomCode: this.roomCode, displayName: this.displayName, playerCount: 0 });
 
     this.setSimulationInterval(() => this.tick(), 1000 / TICK_RATE);
     metrics.roomsCreated += 1;
@@ -93,25 +122,90 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     // Create player snake in core simulation
     this.createPlayerSnake(client.sessionId);
 
+    // Sanitize and assign player name
+    const colorIndex = this.coreState.players[client.sessionId].colorIndex;
+    const sanitizedName = sanitizePlayerName(options?.playerName, colorIndex);
+    playerMeta.name = sanitizedName;
+    this.coreState.players[client.sessionId].name = sanitizedName;
+
     const meta: ServerMeta = {
       serverVersion: PROTOCOL_VERSION,
       tickRate: TICK_RATE,
       seed: this.seed,
       sessionId: client.sessionId,
+      playerName: sanitizedName,
+      roomCode: this.roomCode,
     };
     client.send(MessageType.Meta, meta);
     client.send(MessageType.Snapshot, this.serializeSnapshot());
+
+    this.setMetadata({ playerCount: this.clients.length });
 
     this.onMessage('input', (client, message: InputMessage) => {
       this.handleInput(client.sessionId, message);
     });
   }
 
-  onLeave(client: Colyseus.Client) {
+  async onLeave(client: Colyseus.Client, consented?: boolean) {
     metrics.connectedClients = Math.max(0, metrics.connectedClients - 1);
-    this.state.players.delete(client.sessionId);
-    this.inputQueues.delete(client.sessionId);
-    delete this.coreState.players[client.sessionId];
+
+    if (consented) {
+      this.cleanupPlayer(client.sessionId);
+      return;
+    }
+
+    // Mark as dead immediately so ghost snake doesn't block the grid
+    const player = this.coreState.players[client.sessionId];
+    if (player) {
+      player.dead = true;
+      player.segments = [];
+    }
+
+    try {
+      await this.allowReconnection(client, 30);
+      // Reconnected — respawn player at a new position
+      metrics.connectedClients += 1;
+      const existingMeta = this.state.players.get(client.sessionId);
+      if (player) {
+        player.dead = false;
+        player.respawnAt = 0;
+        const startPos = generateUniquePositionCore(this.coreState, CONFIG.START_SAFE_ZONE);
+        player.segments = [];
+        for (let i = 0; i < CONFIG.MIN_SNAKE_LENGTH; i++) {
+          player.segments.push({ x: startPos.x - i, y: 0, z: startPos.z });
+        }
+        player.direction = { x: 1, y: 0, z: 0 };
+        player.nextDirection = { x: 1, y: 0, z: 0 };
+        player.speed = CONFIG.BASE_SNAKE_SPEED;
+      }
+
+      // Re-send meta and snapshot to the reconnected client
+      const meta: ServerMeta = {
+        serverVersion: PROTOCOL_VERSION,
+        tickRate: TICK_RATE,
+        seed: this.seed,
+        sessionId: client.sessionId,
+        playerName: existingMeta?.name || '',
+        roomCode: this.roomCode,
+      };
+      client.send(MessageType.Meta, meta);
+      client.send(MessageType.Snapshot, this.serializeSnapshot());
+
+      // Re-register input handler (Colyseus requires this after reconnection)
+      this.onMessage('input', (c, message: InputMessage) => {
+        this.handleInput(c.sessionId, message);
+      });
+    } catch {
+      // Reconnection timed out or room was disposed
+      this.cleanupPlayer(client.sessionId);
+    }
+  }
+
+  private cleanupPlayer(sessionId: string) {
+    this.state.players.delete(sessionId);
+    this.inputQueues.delete(sessionId);
+    delete this.coreState.players[sessionId];
+    this.setMetadata({ playerCount: this.clients.length });
   }
 
   onDispose() {
@@ -131,7 +225,7 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     const player = createPlayerState(sessionId);
     player.colorIndex = this.nextColorIndex;
     this.nextColorIndex = (this.nextColorIndex + 1) % 4;
-    const startPos = { x: 0, y: 0, z: 0 }; // TODO: generateUniquePositionCore
+    const startPos = generateUniquePositionCore(this.coreState, CONFIG.START_SAFE_ZONE);
     player.segments = [];
     for (let i = 0; i < CONFIG.MIN_SNAKE_LENGTH; i++) {
       player.segments.push({ x: startPos.x - i, y: 0, z: startPos.z });
@@ -184,7 +278,25 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     this.snapshotCounter += 1;
     if (this.snapshotCounter >= SNAPSHOT_INTERVAL_TICKS) {
       this.snapshotCounter = 0;
-      this.broadcast(MessageType.Snapshot, this.serializeSnapshot());
+
+      const currentState = this.getSerializableState();
+      this.fullSnapshotCounter += 1;
+
+      let payload: Uint8Array;
+      if (!this.prevBroadcastState || this.fullSnapshotCounter >= SnekRoom.FULL_SNAPSHOT_INTERVAL) {
+        // Send full snapshot
+        payload = encodeSnapshot(currentState);
+        this.fullSnapshotCounter = 0;
+      } else {
+        // Compute delta and compare sizes
+        const deltaPayload = encodeDelta(this.prevBroadcastState, currentState);
+        const fullPayload = encodeSnapshot(currentState);
+        payload = deltaPayload.length < fullPayload.length ? deltaPayload : fullPayload;
+      }
+
+      this.prevBroadcastState = JSON.parse(JSON.stringify(currentState));
+      this.broadcast(MessageType.Snapshot, payload);
+
       if (this.pendingEvents.length > 0) {
         this.broadcast(MessageType.Events, this.pendingEvents);
         this.pendingEvents = [];
@@ -211,13 +323,13 @@ class SnekRoom extends Colyseus.Room<RoomState> {
     return collected;
   }
 
-  private serializeSnapshot(): Uint8Array {
+  private getSerializableState(): SerializableCoreState {
     const { rng, ...rest } = this.coreState;
-    const snapshot: SerializableCoreState = {
-      ...rest,
-      rng: { seed: rng.seed },
-    };
-    return encodeSnapshot(snapshot);
+    return { ...rest, rng: { seed: rng.seed } };
+  }
+
+  private serializeSnapshot(): Uint8Array {
+    return encodeSnapshot(this.getSerializableState());
   }
 }
 
@@ -237,7 +349,41 @@ const gameServer = new Colyseus.Server({
   transport: new WebSocketTransport({ server: httpServer }),
 });
 
-gameServer.define('snek', SnekRoom);
+gameServer.define('snek', SnekRoom).filterBy(['roomCode']);
+
+app.post('/join-by-code', async (req, res) => {
+  const { roomCode, ...options } = req.body;
+  if (!roomCode) {
+    return res.status(400).json({ error: 'roomCode is required' });
+  }
+  try {
+    const rooms = await (gameServer as any).matchMaker.query({ name: 'snek' });
+    const target = rooms.find((r: any) => r.metadata?.roomCode === roomCode);
+    if (!target) {
+      return res.status(404).json({ error: `Room ${roomCode} not found` });
+    }
+    const reservation = await (gameServer as any).matchMaker.joinById(target.roomId, options);
+    res.json(reservation);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to join room' });
+  }
+});
+
+app.get('/rooms', async (_req, res) => {
+  try {
+    const rooms = await (gameServer as any).matchMaker.query({ name: 'snek' });
+    const result = rooms.map((r: any) => ({
+      roomId: r.roomId,
+      roomCode: r.metadata?.roomCode || '',
+      displayName: r.metadata?.displayName || '',
+      playerCount: r.metadata?.playerCount ?? r.clients ?? 0,
+      maxPlayers: r.maxClients ?? 4,
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to list rooms' });
+  }
+});
 
 (async () => {
   await loadConfigOverrides();

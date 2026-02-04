@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "lsof -ti :5173 | xargs kill 2>/dev/null; vite",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
     "test:core": "tsx scripts/core-smoke.mjs",

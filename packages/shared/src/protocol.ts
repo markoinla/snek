@@ -5,6 +5,9 @@ export type JoinOptions = {
   clientVersion: number;
   stateVersion: number;
   inputVersion: number;
+  playerName?: string;
+  roomCode?: string;
+  createRoom?: boolean;
 };
 
 export type ServerMeta = {
@@ -12,6 +15,16 @@ export type ServerMeta = {
   tickRate: number;
   seed: number;
   sessionId: string;
+  playerName: string;
+  roomCode?: string;
+};
+
+export type RoomInfo = {
+  roomId: string;
+  roomCode: string;
+  displayName: string;
+  playerCount: number;
+  maxPlayers: number;
 };
 
 export const MessageType = {

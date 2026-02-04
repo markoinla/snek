@@ -175,10 +175,43 @@ async function init() {
         document.body.appendChild(stats.dom);
     }
 
-    const multiplayerEnabled = window.location.pathname === '/multi';
-    if (multiplayerEnabled) {
+    // Multiplayer connection helper
+    const startMultiplayer = async (opts: { roomCode?: string; createRoom?: boolean } = {}) => {
+        UI.hideNameOverlay();
+        UI.startGame();
         try {
-            await connectMultiplayer(gameState);
+            await connectMultiplayer(gameState, {
+                playerName: UI.getPlayerName(),
+                ...opts,
+            });
+            UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
+        } catch (error) {
+            Logger.system.warn('Multiplayer connection failed; running offline.', error);
+        }
+    };
+
+    addManagedEventListener(window, 'multiplayerCreateRoom', () => {
+        startMultiplayer({ createRoom: true });
+    });
+
+    // Direct room code URL (e.g. /A3FH2K) — auto-join that room
+    const path = window.location.pathname;
+    const roomCodeMatch = path.match(/^\/([A-Z0-9]{6})$/);
+    if (roomCodeMatch) {
+        const roomCode = roomCodeMatch[1];
+        try {
+            await connectMultiplayer(gameState, { playerName: UI.getPlayerName(), roomCode });
+            UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
+        } catch (error) {
+            Logger.system.warn('Room not found or connection failed', error);
+            window.history.replaceState({}, '', '/');
+            UI.showIntroScreen();
+            UI.showPowerUpTextEffect('Room not found', 0xff4444);
+        }
+    } else if (path === '/multi') {
+        // Legacy /multi URL — skip lobby, auto-join
+        try {
+            await connectMultiplayer(gameState, { playerName: UI.getPlayerName() });
             UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
         } catch (error) {
             Logger.system.warn('Multiplayer connection failed; running offline.', error);
@@ -512,13 +545,15 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
             Enemy.syncEnemyMeshes(state);
         }
         if (event.type === EventType.PlayerKilledPlayer) {
+            const killerName = state.core?.players?.[event.playerId]?.name || 'A player';
+            const victimName = state.core?.players?.[event.payload?.victimId]?.name || 'a player';
             if (isLocalPlayer) {
                 Audio.playSoundEffect('eatApple');
-                UI.addKillFeedMessage(`You killed a player!`);
+                UI.addKillFeedMessage(`You killed ${victimName}!`);
             } else if (event.payload?.victimId === localId) {
-                UI.addKillFeedMessage(`You were killed!`);
+                UI.addKillFeedMessage(`${killerName} killed you!`);
             } else {
-                UI.addKillFeedMessage(`Player eliminated`);
+                UI.addKillFeedMessage(`${killerName} killed ${victimName}`);
             }
         }
         if (event.type === EventType.PlayerRespawned && isLocalPlayer) {

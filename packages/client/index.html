@@ -8,13 +8,16 @@
     <!-- Adding Google Fonts for Material Design -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="scanline-overlay"></div>
     <!-- Game Info UI -->
-    <div id="highScoreInfo">High Score: 0</div>
-    <div id="info">Score: 0</div>
-    <div id="kills">Kills: 0</div>
+    <div id="hudPanel" class="hud-panel">
+        <div id="highScoreInfo">High Score: 0</div>
+        <div id="info">Score: 0</div>
+        <div id="kills">Kills: 0</div>
+    </div>
     <div id="powerUpInfo"></div>
     <div id="powerUpTextEffect"></div>
     <div id="gameOver" class="modal-screen">
@@ -69,6 +72,7 @@
                     <button class="tab-button" data-tab="tips">Tips & Tricks</button>
                     <button class="tab-button" data-tab="sounds">Sounds</button>
                     <button class="tab-button" data-tab="gameMode">Game Mode</button>
+                    <button class="tab-button" data-tab="profile">Profile</button>
                 </div>
                 <div class="tab-content">
                     <!-- How to Play Tab -->
@@ -157,11 +161,27 @@
                             <p class="mode-note">Note: Changing the game mode will take effect on your next game.</p>
                         </div>
                     </div>
+
+                    <!-- Profile Tab -->
+                    <div id="profile" class="tab-pane">
+                        <h3>Player Profile</h3>
+                        <div class="sound-settings">
+                            <div class="sound-setting-item">
+                                <div class="sound-label">Player Name</div>
+                                <div class="sound-controls">
+                                    <input type="text" id="settingsNameInput" class="lobby-input" maxlength="16"
+                                           placeholder="Enter name..." autocomplete="off" />
+                                    <button id="settingsNameSaveBtn" class="toggle-button">SAVE</button>
+                                </div>
+                                <p class="mode-note">This name is shown to other players in multiplayer.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Multiplayer Respawn Overlay -->
     <div id="respawnOverlay" class="modal-screen">
         <div class="respawn-content">
@@ -235,6 +255,16 @@
         </div>
     </div>
     
+    <!-- Name Entry Overlay -->
+    <div id="nameOverlay" class="modal-screen" style="display:none;">
+        <div class="name-overlay-content modal-content">
+            <h2>ENTER YOUR NAME</h2>
+            <input type="text" id="nameOverlayInput" class="lobby-input" maxlength="16"
+                   placeholder="Your name..." autocomplete="off" />
+            <button id="nameOverlayConfirmBtn" class="start-mode-button multiplayer">LET'S GO</button>
+        </div>
+    </div>
+
     <!-- Mobile Buttons -->
     <div id="leftButton" class="mobile-button">↶</div>
     <div id="rightButton" class="mobile-button">↷</div>

@@ -46,6 +46,13 @@ const alphaModeText = document.getElementById('alphaModeText');
 // Help button
 const helpButton = document.getElementById('helpButton');
 
+// Name overlay elements
+const nameOverlay = document.getElementById('nameOverlay');
+const nameOverlayInput = document.getElementById('nameOverlayInput');
+const nameOverlayConfirmBtn = document.getElementById('nameOverlayConfirmBtn');
+const settingsNameInput = document.getElementById('settingsNameInput');
+const settingsNameSaveBtn = document.getElementById('settingsNameSaveBtn');
+
 // Multiplayer elements
 const respawnOverlay = document.getElementById('respawnOverlay');
 const respawnReason = document.getElementById('respawnReason');
@@ -170,8 +177,14 @@ function setupEventListeners() {
     }
     if (multiPlayerButton) {
         multiPlayerButton.addEventListener('click', function() {
-            window.history.pushState({}, '', '/multi');
-            startGame();
+            const name = getPlayerName();
+            if (name) {
+                window.dispatchEvent(new CustomEvent('multiplayerCreateRoom'));
+            } else {
+                showNameOverlay(() => {
+                    window.dispatchEvent(new CustomEvent('multiplayerCreateRoom'));
+                });
+            }
         });
     }
     
@@ -297,6 +310,28 @@ function setupEventListeners() {
         soundVolumeSlider.addEventListener('input', () => {
             const volume = soundVolumeSlider.value / 100;
             Audio.setSoundVolume(volume);
+        });
+    }
+
+    // Profile name save button
+    if (settingsNameSaveBtn) {
+        settingsNameSaveBtn.addEventListener('click', () => {
+            if (setPlayerName(settingsNameInput?.value)) {
+                settingsNameSaveBtn.textContent = 'SAVED!';
+                setTimeout(() => { settingsNameSaveBtn.textContent = 'SAVE'; }, 1500);
+            }
+        });
+    }
+
+    // Enter key on profile name input
+    if (settingsNameInput) {
+        settingsNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (setPlayerName(settingsNameInput.value)) {
+                    settingsNameSaveBtn.textContent = 'SAVED!';
+                    setTimeout(() => { settingsNameSaveBtn.textContent = 'SAVE'; }, 1500);
+                }
+            }
         });
     }
 }
@@ -429,11 +464,32 @@ export function hasGameStarted() {
     return gameStarted;
 }
 
+// Typing title effect for intro screen
+let typeTitleInterval = null;
+function typeTitle() {
+    const h1 = introScreen?.querySelector('.intro-content-container h1');
+    if (!h1) return;
+    const fullText = h1.textContent || 'ALPHA SNEK';
+    h1.textContent = '';
+    let i = 0;
+    if (typeTitleInterval) clearInterval(typeTitleInterval);
+    typeTitleInterval = setInterval(() => {
+        if (i < fullText.length) {
+            h1.textContent += fullText[i];
+            i++;
+        } else {
+            clearInterval(typeTitleInterval);
+            typeTitleInterval = null;
+        }
+    }, 80);
+}
+
 // Function to show the intro screen
 export function showIntroScreen() {
     const path = window.location.pathname;
-    // If navigated directly to /single or /multi, skip intro
-    if (path === '/single' || path === '/multi') {
+    // If navigated directly to /single, /multi, or a room code URL, skip intro
+    const isRoomCode = /^\/[A-Z0-9]{6}$/.test(path);
+    if (path === '/single' || path === '/multi' || isRoomCode) {
         startGame();
         return;
     }
@@ -441,6 +497,7 @@ export function showIntroScreen() {
     if (firstTimeUser) {
         if (introScreen) {
             introScreen.style.display = 'flex';
+            typeTitle();
         }
         gameStarted = false;
     } else {
@@ -450,10 +507,34 @@ export function showIntroScreen() {
 }
 
 /**
+ * Returns the stored player name from localStorage, or empty string.
+ */
+export function getPlayerName() {
+    try {
+        return localStorage.getItem('snek_playerName') || '';
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Saves the player name to localStorage.
+ * @param {string} name - The name to save
+ * @returns {boolean} true if saved successfully, false if name was empty
+ */
+export function setPlayerName(name) {
+    const trimmed = (name || '').trim().slice(0, 16);
+    if (!trimmed) return false;
+    try { localStorage.setItem('snek_playerName', trimmed); } catch {}
+    return true;
+}
+
+/**
  * Returns whether the current URL path indicates multiplayer mode.
  */
 export function isMultiplayerPath() {
-    return window.location.pathname === '/multi';
+    const path = window.location.pathname;
+    return path === '/multi' || /^\/[A-Z0-9]{6}$/.test(path);
 }
 
 // Function to show the help screen (reuses the intro screen)
@@ -560,21 +641,26 @@ export function updateScore(score) {
         if (labelSpan) {
             // Update only the text content after the label
             const scoreText = document.createTextNode(score.toString());
-            
+
             // Remove any existing text nodes (non-label content)
             Array.from(scoreElement.childNodes).forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE || 
+                if (node.nodeType === Node.TEXT_NODE ||
                     (node !== labelSpan && node.nodeType === Node.ELEMENT_NODE)) {
                     scoreElement.removeChild(node);
                 }
             });
-            
+
             // Append the new score text
             scoreElement.appendChild(scoreText);
         } else {
             // Fallback if label doesn't exist
             scoreElement.textContent = `${CONFIG.GAME_TEXT.UI.SCORE_LABEL}: ${score}`;
         }
+
+        // Flash animation on score change
+        scoreElement.classList.remove('score-flash');
+        void scoreElement.offsetWidth; // force reflow to restart animation
+        scoreElement.classList.add('score-flash');
     }
 }
 
@@ -585,21 +671,26 @@ export function updateKills(kills) {
         if (labelSpan) {
             // Update only the text content after the label
             const killsText = document.createTextNode(kills.toString());
-            
+
             // Remove any existing text nodes (non-label content)
             Array.from(killsElement.childNodes).forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE || 
+                if (node.nodeType === Node.TEXT_NODE ||
                     (node !== labelSpan && node.nodeType === Node.ELEMENT_NODE)) {
                     killsElement.removeChild(node);
                 }
             });
-            
+
             // Append the new kills text
             killsElement.appendChild(killsText);
         } else {
             // Fallback if label doesn't exist
             killsElement.textContent = `${CONFIG.GAME_TEXT.UI.KILLS_LABEL}: ${kills}`;
         }
+
+        // Flash animation on kills change
+        killsElement.classList.remove('score-flash');
+        void killsElement.offsetWidth; // force reflow to restart animation
+        killsElement.classList.add('score-flash');
     }
 }
 
@@ -632,59 +723,98 @@ export function updateHighScore(highScore) {
 export function showGameOver(score, highScore, deathReason, stats = {}) {
     if (gameOverElement) {
         gameOverElement.style.display = 'flex';
-        
-        // Set final score - ensure it's a number
+        gameOverElement.classList.add('active');
+
+        // Convert to number if it's an object
+        const finalScore = typeof score === 'object' ? (score.current || 0) : score;
+
+        // Animated score counter
         if (finalScoreElement) {
-            // Convert to number if it's an object
-            const finalScore = typeof score === 'object' ? (score.current || 0) : score;
-            finalScoreElement.textContent = finalScore;
+            animateCounter(finalScoreElement, 0, finalScore, 1000);
             console.log("Setting final score:", finalScore);
         }
-        
+
         // Set high score
         if (highScoreElement) {
             highScoreElement.textContent = highScore;
         }
-        
+
+        // New high score detection
+        if (finalScore > 0 && finalScore >= highScore) {
+            if (highScoreElement) {
+                highScoreElement.classList.add('new-high-score');
+            }
+            // Add "NEW HIGH SCORE!" text if not already there
+            const modalContent = gameOverElement.querySelector('.modal-content');
+            if (modalContent && !modalContent.querySelector('.new-high-score-text')) {
+                const newHSText = document.createElement('span');
+                newHSText.className = 'new-high-score-text';
+                newHSText.textContent = 'NEW HIGH SCORE!';
+                modalContent.insertBefore(newHSText, modalContent.firstChild);
+            }
+        } else {
+            if (highScoreElement) {
+                highScoreElement.classList.remove('new-high-score');
+            }
+            const existingHS = gameOverElement.querySelector('.new-high-score-text');
+            if (existingHS) existingHS.remove();
+        }
+
         // Set death reason message from config
         if (deathReasonElement) {
-            // Get the death reason message from config
-            let deathMessage = 'You died!'; // Default message
-            
-            // Check if GAME_TEXT exists in CONFIG
+            let deathMessage = 'You died!';
             if (CONFIG.GAME_TEXT) {
                 if (deathReason && CONFIG.GAME_TEXT.UI?.GAME_OVER?.DEATH_REASONS?.[deathReason]) {
-                    // Use the message from config if available
                     deathMessage = CONFIG.GAME_TEXT.UI.GAME_OVER.DEATH_REASONS[deathReason];
                 }
             } else {
                 console.warn("CONFIG.GAME_TEXT not found, using default death message");
             }
-            
-            // Set the death reason message
             deathReasonElement.textContent = deathMessage;
-            
             console.log(`Game over: ${deathMessage} (reason code: ${deathReason})`);
         }
-        
-        // Set stats if provided
+
+        // Animated stat counters
         if (stats) {
             if (applesEatenElement && stats.applesEaten !== undefined) {
-                applesEatenElement.textContent = stats.applesEaten;
+                animateCounter(applesEatenElement, 0, stats.applesEaten, 500);
             }
-            
             if (frogsEatenElement && stats.frogsEaten !== undefined) {
-                frogsEatenElement.textContent = stats.frogsEaten;
+                animateCounter(frogsEatenElement, 0, stats.frogsEaten, 500);
             }
-            
             if (snakesEatenElement && stats.snakesEaten !== undefined) {
-                snakesEatenElement.textContent = stats.snakesEaten;
+                animateCounter(snakesEatenElement, 0, stats.snakesEaten, 500);
             }
         }
-        
+
         // Dispatch game over event
         window.dispatchEvent(new CustomEvent('gameOver'));
     }
+}
+
+/**
+ * Animates a number counting up from start to end over duration ms.
+ */
+function animateCounter(element, start, end, duration) {
+    if (!element) return;
+    const target = Math.round(end);
+    if (target <= 0) {
+        element.textContent = '0';
+        return;
+    }
+    const startTime = performance.now();
+    function tick(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out quad
+        const eased = 1 - (1 - progress) * (1 - progress);
+        const current = Math.round(start + (target - start) * eased);
+        element.textContent = current;
+        if (progress < 1) {
+            requestAnimationFrame(tick);
+        }
+    }
+    requestAnimationFrame(tick);
 }
 
 export function hideGameOver() {
@@ -971,7 +1101,12 @@ function toggleBackgroundMusic() {
 export function showSettingsMenu() {
     // Pause the game when settings menu is shown
     window.dispatchEvent(new Event('gamePaused'));
-    
+
+    // Pre-fill profile name input
+    if (settingsNameInput) {
+        settingsNameInput.value = getPlayerName();
+    }
+
     if (settingsMenu) {
         settingsMenu.classList.add('active');
     }
@@ -1062,6 +1197,7 @@ export function updateScoreboard(players, localPlayerId) {
     const entries = Object.entries(players)
         .map(([id, p]) => ({
             id,
+            name: p.name || `P${(p.colorIndex ?? 0) + 1}`,
             score: p.score?.current ?? 0,
             colorIndex: p.colorIndex ?? 0,
             dead: !!p.dead,
@@ -1082,7 +1218,7 @@ export function updateScoreboard(players, localPlayerId) {
 
         const name = document.createElement('span');
         name.className = 'mp-scoreboard-name';
-        name.textContent = entry.isLocal ? 'You' : `P${entry.colorIndex + 1}`;
+        name.textContent = entry.isLocal ? `${entry.name} (You)` : entry.name;
 
         const score = document.createElement('span');
         score.className = 'mp-scoreboard-score';
@@ -1128,4 +1264,58 @@ export function addKillFeedMessage(message) {
     while (killFeed.children.length > 5) {
         killFeed.removeChild(killFeed.children[0]);
     }
+}
+
+// ================================================
+// NAME OVERLAY FUNCTIONS
+// ================================================
+
+let _nameOverlayCallback = null;
+
+/**
+ * Shows the name entry overlay.
+ * @param {Function} onConfirm - Called after a valid name is saved
+ */
+export function showNameOverlay(onConfirm) {
+    _nameOverlayCallback = onConfirm || null;
+    if (nameOverlay) nameOverlay.style.display = 'flex';
+    if (nameOverlayInput) {
+        nameOverlayInput.value = '';
+        nameOverlayInput.focus();
+    }
+}
+
+/**
+ * Hides the name entry overlay.
+ */
+export function hideNameOverlay() {
+    if (nameOverlay) nameOverlay.style.display = 'none';
+    _nameOverlayCallback = null;
+}
+
+function _confirmNameOverlay() {
+    const val = nameOverlayInput?.value || '';
+    if (!setPlayerName(val)) {
+        // Empty name — shake the input
+        if (nameOverlayInput) {
+            nameOverlayInput.style.animation = 'none';
+            void nameOverlayInput.offsetWidth;
+            nameOverlayInput.style.animation = 'shakeX 0.4s ease-out';
+        }
+        return;
+    }
+    // Capture callback before hideNameOverlay clears it
+    const cb = _nameOverlayCallback;
+    hideNameOverlay();
+    if (typeof cb === 'function') cb();
+}
+
+// Wire up name overlay button + Enter key
+if (nameOverlayConfirmBtn) {
+    nameOverlayConfirmBtn.addEventListener('click', () => _confirmNameOverlay());
+}
+if (nameOverlayInput) {
+    nameOverlayInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') _confirmNameOverlay();
+    });
 }

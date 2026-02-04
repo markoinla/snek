@@ -4,6 +4,7 @@ import { createRng } from './rng';
 
 export function createPlayerState(id: string): PlayerState {
   return {
+    name: undefined,
     segments: [],
     direction: { x: 1, y: 0, z: 0 },
     nextDirection: { x: 1, y: 0, z: 0 },
