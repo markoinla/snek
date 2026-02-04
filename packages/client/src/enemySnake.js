@@ -261,6 +261,13 @@ export function syncEnemyMeshes(gameState, frameDelta) {
                     mesh.position.y = CONFIG.UNIT_SIZE / 2 + waveY;
                     mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
                 }
+                // Smooth head rotation for enemies
+                if (index === 0 && enemy.direction) {
+                    const targetAngle = Math.atan2(enemy.direction.x, enemy.direction.z);
+                    let angleDiff = targetAngle - mesh.rotation.y;
+                    angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+                    mesh.rotation.y += angleDiff * 0.25;
+                }
             });
         }
 

@@ -12,6 +12,7 @@ import { PALETTE } from './palette';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState'; // For mode-adjusted settings
+import { tween, ease, cancelTween } from './animations';
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }
@@ -23,6 +24,23 @@ const PLAYER_COLORS = [
     0xF44336, // red
     0xFFEB3B, // yellow
 ];
+
+// Helper: convert a direction vector {x, z} to a Y rotation angle (radians).
+function directionToAngle(dir) {
+    return Math.atan2(dir.x, dir.z);
+}
+
+// Trigger a squash-and-recover tween on the head mesh when turning.
+function triggerHeadSquash() {
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+    // Cancel any in-flight head scale tweens to avoid conflicts
+    cancelTween(head, 'scale');
+    // Squash: compress Y, expand X/Z, then bounce back via outElastic
+    tween(head, 'scale', 'y', 0.7, 1.0, 0.15, ease.outElastic);
+    tween(head, 'scale', 'x', 1.2, 1.0, 0.15, ease.outElastic);
+    tween(head, 'scale', 'z', 1.2, 1.0, 0.15, ease.outElastic);
+}
 
 // --- Player State (managed within gameState.playerSnake) ---
 // gameState.playerSnake = {
@@ -245,6 +263,26 @@ export function syncPlayerMeshes(gameState, frameDelta) {
             mesh.position.y = baseY + waveY;
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
         }
+
+        // Head-specific: smooth rotation + speed stretch
+        if (i === 0) {
+            // Smooth rotation toward movement direction
+            const targetAngle = directionToAngle(playerSnake.direction);
+            // Shortest-arc interpolation: wrap difference to [-PI, PI]
+            let angleDiff = targetAngle - mesh.rotation.y;
+            angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+            mesh.rotation.y += angleDiff * 0.3;
+
+            // Speed-based stretch along forward axis
+            const speedRatio = CONFIG.BASE_SNAKE_SPEED / (calculateActualSpeed(gameState) || CONFIG.BASE_SNAKE_SPEED);
+            if (speedRatio > 1.2) {
+                const stretch = 1.0 + (speedRatio - 1.0) * 0.15;
+                // Apply stretch in local Z (forward) and compress Y slightly
+                // Only if no active squash tween is running (scale.x == 1 means idle)
+                mesh.scale.z = stretch;
+                mesh.scale.y = 1.0 / Math.sqrt(stretch); // Preserve volume
+            }
+        }
     }
     // Texture updates are driven by animation timer in updatePlayerStateOnly,
     // no need to call updatePlayerSnakeTextures every render frame.
@@ -376,6 +414,13 @@ export function syncAllPlayerMeshes(gameState, frameDelta) {
             mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
             mesh.position.y = CONFIG.UNIT_SIZE / 2 + waveY;
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+            // Smooth head rotation for remote players
+            if (i === 0 && player.direction) {
+                const targetAngle = directionToAngle(player.direction);
+                let angleDiff = targetAngle - mesh.rotation.y;
+                angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+                mesh.rotation.y += angleDiff * 0.25;
+            }
         }
     });
 }
@@ -417,15 +462,18 @@ export function turnLeft(gameState) {
     if ((nextDir.x !== -referenceDir.x || nextDir.z !== -referenceDir.z)) {
         // Store this turn in the pending turns queue
         playerSnake.pendingTurns.push({...nextDir});
-        
+
         // Only update nextDirection if there are no other pending turns
         if (playerSnake.pendingTurns.length === 1) {
             playerSnake.nextDirection = nextDir;
         }
-        
+
         // Set flag for immediate direction change
         playerSnake.immediateDirectionChange = true;
-        
+
+        // Squash the head on turn
+        triggerHeadSquash();
+
         // For improved responsiveness: If we're adding a second turn in a short time,
         // boost the move timer to make the snake respond more quickly
         // This helps with rapid direction changes at slow speeds
@@ -467,15 +515,18 @@ export function turnRight(gameState) {
     if ((nextDir.x !== -referenceDir.x || nextDir.z !== -referenceDir.z)) {
         // Store this turn in the pending turns queue
         playerSnake.pendingTurns.push({...nextDir});
-        
+
         // Only update nextDirection if there are no other pending turns
         if (playerSnake.pendingTurns.length === 1) {
             playerSnake.nextDirection = nextDir;
         }
-        
+
         // Set flag for immediate direction change
         playerSnake.immediateDirectionChange = true;
-        
+
+        // Squash the head on turn
+        triggerHeadSquash();
+
         // For improved responsiveness: If we're adding a second turn in a short time,
         // boost the move timer to make the snake respond more quickly
         // This helps with rapid direction changes at slow speeds
