@@ -15,6 +15,7 @@ const CONFIG = {
     NUM_INITIAL_FOOD: 100,
     MIN_SNAKE_LENGTH: 3,
     NUM_OBSTACLES: 30,
+    GRASS_COUNT: 24000,
     POWERUP_TEXT_ANIMATION_DURATION: 1500,
 
     // Multiplayer settings
@@ -22,6 +23,10 @@ const CONFIG = {
     MULTIPLAYER_SERVER_URL: 'ws://localhost:2567',
     MULTIPLAYER_TICK_RATE: 30,
     MULTIPLAYER_LERP_SPEED: 12, // Interpolation speed (higher = snappier, 0 = no smoothing)
+
+    // Bush slow settings
+    BUSH_SLOW_DURATION: 2.0,         // Seconds the slow lasts after hitting a bush
+    BUSH_SLOW_MULTIPLIER: 0.5,       // Speed multiplier while slowed (0.5 = half speed)
 
     // Food speed boost settings
     FOOD_SPEED_BOOST_DURATION: 7.0,
@@ -82,6 +87,7 @@ const CONFIG = {
     ENEMY_TAIL_EDIBLE_SEGMENTS: 3,
     PLAYER_TAIL_EDIBLE_SEGMENTS: 3,
     ENEMY_TAIL_COLOR: 0x4DD0E1,
+    PLAYER_TAIL_COLOR: 0x81C784, // Lighter green for edible tail segments
     ENEMY_KILL_SCORE: 10,
     ENEMY_RESPAWN_TIME: 5,
     ENEMY_KILL_SEGMENTS: 5,
@@ -218,14 +224,14 @@ const CONFIG = {
     FROG_MOVEMENT: {
         BASE_SPEED: 2,
         SPEED_VARIATION: 0.5,
-        HOP_HEIGHT: 0.2,
+        HOP_HEIGHT: 0.8,
         HOP_FREQUENCY: 1.0,
         HOP_FREQUENCY_VARIATION: 0.5,
         MAX_DISTANCE: 3,
         DISTANCE_VARIATION: 1.0,
         DIRECTION_CHANGE_PROBABILITY: 0.005,
         MOVEMENT_STYLE: 'crawl',
-        MOVE_INTERVAL: 0.5
+        MOVE_INTERVAL: 0.8
     },
 };
 

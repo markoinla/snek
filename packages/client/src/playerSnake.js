@@ -251,15 +251,27 @@ export function syncPlayerMeshes(gameState, frameDelta) {
 // Shared geometry for all remote player segments (avoids per-segment allocation)
 const _sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
 
+// Compute a lighter version of a color for edible tail segments
+function lightenColor(hex, factor = 0.4) {
+    const color = new THREE.Color(hex);
+    color.r = color.r + (1 - color.r) * factor;
+    color.g = color.g + (1 - color.g) * factor;
+    color.b = color.b + (1 - color.b) * factor;
+    return color;
+}
+
 function createRemotePlayerMeshes(playerId, segments, colorIndex, scene, materials) {
     const meshes = [];
     const color = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length] || PLAYER_COLORS[1];
+    const tailColor = lightenColor(color);
+    const tailSegments = CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
     segments.forEach((pos, index) => {
         const isHead = index === 0;
+        const isEdibleTail = segments.length >= tailSegments && index >= segments.length - tailSegments;
         const baseMat = isHead ? materials.snake.head1 : materials.snake.body1;
         if (!baseMat) return;
         const mat = baseMat.clone();
-        mat.color = new THREE.Color(color);
+        mat.color = isEdibleTail ? tailColor.clone() : new THREE.Color(color);
         const mesh = new THREE.Mesh(_sharedBoxGeometry, mat);
         mesh.scale.setScalar(CONFIG.UNIT_SIZE);
         mesh.position.set(
@@ -606,17 +618,21 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
          // 3. Obstacle Collision (Ignore if ghost mode handled in core)
          if (collisionReason === 'OBSTACLE') {
             Logger.gameplay.info("Collision: Obstacle type:", obstacleType);
-            
+
             // Use specific death message based on obstacle type
             let deathReason = 'OBSTACLE_COLLISION';
             if (obstacleType === 'tree') {
                 deathReason = 'TREE_COLLISION';
-            } else if (obstacleType === 'bush') {
-                deathReason = 'BUSH_COLLISION';
             }
-            
+
             triggerPlayerDeath(gameState, deathReason);
             return;
+         }
+
+         // Bush collision: slow the player instead of killing
+         if (obstacleType === 'bush') {
+            Logger.gameplay.info("Bush collision: applying slow effect");
+            playerSnake.bushSlowUntil = currentTime + CONFIG.BUSH_SLOW_DURATION;
          }
 
          // 4. Enemy Collision - Check if it's an edible tail
@@ -1047,8 +1063,8 @@ function updatePowerUpState(currentTime, gameState) {
 function updatePowerUpInfoDisplay(gameState, message = '') {
     const { playerSnake, clock } = gameState;
     if (!playerSnake?.activePowerUps || !clock) return;
-    
-    const currentTime = clock.getElapsedTime();
+
+    const currentTime = gameState.flags?.useCoreSimulation ? gameState.simulation.time : clock.getElapsedTime();
 
     if (message) {
         UI.updatePowerUpInfo(message);
@@ -1083,8 +1099,8 @@ function updatePowerUpInfoDisplay(gameState, message = '') {
 export function updatePowerUps(gameState) {
     const { playerSnake, clock } = gameState;
     if (!playerSnake?.activePowerUps || !clock) return;
-    
-    const currentTime = clock.getElapsedTime();
+
+    const currentTime = gameState.flags?.useCoreSimulation ? gameState.simulation.time : clock.getElapsedTime();
     let powerUpStateChanged = false;
     
     // Check each active power-up
@@ -1130,6 +1146,19 @@ export function updatePowerUps(gameState) {
     }
 }
 
+// Cached material for player edible tail segments — created once, reused
+let playerEdibleTailMaterial = null;
+
+function getPlayerEdibleTailMaterial() {
+    if (!playerEdibleTailMaterial) {
+        playerEdibleTailMaterial = new THREE.MeshLambertMaterial({
+            color: CONFIG.PLAYER_TAIL_COLOR,
+            side: THREE.FrontSide,
+        });
+    }
+    return playerEdibleTailMaterial;
+}
+
 // Updates textures for the entire snake based on animation frame and ghost mode
 export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
     const { playerSnake, materials } = gameState;
@@ -1137,18 +1166,18 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
 
     // Only update if animation frame changed or forced update
     if (!forceUpdate && playerSnake.lastTextureUpdateFrame === playerSnake.animationFrame) return;
-    
+
     // Store current frame to avoid unnecessary updates
     playerSnake.lastTextureUpdateFrame = playerSnake.animationFrame;
 
     // Determine which materials to use based on state
     let headMaterial, bodyMaterial;
-    
+
     if (playerSnake.alphaMode.active) {
         // In Alpha Mode, use purple-tinted materials
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
+
         // Apply Alpha Mode color (purple)
         headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
         bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
@@ -1156,7 +1185,7 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
+
         // Make materials transparent
         headMaterial.transparent = true;
         headMaterial.opacity = 0.6;
@@ -1168,13 +1197,19 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2;
     }
 
+    const tailSegments = CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
+    const tailMat = getPlayerEdibleTailMaterial();
+
     // Apply materials to meshes
     playerSnakeMeshes.forEach((mesh, index) => {
         if (!mesh) return; // Skip if mesh is undefined
-        
+
         if (index === 0) {
             // Head
             mesh.material = headMaterial;
+        } else if (playerSnakeMeshes.length >= tailSegments && index >= playerSnakeMeshes.length - tailSegments) {
+            // Edible tail segment — use lighter color
+            mesh.material = tailMat;
         } else {
             // Body
             mesh.material = bodyMaterial;
@@ -1188,12 +1223,12 @@ function updatePlayerMaterialsAfterMove(gameState) {
     if (playerSnakeMeshes.length === 0 || !materials?.snake) return;
 
     let headMaterial, bodyMaterial;
-    
+
     if (playerSnake.alphaMode.active) {
         // In Alpha Mode, use purple-tinted materials
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
+
         // Apply Alpha Mode color (purple)
         headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
         bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
@@ -1201,7 +1236,7 @@ function updatePlayerMaterialsAfterMove(gameState) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
+
         // Make materials transparent
         headMaterial.transparent = true;
         headMaterial.opacity = 0.6;
@@ -1213,12 +1248,27 @@ function updatePlayerMaterialsAfterMove(gameState) {
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2;
     }
 
+    const tailSegments = CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
+    const tailMat = getPlayerEdibleTailMaterial();
+
     // Update head mesh
     playerSnakeMeshes[0].material = headMaterial;
 
     // Update the segment that was previously the head (now the first body segment)
     if (playerSnakeMeshes.length > 1 && playerSnakeMeshes[1]) {
-        playerSnakeMeshes[1].material = bodyMaterial;
+        // Check if this segment is now an edible tail segment
+        if (playerSnakeMeshes.length >= tailSegments && 1 >= playerSnakeMeshes.length - tailSegments) {
+            playerSnakeMeshes[1].material = tailMat;
+        } else {
+            playerSnakeMeshes[1].material = bodyMaterial;
+        }
+    }
+
+    // Update tail segments that may have shifted due to movement
+    for (let i = Math.max(2, playerSnakeMeshes.length - tailSegments); i < playerSnakeMeshes.length; i++) {
+        if (playerSnakeMeshes[i]) {
+            playerSnakeMeshes[i].material = tailMat;
+        }
     }
 }
 
@@ -1718,7 +1768,12 @@ function calculateActualSpeed(gameState) {
         // Multiply the speed multiplier by the alpha mode speed multiplier
         speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
     }
-    
+
+    // Apply bush slow if active
+    if (playerSnake.bushSlowUntil && playerSnake.bushSlowUntil > gameState.simulation?.time) {
+        speedMultiplier *= CONFIG.BUSH_SLOW_MULTIPLIER;
+    }
+
     // Apply the combined speed multiplier
     // Lower actualSpeed value = faster movement (since it's the time between moves)
     // So we divide by the multiplier to make the snake faster

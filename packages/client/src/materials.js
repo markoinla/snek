@@ -183,11 +183,18 @@ export async function loadAndCreateMaterials() {
                     });
                 }
             } else {
+                // Type-specific emissive tints so frogs glow with their powerup color
+                const emissiveByType = {
+                    speed: 0x2E7D32,   // green glow
+                    shrink: 0x6A1B9A,  // purple glow
+                    score_x2: 0x8D6E00, // amber glow
+                    ghost: 0x616161,   // soft white-grey glow
+                };
                 // Frog powerups use solid colors instead of textures for a blocky look
                 materials.food[foodType.type] = new THREE.MeshLambertMaterial({
                     color: foodType.colorHint,
                     side: THREE.FrontSide,
-                    emissive: 0x222222, // Add a bit of emissive glow to compensate for loss of metalness
+                    emissive: emissiveByType[foodType.type] || 0x222222,
                     transparent: foodType.type === 'ghost', // Ghost frog needs transparency
                     opacity: foodType.type === 'ghost' ? 0.7 : 1.0 // Ghost frog opacity
                 });
@@ -206,8 +213,12 @@ export async function loadAndCreateMaterials() {
             alphaTest: 0.5,    // Only render pixels with alpha > 0.5
             side: THREE.DoubleSide // Render both sides of the leaves
         });
-        materials.obstacle.bush = new THREE.MeshLambertMaterial({ 
-            color: 0x689F38
+        materials.obstacle.bush = new THREE.MeshLambertMaterial({
+            map: treeLeavesTexture,
+            color: 0x8BC34A,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide
         });
         materials.obstacle.flower_bush = new THREE.MeshLambertMaterial({ 
             map: flowerBushTexture, 

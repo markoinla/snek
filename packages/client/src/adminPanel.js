@@ -28,6 +28,8 @@ export function initAdminPanel() {
     player.add(CONFIG, 'MIN_SNAKE_LENGTH', 1, 10, 1).name('Min Length').onFinishChange(saveOverrides);
     player.add(CONFIG, 'ENLARGED_HEAD_DURATION', 0, 10, 0.5).name('Enlarged Head Duration').onFinishChange(saveOverrides);
     player.add(CONFIG, 'ENLARGED_HEAD_SCALE', 1, 5, 0.1).name('Enlarged Head Scale').onFinishChange(saveOverrides);
+    player.add(CONFIG, 'PLAYER_TAIL_EDIBLE_SEGMENTS', 1, 10, 1).name('Edible Tail Segs').onFinishChange(saveOverrides);
+    player.addColor(CONFIG, 'PLAYER_TAIL_COLOR').name('Tail Color').onFinishChange(saveOverrides);
     player.close();
 
     // -- Camera --

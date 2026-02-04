@@ -48,6 +48,7 @@ export type PlayerState = {
     progress: number;
   };
   speedBoostUntil?: number;
+  bushSlowUntil?: number;
   turnQueue?: {
     queue: Array<{ x: number; y: number; z: number }>;
     lastDirection: { x: number; y: number; z: number };

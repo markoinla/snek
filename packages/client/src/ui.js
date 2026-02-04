@@ -66,6 +66,13 @@ let gameStarted = false;
 let firstTimeUser = true; // Track if this is the first time playing
 let respawnTimerInterval = null;
 
+// Cached value spans for stable score updates
+let scoreValueSpan = null;
+let killsValueSpan = null;
+let highScoreValueSpan = null;
+let lastScoreValue = null;
+let lastKillsValue = null;
+
 // Initialize UI elements with text from config - wrapped in a function to ensure DOM is ready
 function initializeUIText() {
     // High Score label
@@ -73,9 +80,11 @@ function initializeUIText() {
         const highScoreLabel = document.createElement('span');
         highScoreLabel.classList.add('label');
         highScoreLabel.textContent = 'High Score: ';
+        highScoreValueSpan = document.createElement('span');
+        highScoreValueSpan.textContent = '0';
         highScoreInfoElement.innerHTML = '';
         highScoreInfoElement.appendChild(highScoreLabel);
-        highScoreInfoElement.appendChild(document.createTextNode('0'));
+        highScoreInfoElement.appendChild(highScoreValueSpan);
     }
 
     // Score label
@@ -83,9 +92,11 @@ function initializeUIText() {
         const scoreLabel = document.createElement('span');
         scoreLabel.classList.add('label');
         scoreLabel.textContent = CONFIG.GAME_TEXT.UI.SCORE_LABEL + ': ';
+        scoreValueSpan = document.createElement('span');
+        scoreValueSpan.textContent = '0';
         scoreElement.innerHTML = '';
         scoreElement.appendChild(scoreLabel);
-        scoreElement.appendChild(document.createTextNode('0'));
+        scoreElement.appendChild(scoreValueSpan);
     }
 
     // Kills label
@@ -93,9 +104,11 @@ function initializeUIText() {
         const killsLabel = document.createElement('span');
         killsLabel.classList.add('label');
         killsLabel.textContent = CONFIG.GAME_TEXT.UI.KILLS_LABEL + ': ';
+        killsValueSpan = document.createElement('span');
+        killsValueSpan.textContent = '0';
         killsElement.innerHTML = '';
         killsElement.appendChild(killsLabel);
-        killsElement.appendChild(document.createTextNode('0'));
+        killsElement.appendChild(killsValueSpan);
     }
 
     // Alpha mode label
@@ -634,63 +647,37 @@ export const deviceDetection = {
 };
 
 export function updateScore(score) {
-    if (scoreElement) {
-        // Find the label span if it exists
-        const labelSpan = scoreElement.querySelector('.label');
-        if (labelSpan) {
-            // Update only the text content after the label
-            const scoreText = document.createTextNode(score.toString());
+    if (!scoreElement) return;
+    if (score === lastScoreValue) return;
+    lastScoreValue = score;
 
-            // Remove any existing text nodes (non-label content)
-            Array.from(scoreElement.childNodes).forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE ||
-                    (node !== labelSpan && node.nodeType === Node.ELEMENT_NODE)) {
-                    scoreElement.removeChild(node);
-                }
-            });
-
-            // Append the new score text
-            scoreElement.appendChild(scoreText);
-        } else {
-            // Fallback if label doesn't exist
-            scoreElement.textContent = `${CONFIG.GAME_TEXT.UI.SCORE_LABEL}: ${score}`;
-        }
-
-        // Flash animation on score change
-        scoreElement.classList.remove('score-flash');
-        void scoreElement.offsetWidth; // force reflow to restart animation
-        scoreElement.classList.add('score-flash');
+    if (scoreValueSpan) {
+        scoreValueSpan.textContent = score;
+    } else {
+        scoreElement.textContent = `${CONFIG.GAME_TEXT.UI.SCORE_LABEL}: ${score}`;
     }
+
+    // Flash animation on score change
+    scoreElement.classList.remove('score-flash');
+    void scoreElement.offsetWidth; // force reflow to restart animation
+    scoreElement.classList.add('score-flash');
 }
 
 export function updateKills(kills) {
-    if (killsElement) {
-        // Find the label span if it exists
-        const labelSpan = killsElement.querySelector('.label');
-        if (labelSpan) {
-            // Update only the text content after the label
-            const killsText = document.createTextNode(kills.toString());
+    if (!killsElement) return;
+    if (kills === lastKillsValue) return;
+    lastKillsValue = kills;
 
-            // Remove any existing text nodes (non-label content)
-            Array.from(killsElement.childNodes).forEach(node => {
-                if (node.nodeType === Node.TEXT_NODE ||
-                    (node !== labelSpan && node.nodeType === Node.ELEMENT_NODE)) {
-                    killsElement.removeChild(node);
-                }
-            });
-
-            // Append the new kills text
-            killsElement.appendChild(killsText);
-        } else {
-            // Fallback if label doesn't exist
-            killsElement.textContent = `${CONFIG.GAME_TEXT.UI.KILLS_LABEL}: ${kills}`;
-        }
-
-        // Flash animation on kills change
-        killsElement.classList.remove('score-flash');
-        void killsElement.offsetWidth; // force reflow to restart animation
-        killsElement.classList.add('score-flash');
+    if (killsValueSpan) {
+        killsValueSpan.textContent = kills;
+    } else {
+        killsElement.textContent = `${CONFIG.GAME_TEXT.UI.KILLS_LABEL}: ${kills}`;
     }
+
+    // Flash animation on kills change
+    killsElement.classList.remove('score-flash');
+    void killsElement.offsetWidth; // force reflow to restart animation
+    killsElement.classList.add('score-flash');
 }
 
 /**
@@ -698,17 +685,12 @@ export function updateKills(kills) {
  * @param {number} highScore - The high score to display
  */
 export function updateHighScore(highScore) {
-    if (highScoreInfoElement) {
-        // Keep the label, update only the score value
-        const label = highScoreInfoElement.querySelector('.label');
-        if (label) {
-            highScoreInfoElement.innerHTML = '';
-            highScoreInfoElement.appendChild(label);
-            highScoreInfoElement.appendChild(document.createTextNode(highScore));
-        } else {
-            // Fallback if label not found
-            highScoreInfoElement.textContent = 'High Score: ' + highScore;
-        }
+    if (!highScoreInfoElement) return;
+
+    if (highScoreValueSpan) {
+        highScoreValueSpan.textContent = highScore;
+    } else {
+        highScoreInfoElement.textContent = 'High Score: ' + highScore;
     }
 }
 
