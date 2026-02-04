@@ -585,6 +585,7 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
         if (event.type === EventType.PlayerRespawned && isLocalPlayer) {
             UI.hideRespawnOverlay();
             Player.syncPlayerMeshes(state);
+            Player.playRespawnAssemblyEffect(state);
         }
     });
 }

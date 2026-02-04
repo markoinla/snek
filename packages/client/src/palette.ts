@@ -75,6 +75,7 @@ export const PALETTE = {
     death: 0xFF4444,
     speedTrail: 0xAED581,       // green-yellow for normal speed trail
     alphaSpeedTrail: 0xCE93D8,  // purple for alpha mode trail
+    respawn: 0x88CCFF,          // light blue for respawn assembly
   },
 
   // UI

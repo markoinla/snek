@@ -1781,6 +1781,34 @@ export function playPlayerDeathEffects(gameState) {
     });
 }
 
+// --- Respawn Assembly ---
+
+/**
+ * Staggered pop-in animation when a player respawns.
+ * Call immediately after syncPlayerMeshes creates the new meshes.
+ */
+export function playRespawnAssemblyEffect(gameState) {
+    const { scene, camera } = gameState;
+    const count = playerSnakeMeshes.length;
+    if (count === 0 || !scene || !camera) return;
+
+    // Small particle burst at head position
+    const head = playerSnakeMeshes[0];
+    if (head) {
+        createExplosion(scene, camera, head.position.clone(), 15, PALETTE.particles.respawn ?? 0x88ccff);
+    }
+
+    // Staggered scale pop-in from head → tail
+    playerSnakeMeshes.forEach((mesh, i) => {
+        if (!mesh) return;
+        mesh.scale.setScalar(0);
+        const delay = i * 0.06; // 60ms stagger per segment
+        setTimeout(() => {
+            tweenUniform(mesh, 'scale', 0, 1.0, 0.25, ease.outBounce);
+        }, delay * 1000);
+    });
+}
+
 // Update Alpha Mode progress based on score
 function updateAlphaModeProgress(score, gameState) {
     const { playerSnake } = gameState;
