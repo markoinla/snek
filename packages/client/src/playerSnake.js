@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import CONFIG from './config';
 import { FOOD_TYPES } from './constants'; // Import FOOD_TYPES for power-ups
 import { createSnakeSegmentMesh } from './utils.js';
-import { createExplosion } from './particleSystem.js';
+import { createExplosion, createSpeedTrail } from './particleSystem.js';
 import { setGameOver } from './main.ts'; // To trigger game over
 import { checkEnemyCollision, killEnemySnake as killEnemy } from './enemySnake.js';
 import { checkAndEatFood } from './food.js';
@@ -2002,6 +2002,41 @@ export function updateAlphaModeVisuals(gameState, deltaTime) {
             }
         }
     }
+}
+
+// --- Speed Trail ---
+let speedTrailTimer = 0;
+
+/**
+ * Emit speed trail particles behind the snake head when moving fast.
+ * Call once per render frame from the animation loop.
+ */
+export function updateSpeedTrail(gameState, deltaTime) {
+    const { playerSnake, scene } = gameState;
+    if (!playerSnake || !scene || playerSnake.segments?.length === 0) return;
+    if (gameState.flags?.gameOver) return;
+
+    speedTrailTimer += deltaTime;
+    if (speedTrailTimer < CONFIG.SPEED_TRAIL_EMIT_INTERVAL) return;
+    speedTrailTimer = 0;
+
+    // Determine speed ratio (higher = faster than base)
+    const actualSpeed = calculateActualSpeed(gameState);
+    const speedRatio = CONFIG.BASE_SNAKE_SPEED / (actualSpeed || CONFIG.BASE_SNAKE_SPEED);
+
+    if (speedRatio < CONFIG.SPEED_TRAIL_SPEED_THRESHOLD) return;
+
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+
+    const dir = {
+        x: playerSnake.direction.x,
+        z: playerSnake.direction.z
+    };
+
+    const isAlpha = playerSnake.alphaMode?.active || false;
+
+    createSpeedTrail(scene, head.position, dir, isAlpha);
 }
 
 /** Return all visible player meshes (local + remote) for outline pass. */

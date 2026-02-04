@@ -73,6 +73,8 @@ export const PALETTE = {
     kill: 0xFF5722,
     normalFood: 0x4CAF50,
     death: 0xFF4444,
+    speedTrail: 0xAED581,       // green-yellow for normal speed trail
+    alphaSpeedTrail: 0xCE93D8,  // purple for alpha mode trail
   },
 
   // UI

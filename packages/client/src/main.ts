@@ -733,6 +733,9 @@ function render() {
     // Update alpha mode postprocessing effects (bloom/outline)
     Player.updateAlphaModeVisuals(gameState, frameTime);
 
+    // Emit speed trail particles when moving fast
+    Player.updateSpeedTrail(gameState, frameTime);
+
     // Rebuild outline selection from visible game meshes
     syncOutlinedObjects();
 

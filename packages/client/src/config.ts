@@ -106,6 +106,14 @@ const CONFIG = {
     ENLARGED_HEAD_DURATION: 0,
     ENLARGED_HEAD_SCALE: 1,
 
+    // Speed trail particles
+    SPEED_TRAIL_EMIT_INTERVAL: 0.06,   // Seconds between trail particle spawns
+    SPEED_TRAIL_PARTICLE_COUNT: 2,     // Particles per emit
+    SPEED_TRAIL_LIFESPAN: 0.35,        // Seconds each trail particle lives
+    SPEED_TRAIL_SIZE: 0.3,             // Scale of trail particles
+    SPEED_TRAIL_SPEED: 0.8,            // Drift speed of trail particles
+    SPEED_TRAIL_SPEED_THRESHOLD: 1.2,  // Speed ratio above which trail appears (1.0 = base speed)
+
     // Particle effects
     PARTICLE_COUNT_KILL: 10,
     PARTICLE_COLOR_KILL: 0xFF5722,
