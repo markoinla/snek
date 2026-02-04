@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { gameState, resetGameStateForNewGame, saveHighScore, getAdjustedSetting } from './gameState.js';
 import * as Utils from './utils.js';
 import * as SceneSetup from './sceneSetup.js';
@@ -18,13 +18,14 @@ import { performanceSettings } from './deviceUtils.js';
 import { initLogger, Logger, isLoggingEnabled } from './debugLogger.js';
 import Stats from '../lib/stats.module.js';
 import * as GameModes from './gameModes.js';
-import { createInitialCoreState } from './core/state.ts';
+import { createInitialCoreState, createPlayerState } from './core/state.ts';
 import { EVENT_SCHEMA_VERSION, EventType } from 'snek-shared';
 import { bindCoreState } from './core/sync.ts';
 import { stepCore } from './core/step.ts';
 import { applyPlayerInput } from './core/player.ts';
 import { spawnFoodCore } from './core/spawn.ts';
 import { spawnInitialEnemiesCore } from './core/enemy.ts';
+import { connectMultiplayer } from './network/colyseusClient.ts';
 
 // FPS counter
 let stats;
@@ -91,9 +92,21 @@ async function init() {
     gameState.camera = SceneSetup.createCamera();
     gameState.renderer = SceneSetup.createRenderer(canvas);
     gameState.clock = new THREE.Clock();
-    const urlSeed = new URLSearchParams(window.location.search).get('seed');
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Admin panel (dev tool) - activate via ?admin=1
+    if (urlParams.get('admin') === '1') {
+        import('./adminPanel.js').then(({ initAdminPanel }) => {
+            initAdminPanel();
+        }).catch(console.error);
+    }
+
+    const urlSeed = urlParams.get('seed');
     const seed = urlSeed ? Number(urlSeed) : Date.now();
     gameState.core = createInitialCoreState(seed);
+    // Create local player in single-player mode
+    gameState.core.players['local'] = createPlayerState('local');
+    gameState.localPlayerId = 'local';
     Logger.system.info(`Core RNG seed: ${seed}`);
     Logger.system.info(`Event schema version: ${EVENT_SCHEMA_VERSION}`);
     bindCoreState(gameState);
@@ -158,11 +171,19 @@ async function init() {
     });
     
     // Add stats display if query string parameter is set
-    const queryString = window.location.search;
-    const urlParams = new URLSearchParams(queryString);
     if (urlParams.get('stats') === 'true') {
         stats = new Stats();
         document.body.appendChild(stats.dom);
+    }
+
+    const multiplayerEnabled = window.location.pathname === '/multi';
+    if (multiplayerEnabled) {
+        try {
+            await connectMultiplayer(gameState);
+            UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
+        } catch (error) {
+            Logger.system.warn('Multiplayer connection failed; running offline.', error);
+        }
     }
     
     // Add event listeners for game state changes
@@ -313,20 +334,23 @@ function resetGame() {
             // Final stage: Spawn new entities with slight delays
             setTimeout(() => {
                     // Respawn initial elements
-                    Obstacles.spawnInitialObstacles(gameState);
-                if (gameState.flags.useCoreSimulation) {
+                    const multiplayerEnabled = gameState.network?.enabled;
+                    if (!multiplayerEnabled) {
+                        Obstacles.spawnInitialObstacles(gameState);
+                    }
+                if (gameState.flags.useCoreSimulation && !multiplayerEnabled) {
                     const foodCount = getAdjustedSetting('NUM_INITIAL_FOOD') || CONFIG.NUM_INITIAL_FOOD;
                     spawnFoodCore(gameState.core, foodCount);
                     Food.syncFoodMeshes(gameState);
-                } else {
+                } else if (!multiplayerEnabled) {
                     Food.spawnInitialFood(gameState); // Spawn food after obstacles
                 }
                 
                 setTimeout(() => {
-                    if (gameState.flags.useCoreSimulation) {
+                    if (gameState.flags.useCoreSimulation && !multiplayerEnabled) {
                         spawnInitialEnemiesCore(gameState.core, CONFIG.NUM_ENEMIES);
                         Enemy.syncEnemyMeshes(gameState);
-                    } else {
+                    } else if (!multiplayerEnabled) {
                         Enemy.spawnInitialEnemies(gameState); // Spawn enemies last
                     }
                     
@@ -335,7 +359,9 @@ function resetGame() {
                     UI.updateKills(0); // Initialize kill counter
 
                     // Rebind core state to the newly reset runtime state
-                    bindCoreState(gameState);
+                    if (!multiplayerEnabled) {
+                        bindCoreState(gameState);
+                    }
                     
                     // Restore music if needed
                     Audio.restoreMusicIfEnabled();
@@ -403,6 +429,103 @@ export function requestRestart() {
     }
 }
 
+// --- Event Processing ---
+// Shared event handler for both single-player (local sim) and multiplayer (server events)
+function processEventEnvelopes(envelopes, state, isMultiplayer) {
+    const localId = state.localPlayerId || 'local';
+
+    envelopes.forEach(envelope => {
+        if (envelope.version !== EVENT_SCHEMA_VERSION) {
+            Logger.system.warn(`Event schema mismatch. Expected ${EVENT_SCHEMA_VERSION}, got ${envelope.version}`);
+            return;
+        }
+
+        const event = envelope.event;
+        const isLocalPlayer = !event.playerId || event.playerId === localId;
+
+        if (event.type === EventType.PlayerDead) {
+            if (isLocalPlayer) {
+                Player.playPlayerDeathEffects(state);
+                if (!isMultiplayer) {
+                    setGameOver(state, event.payload?.reason || 'DEFAULT');
+                } else {
+                    // In multiplayer, death is temporary — show respawn overlay
+                    UI.showRespawnOverlay(
+                        event.payload?.reason || 'DEFAULT',
+                        CONFIG.PLAYER_RESPAWN_DELAY_TICKS,
+                        state.simulation?.tickRate || 30
+                    );
+                }
+            }
+        }
+        if (event.type === EventType.ScoreChanged && isLocalPlayer) {
+            UI.updateScore(event.payload.score);
+        }
+        if (event.type === EventType.FoodSpawned) {
+            Food.syncFoodMeshes(state);
+        }
+        if (event.type === EventType.FoodEaten) {
+            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
+            if (isLocalPlayer) {
+                if (event.payload.type === 'normal') {
+                    state.stats.applesEaten++;
+                    Audio.playSoundEffect('eatApple');
+                    if (event.payload.effects.speedBoostDuration > 0) {
+                        UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF);
+                    }
+                } else {
+                    state.stats.frogsEaten++;
+                    Audio.playSoundEffect('eatFrog');
+                }
+                if (foodTypeInfo?.effectText) {
+                    UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
+                }
+            }
+        }
+        if (event.type === EventType.EnemyKilled) {
+            Enemy.renderEnemyKillEffects(event.payload.enemyId, state);
+            if (isLocalPlayer && state.playerSnake?.alphaMode?.active) {
+                Audio.playSoundEffect('alphaKillExplode1');
+                Audio.playAlphaKillVoice();
+            }
+            if (isLocalPlayer) {
+                state.stats.snakesEaten++;
+            }
+            UI.updateKills(state.enemies.kills);
+        }
+        if (event.type === EventType.PowerupApplied && isLocalPlayer) {
+            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
+            if (foodTypeInfo?.effectText) {
+                UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
+            }
+        }
+        if (event.type === EventType.AlphaModeActivated && isLocalPlayer) {
+            UI.showAlphaModeActivation();
+            Audio.playAlphaModeActivation();
+        }
+        if (event.type === EventType.AlphaModeEnded && isLocalPlayer) {
+            UI.showPowerUpTextEffect("Alpha Mode ended");
+        }
+        if (event.type === EventType.EnemyRespawned) {
+            Enemy.syncEnemyMeshes(state);
+        }
+        if (event.type === EventType.PlayerKilledPlayer) {
+            if (isLocalPlayer) {
+                Audio.playSoundEffect('eatApple');
+                UI.addKillFeedMessage(`You killed a player!`);
+            } else if (event.payload?.victimId === localId) {
+                UI.addKillFeedMessage(`You were killed!`);
+            } else {
+                UI.addKillFeedMessage(`Player eliminated`);
+            }
+        }
+        if (event.type === EventType.PlayerRespawned && isLocalPlayer) {
+            UI.hideRespawnOverlay();
+            Player.syncPlayerMeshes(state);
+        }
+    });
+}
+
 // --- Main Loop ---
 function animate() {
     requestAnimationFrame(animate);
@@ -437,115 +560,84 @@ function render() {
         gameState.flags.audioHealthCheckRun = false;
     }
 
-    let subSteps = 0;
-    while (gameState.simulation.accumulator >= gameState.simulation.fixedDelta && subSteps < gameState.simulation.maxSubSteps) {
-        const deltaTime = gameState.simulation.fixedDelta;
-        gameState.simulation.time += deltaTime;
+    const isMultiplayer = gameState.network?.enabled;
 
-        // Update game state only if running
-        if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
-            if (gameState.flags.useCoreSimulation) {
-                // Apply queued input
-                if (gameState.inputQueue.length > 1) {
-                    gameState.inputQueue.sort((a, b) => a.tick - b.tick);
-                }
-                while (gameState.inputQueue.length > 0) {
-                    const input = gameState.inputQueue.shift();
-                    if (input.tick < gameState.core.tick) {
-                        continue;
-                    }
-                    applyPlayerInput(gameState.core, input);
-                }
-
-                const coreResult = stepCore(gameState.core, deltaTime);
-                if (coreResult?.events?.length) {
-                    coreResult.events.forEach(envelope => {
-                        if (envelope.version !== EVENT_SCHEMA_VERSION) {
-                            Logger.system.warn(`Event schema mismatch. Expected ${EVENT_SCHEMA_VERSION}, got ${envelope.version}`);
-                            return;
-                        }
-
-                        const event = envelope.event;
-                        if (event.type === EventType.PlayerDead) {
-                            Player.playPlayerDeathEffects(gameState);
-                            setGameOver(gameState, event.payload?.reason || 'DEFAULT');
-                        }
-                        if (event.type === EventType.ScoreChanged) {
-                            UI.updateScore(event.payload.score);
-                        }
-                        if (event.type === EventType.FoodSpawned) {
-                            Food.syncFoodMeshes(gameState);
-                        }
-                        if (event.type === EventType.FoodEaten) {
-                            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
-                            if (event.payload.type === 'normal') {
-                                gameState.stats.applesEaten++;
-                                Audio.playSoundEffect('eatApple');
-                                if (event.payload.effects.speedBoostDuration > 0) {
-                                    UI.showPowerUpTextEffect("Speed Boost!", 0x00BFFF);
-                                }
-                            } else {
-                                gameState.stats.frogsEaten++;
-                                Audio.playSoundEffect('eatFrog');
-                            }
-                            if (foodTypeInfo?.effectText) {
-                                UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
-                            }
-                        }
-                        if (event.type === EventType.EnemyKilled) {
-                            Enemy.renderEnemyKillEffects(event.payload.enemyId, gameState);
-                            if (gameState.playerSnake?.alphaMode?.active) {
-                                Audio.playSoundEffect('alphaKillExplode1');
-                                Audio.playAlphaKillVoice();
-                            }
-                            gameState.stats.snakesEaten++;
-                            UI.updateKills(gameState.enemies.kills);
-                        }
-                        if (event.type === EventType.PowerupApplied) {
-                            const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
-                            if (foodTypeInfo?.effectText) {
-                                UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
-                            }
-                        }
-                        if (event.type === EventType.AlphaModeActivated) {
-                            UI.showAlphaModeActivation();
-                            Audio.playAlphaModeActivation();
-                        }
-                        if (event.type === EventType.AlphaModeEnded) {
-                            UI.showPowerUpTextEffect("Alpha Mode ended");
-                        }
-                        if (event.type === EventType.EnemyRespawned) {
-                            Enemy.syncEnemyMeshes(gameState);
-                        }
-                    });
-                }
-
-                Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
-                Player.syncPlayerMeshes(gameState);
-                Enemy.syncEnemyMeshes(gameState);
-                Food.syncFoodMeshes(gameState);
-            } else {
-                Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
-                Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);
-            }
-
-            // Update power-up timers and UI display
-            Player.updatePowerUps(gameState);
-            Enemy.checkEnemyRespawns(gameState); // Check if any enemies need to respawn
-            Particles.updateParticles(deltaTime, gameState.scene); // Update particles regardless of game over? Your choice.
-            
-            // Update frog animations
-            Food.updateFoodAnimations(gameState, deltaTime);
-        } else {
-            // Still update particles even if game is over?
-            Particles.updateParticles(deltaTime, gameState.scene);
-            
-            // Continue animating frogs even when game is paused for visual appeal
-            Food.updateFoodAnimations(gameState, deltaTime);
+    if (isMultiplayer) {
+        // Multiplayer: no local simulation stepping needed.
+        // Drain server events once per frame and advance the timer.
+        const consumed = Math.min(
+            Math.floor(gameState.simulation.accumulator / gameState.simulation.fixedDelta),
+            gameState.simulation.maxSubSteps
+        );
+        if (consumed > 0) {
+            gameState.simulation.accumulator -= consumed * gameState.simulation.fixedDelta;
+            gameState.simulation.time += consumed * gameState.simulation.fixedDelta;
         }
 
-        subSteps += 1;
-        gameState.simulation.accumulator -= gameState.simulation.fixedDelta;
+        if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
+            // Drain server events once per frame
+            if (gameState.network.pendingServerEvents?.length) {
+                const events = gameState.network.pendingServerEvents.splice(0);
+                processEventEnvelopes(events, gameState, true);
+            }
+            Player.updatePlayerStateOnly(frameTime, gameState.simulation.time, gameState);
+            Player.updatePowerUps(gameState);
+            Enemy.checkEnemyRespawns(gameState);
+        }
+        Particles.updateParticles(frameTime, gameState.scene);
+        Food.updateFoodAnimations(gameState, frameTime);
+    } else {
+        // Single-player / offline: fixed-timestep simulation loop
+        let subSteps = 0;
+        while (gameState.simulation.accumulator >= gameState.simulation.fixedDelta && subSteps < gameState.simulation.maxSubSteps) {
+            const deltaTime = gameState.simulation.fixedDelta;
+            gameState.simulation.time += deltaTime;
+
+            if (gameState.flags.gameRunning && !gameState.flags.gameOver) {
+                if (gameState.flags.useCoreSimulation) {
+                    if (gameState.inputQueue.length > 1) {
+                        gameState.inputQueue.sort((a, b) => a.tick - b.tick);
+                    }
+                    while (gameState.inputQueue.length > 0) {
+                        const input = gameState.inputQueue.shift();
+                        if (input.tick < gameState.core.tick) {
+                            continue;
+                        }
+                        applyPlayerInput(gameState.core, input);
+                    }
+
+                    const coreResult = stepCore(gameState.core, deltaTime);
+                    if (coreResult?.events?.length) {
+                        processEventEnvelopes(coreResult.events, gameState, false);
+                    }
+
+                    Player.updatePlayerStateOnly(deltaTime, gameState.simulation.time, gameState);
+                } else {
+                    Player.updatePlayer(deltaTime, gameState.simulation.time, gameState);
+                    Enemy.updateEnemies(deltaTime, gameState.simulation.time, gameState);
+                }
+
+                Player.updatePowerUps(gameState);
+                Enemy.checkEnemyRespawns(gameState);
+                Particles.updateParticles(deltaTime, gameState.scene);
+                Food.updateFoodAnimations(gameState, deltaTime);
+            } else {
+                Particles.updateParticles(deltaTime, gameState.scene);
+                Food.updateFoodAnimations(gameState, deltaTime);
+            }
+
+            subSteps += 1;
+            gameState.simulation.accumulator -= gameState.simulation.fixedDelta;
+        }
+    }
+
+    // Mesh interpolation runs once per render frame (60fps) for smooth visuals.
+    // In multiplayer mode, frameTime drives the exponential smoothing.
+    if (gameState.flags.useCoreSimulation && gameState.flags.gameRunning && !gameState.flags.gameOver) {
+        const interpolationDelta = gameState.network?.enabled ? frameTime : undefined;
+        Player.syncAllPlayerMeshes(gameState, interpolationDelta);
+        Enemy.syncEnemyMeshes(gameState, interpolationDelta);
+        Food.syncFoodMeshes(gameState);
     }
 
     // Update camera (even slightly after game over for effect?)

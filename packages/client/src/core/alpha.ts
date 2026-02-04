@@ -1,18 +1,18 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import { getAdjustedSetting } from '../gameState.js';
 import type { CoreState, CoreStepResult } from './types';
 import { EventType } from 'snek-shared';
 
-export function addAlphaPointsCore(state: CoreState, points: number, events: CoreStepResult['events']) {
-  const player = state.player;
+export function addAlphaPointsCore(state: CoreState, playerId: string, points: number, events: CoreStepResult['events']) {
+  const player = state.players[playerId];
   if (player.alphaMode.active) return;
 
   player.alphaMode.alphaPoints += points;
-  events.push({ type: EventType.AlphaPointsChanged, payload: { points: player.alphaMode.alphaPoints } });
+  events.push({ type: EventType.AlphaPointsChanged, playerId, payload: { points: player.alphaMode.alphaPoints } });
 }
 
-export function decayAlphaPointsCore(state: CoreState, currentTime: number) {
-  const player = state.player;
+export function decayAlphaPointsCore(state: CoreState, playerId: string, currentTime: number) {
+  const player = state.players[playerId];
 
   if (!player.alphaMode.lastDecayTime || player.alphaMode.lastDecayTime === 0 || isNaN(player.alphaMode.lastDecayTime)) {
     player.alphaMode.lastDecayTime = currentTime;
@@ -30,21 +30,21 @@ export function decayAlphaPointsCore(state: CoreState, currentTime: number) {
   player.alphaMode.lastDecayTime = currentTime;
 }
 
-export function checkAlphaModeActivationPointsCore(state: CoreState, currentTime: number, events: CoreStepResult['events']) {
-  const player = state.player;
+export function checkAlphaModeActivationPointsCore(state: CoreState, playerId: string, currentTime: number, events: CoreStepResult['events']) {
+  const player = state.players[playerId];
   if (player.alphaMode.active) return false;
 
   const pointsThreshold = getAdjustedSetting('ALPHA_POINTS_THRESHOLD') || CONFIG.ALPHA_POINTS_THRESHOLD;
   if (player.alphaMode.alphaPoints >= pointsThreshold) {
     player.alphaMode.alphaPoints = 0;
-    activateAlphaModeCore(state, currentTime, events);
+    activateAlphaModeCore(state, playerId, currentTime, events);
     return true;
   }
   return false;
 }
 
-export function activateAlphaModeCore(state: CoreState, currentTime: number, events: CoreStepResult['events']) {
-  const player = state.player;
+export function activateAlphaModeCore(state: CoreState, playerId: string, currentTime: number, events: CoreStepResult['events']) {
+  const player = state.players[playerId];
   const alphaDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
 
   player.alphaMode.active = true;
@@ -55,18 +55,18 @@ export function activateAlphaModeCore(state: CoreState, currentTime: number, eve
   player.alphaMode.consecutiveActivations = (player.alphaMode.consecutiveActivations || 0) + 1;
   player.alphaMode.scoreMultiplierStack = [];
 
-  events.push({ type: EventType.AlphaModeActivated, payload: { duration: alphaDuration } });
+  events.push({ type: EventType.AlphaModeActivated, playerId, payload: { duration: alphaDuration } });
 }
 
-export function updateAlphaModeCore(state: CoreState, currentTime: number, events: CoreStepResult['events']) {
-  const player = state.player;
+export function updateAlphaModeCore(state: CoreState, playerId: string, currentTime: number, events: CoreStepResult['events']) {
+  const player = state.players[playerId];
   if (!player.alphaMode.active) return;
 
   if (currentTime >= player.alphaMode.endTime) {
     player.alphaMode.active = false;
     player.alphaMode.scoreMultiplier = 1.0;
     player.alphaMode.scoreMultiplierStack = [];
-    events.push({ type: EventType.AlphaModeEnded });
+    events.push({ type: EventType.AlphaModeEnded, playerId });
     return;
   }
 
@@ -81,10 +81,11 @@ export function updateAlphaModeCore(state: CoreState, currentTime: number, event
   }
 }
 
-export function addScoreMultiplierCore(state: CoreState, currentTime: number) {
-  if (!state.player.alphaMode.active) return;
+export function addScoreMultiplierCore(state: CoreState, playerId: string, currentTime: number) {
+  const player = state.players[playerId];
+  if (!player.alphaMode.active) return;
 
-  state.player.alphaMode.scoreMultiplierStack.push({
+  player.alphaMode.scoreMultiplierStack.push({
     value: CONFIG.ALPHA_MODE_SCORE_MULTIPLIER,
     endTime: currentTime + CONFIG.ALPHA_MODE_SCORE_MULTIPLIER_DURATION,
   });

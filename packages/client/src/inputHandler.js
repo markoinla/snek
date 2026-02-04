@@ -1,7 +1,38 @@
 import { turnLeft as playerTurnLeft, turnRight as playerTurnRight } from './playerSnake.js';
+import { INPUT_SCHEMA_VERSION } from 'snek-shared';
 import { requestRestart } from './main.ts'; // Assuming main exports a restart function
 
 export function setupInputListeners(gameState, uiElements) {
+    // Track how many inputs we've sent since the last snapshot so each one
+    // targets a unique future server tick.  Reset when a snapshot arrives
+    // (the snapshot handler sets network.lastSnapshotTick).
+    let inputSequence = 0;
+    let lastSeenSnapshotTick = 0;
+
+    const enqueueInput = (turn) => {
+        const baseTick = gameState.core.tick;
+
+        if (gameState.network?.enabled) {
+            // Reset sequence counter when a new snapshot arrives
+            const snTick = gameState.network.lastSnapshotTick || 0;
+            if (snTick !== lastSeenSnapshotTick) {
+                lastSeenSnapshotTick = snTick;
+                inputSequence = 0;
+            }
+            inputSequence++;
+        }
+
+        const targetTick = gameState.network?.enabled
+            ? baseTick + inputSequence   // each input gets a unique future tick
+            : baseTick + 1;             // single-player: always next tick
+
+        const input = { playerId: gameState.localPlayerId || 'local', tick: targetTick, turn, version: INPUT_SCHEMA_VERSION };
+        if (gameState.network?.enabled && typeof gameState.network.sendInput === 'function') {
+            gameState.network.sendInput(input);
+            return;
+        }
+        gameState.inputQueue.push(input);
+    };
 
     const handleKeyDown = (event) => {
         if (gameState.flags.gameOver) {
@@ -20,7 +51,7 @@ export function setupInputListeners(gameState, uiElements) {
             case 'arrowleft':
             case 'a':
                 if (gameState.flags.useCoreSimulation) {
-                    gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'left' });
+                    enqueueInput('left');
                 } else {
                     playerTurnLeft(gameState); // Pass gameState
                     // Set flag for immediate direction change
@@ -30,7 +61,7 @@ export function setupInputListeners(gameState, uiElements) {
             case 'arrowright':
             case 'd':
                 if (gameState.flags.useCoreSimulation) {
-                    gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'right' });
+                    enqueueInput('right');
                 } else {
                     playerTurnRight(gameState); // Pass gameState
                     // Set flag for immediate direction change
@@ -47,7 +78,7 @@ export function setupInputListeners(gameState, uiElements) {
         if (gameState.flags.gameOver) return;
         e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
-            gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'left' });
+            enqueueInput('left');
         } else {
             playerTurnLeft(gameState);
             // Set flag for immediate direction change
@@ -59,7 +90,7 @@ export function setupInputListeners(gameState, uiElements) {
          if (gameState.flags.gameOver) return;
          e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
-            gameState.inputQueue.push({ playerId: 'local', tick: gameState.core.tick + 1, turn: 'right' });
+            enqueueInput('right');
         } else {
             playerTurnRight(gameState);
             // Set flag for immediate direction change

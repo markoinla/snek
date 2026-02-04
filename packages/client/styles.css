@@ -321,7 +321,15 @@ canvas { display: block; }
 }
 
 /* Buttons */
-#startButton {
+.start-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    width: 100%;
+}
+
+.start-mode-button {
     background-color: #BB86FC; /* Material Design primary */
     color: #000; /* Dark text on light button */
     border: none;
@@ -330,25 +338,32 @@ canvas { display: block; }
     font-size: 1em;
     border-radius: 4px; /* Squared corners for modern look */
     cursor: pointer;
-    margin-top: auto; /* Push to bottom of flex container */
     font-family: 'Roboto', 'Arial', sans-serif;
     font-weight: 500;
     letter-spacing: 1.25px;
     text-transform: uppercase; /* Material buttons use uppercase */
     transition: all 0.2s ease;
-    box-shadow: none; /* Remove shadow for flatter design */
+    box-shadow: none;
     position: relative;
     overflow: hidden;
-    width: 100%; /* Full width for login style */
-    margin-bottom: 8px;
+    width: 100%;
 }
 
-#startButton:hover {
-    background-color: #9D4EDD; /* Slightly darker on hover */
+.start-mode-button:hover {
+    background-color: #9D4EDD;
 }
 
-#startButton:active {
-    transform: scale(0.98); /* Subtle press effect */
+.start-mode-button:active {
+    transform: scale(0.98);
+}
+
+.start-mode-button.multiplayer {
+    background-color: #03DAC6; /* Material Design teal */
+    color: #000;
+}
+
+.start-mode-button.multiplayer:hover {
+    background-color: #019d8e;
 }
 
 #restartButton {
@@ -547,7 +562,7 @@ canvas { display: block; }
         font-size: 0.9em;
     }
     
-    #startButton, #restartButton {
+    .start-mode-button, #restartButton {
         height: 40px;
         padding: 0 16px;
         font-size: 0.9em;
@@ -655,7 +670,7 @@ canvas { display: block; }
         font-size: 0.85em;
     }
     
-    #startButton, #restartButton {
+    .start-mode-button, #restartButton {
         height: 36px;
         padding: 0 12px;
         font-size: 0.85em;
@@ -1284,5 +1299,181 @@ canvas { display: block; }
         flex: 1;
         text-align: center;
         padding: 10px 16px;
+    }
+}
+
+/* ================================================
+   MULTIPLAYER UI STYLES
+   ================================================ */
+
+/* Respawn Overlay */
+#respawnOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 500;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+#respawnOverlay.active {
+    display: flex;
+}
+
+.respawn-content {
+    text-align: center;
+    color: white;
+}
+
+.respawn-reason {
+    display: block;
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #ff4444;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+}
+
+.respawn-countdown {
+    display: block;
+    font-size: 1.4em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Multiplayer Scoreboard */
+.mp-scoreboard {
+    display: none;
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 50;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    padding: 8px 12px;
+    min-width: 140px;
+    color: white;
+    font-size: 0.85em;
+    pointer-events: none;
+}
+
+.mp-scoreboard.active {
+    display: block;
+}
+
+.mp-scoreboard-header {
+    font-weight: 700;
+    font-size: 0.75em;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.mp-scoreboard-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.mp-scoreboard-entry {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.mp-scoreboard-entry.local {
+    font-weight: 700;
+}
+
+.mp-scoreboard-entry.dead {
+    opacity: 0.4;
+}
+
+.mp-scoreboard-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.mp-scoreboard-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 80px;
+}
+
+.mp-scoreboard-score {
+    font-variant-numeric: tabular-nums;
+    min-width: 30px;
+    text-align: right;
+}
+
+/* Kill Feed */
+.kill-feed {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    pointer-events: none;
+}
+
+.kill-feed-entry {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    animation: killFeedFadeIn 0.3s ease-out;
+}
+
+.kill-feed-entry.fade-out {
+    animation: killFeedFadeOut 0.5s ease-in forwards;
+}
+
+@keyframes killFeedFadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes killFeedFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Mobile adjustments for multiplayer UI */
+@media (max-width: 768px) {
+    .mp-scoreboard {
+        top: 60px;
+        right: 10px;
+        font-size: 0.75em;
+        min-width: 110px;
+    }
+
+    .kill-feed {
+        top: 60px;
+        left: 10px;
+    }
+
+    .respawn-reason {
+        font-size: 1.8em;
+    }
+
+    .respawn-countdown {
+        font-size: 1.1em;
     }
 }

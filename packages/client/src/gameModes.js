@@ -1,6 +1,6 @@
 // gameModes.js - Handles game mode functionality for ALPHA SNEK
 
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { gameState, saveGameMode, getCurrentModeSettings } from './gameState.js';
 import { Logger } from './debugLogger.js';
 

@@ -1,10 +1,11 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState, CoreStepResult } from './types';
 import { EventType } from 'snek-shared';
 import { checkObstacleCollisionCore } from './collision';
 
 export type PlayerInput = {
   turn: 'left' | 'right' | null;
+  playerId?: string;
 };
 
 export type TurnQueueState = {
@@ -18,8 +19,8 @@ export type PlayerMoveResult = {
   obstacleType?: string | null;
 };
 
-export function evaluatePlayerMove(state: CoreState, collisionForgiveness = 0): PlayerMoveResult {
-  const player = state.player;
+export function evaluatePlayerMove(state: CoreState, playerId: string, collisionForgiveness = 0): PlayerMoveResult {
+  const player = state.players[playerId];
   const head = player.segments[0];
   const newHead = {
     x: head.x + player.direction.x,
@@ -73,18 +74,23 @@ function checkPositionCollision(
 export function applyPlayerInput(state: CoreState, input: PlayerInput) {
   if (state.flags.gameOver) return;
 
-  initTurnQueue(state.player);
+  const playerId = input.playerId || 'local';
+  const player = state.players[playerId];
+  if (!player) return;
+
+  initTurnQueue(player);
 
   if (input.turn === 'left') {
-    queueTurn(state, turnLeftDir);
+    queueTurn(player, turnLeftDir);
   } else if (input.turn === 'right') {
-    queueTurn(state, turnRightDir);
+    queueTurn(player, turnRightDir);
   }
 }
 
-export function updatePlayerCore(state: CoreState, delta: number): CoreStepResult {
+export function updatePlayerCore(state: CoreState, playerId: string, delta: number): CoreStepResult {
   const events: CoreStepResult['events'] = [];
-  const player = state.player;
+  const player = state.players[playerId];
+  if (!player || player.dead) return { events };
 
   player.moveTimer += delta;
 
@@ -122,17 +128,17 @@ export function updatePlayerCore(state: CoreState, delta: number): CoreStepResul
     return { events };
   }
 
-  const { newHead, collisionReason } = evaluatePlayerMove(state);
+  const { newHead, collisionReason } = evaluatePlayerMove(state, playerId);
   if (collisionReason === 'WALL') {
-    events.push({ type: EventType.PlayerDead, payload: { reason: 'WALL_COLLISION' } });
+    events.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'WALL_COLLISION' } });
     return { events };
   }
   if (collisionReason === 'SELF') {
-    events.push({ type: EventType.PlayerDead, payload: { reason: 'SELF_COLLISION' } });
+    events.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'SELF_COLLISION' } });
     return { events };
   }
   if (collisionReason === 'OBSTACLE') {
-    events.push({ type: EventType.PlayerDead, payload: { reason: 'OBSTACLE_COLLISION' } });
+    events.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'OBSTACLE_COLLISION' } });
     return { events };
   }
 
@@ -141,7 +147,7 @@ export function updatePlayerCore(state: CoreState, delta: number): CoreStepResul
   player.turnQueue!.lastDirection = { ...player.direction };
   player.segments.pop();
 
-  events.push({ type: EventType.PlayerMoved });
+  events.push({ type: EventType.PlayerMoved, playerId });
   return { events };
 }
 
@@ -151,8 +157,7 @@ function initTurnQueue(player: any) {
   }
 }
 
-function queueTurn(state: CoreState, directionFn: (dir: { x: number; y: number; z: number }) => { x: number; y: number; z: number }) {
-  const player: any = state.player;
+function queueTurn(player: any, directionFn: (dir: { x: number; y: number; z: number }) => { x: number; y: number; z: number }) {
   const reference = player.turnQueue.queue.length > 0 ? player.turnQueue.queue[player.turnQueue.queue.length - 1] : player.turnQueue.lastDirection;
   const nextDir = directionFn(reference);
 

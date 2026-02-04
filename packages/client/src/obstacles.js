@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { OBSTACLE_TYPES, GEOMETRIES } from './constants.js';
 import { generateUniquePosition } from './utils.js';
 import { getAdjustedSetting } from './gameState.js'; // Import for mode-adjusted settings
@@ -97,40 +97,36 @@ function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
 
     } else if (type === 'bush') {
         collisionCells.push({ x: pos.x, z: pos.z }); // Bush occupies the base cell
-        
-        // Create a more natural-looking bush with the flower texture
-        const bushCount = 12 + Math.floor(Math.random() * 8); // Increased number of planes
-        
-        for (let i = 0; i < bushCount; i++) {
-            // Create a plane for each part of the bush
-            const bushPlane = new THREE.PlaneGeometry(CONFIG.UNIT_SIZE * 1.5, CONFIG.UNIT_SIZE * 1.5); // Larger planes
-            const bushMesh = new THREE.Mesh(bushPlane, flowerBushMat);
-            
-            const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * 1.5 * CONFIG.UNIT_SIZE; // Increased radius for a larger bush
-            const yOff = Math.random() * 0.8 * CONFIG.UNIT_SIZE; // Higher height for bushes
-            
-            // Randomize the bush size with larger scale
-            const bushScale = (0.9 + Math.random() * 0.6) * CONFIG.UNIT_SIZE;
-            bushMesh.scale.set(bushScale, bushScale, bushScale);
-            
-            bushMesh.position.set(
-                Math.cos(angle) * radius,
-                yOff + blockOffset, // Position relative to group base
-                Math.sin(angle) * radius
+
+        // Minecraft-style bush: compact cube blocks using the leaf material
+        const addBushBlock = (dx, dy, dz) => {
+            const block = new THREE.Mesh(GEOMETRIES.cube, leavesMat);
+            block.scale.setScalar(CONFIG.UNIT_SIZE);
+            block.position.set(
+                dx * CONFIG.UNIT_SIZE,
+                dy * CONFIG.UNIT_SIZE + blockOffset,
+                dz * CONFIG.UNIT_SIZE
             );
-            
-            // Randomly rotate the bush parts
-            bushMesh.rotation.x = Math.random() * Math.PI / 6;
-            bushMesh.rotation.y = Math.random() * Math.PI * 2;
-            bushMesh.rotation.z = Math.random() * Math.PI / 6;
-            
-            bushMesh.castShadow = true;
-            bushMesh.receiveShadow = true;
-            
-            // Add the bush part to the group
-            group.add(bushMesh);
+            block.castShadow = true;
+            block.receiveShadow = true;
+            group.add(block);
+        };
+
+        // Bottom layer: cross/plus shape with random corner fills
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                const isCorner = Math.abs(dx) === 1 && Math.abs(dz) === 1;
+                if (isCorner && Math.random() < 0.5) continue;
+                addBushBlock(dx, 0, dz);
+            }
         }
+
+        // Top layer: smaller cluster
+        addBushBlock(0, 1, 0);
+        if (Math.random() < 0.6) addBushBlock(1, 1, 0);
+        if (Math.random() < 0.6) addBushBlock(-1, 1, 0);
+        if (Math.random() < 0.6) addBushBlock(0, 1, 1);
+        if (Math.random() < 0.6) addBushBlock(0, 1, -1);
     } else {
         return null; // Unknown type
     }
@@ -274,6 +270,51 @@ export function addNewObstacle(gameState, type, pos) {
             occupiedCells: obstacleData.cells // Grid cells it blocks
         });
     }
+}
+
+export function syncObstacleMeshes(gameState) {
+    const { scene, materials, obstacles } = gameState;
+    if (!scene || !materials?.obstacle || !obstacles?.list) return;
+
+    // Ensure obstacle group exists
+    if (!obstacles.group) {
+        obstacles.group = new THREE.Group();
+        scene.add(obstacles.group);
+    }
+
+    // Build a lookup of obstacle positions from the authoritative list
+    const wantedKeys = new Set();
+    obstacles.list.forEach(obs => wantedKeys.add(`${obs.x},${obs.z}`));
+
+    // Build a map of existing meshes by position key
+    const existingMeshMap = new Map();
+    // Iterate children in reverse for safe removal
+    for (let i = obstacles.group.children.length - 1; i >= 0; i--) {
+        const child = obstacles.group.children[i];
+        const key = `${Math.round(child.position.x)},${Math.round(child.position.z)}`;
+        if (wantedKeys.has(key) && !existingMeshMap.has(key)) {
+            existingMeshMap.set(key, child);
+        } else {
+            // Remove stale/duplicate meshes
+            obstacles.group.remove(child);
+        }
+    }
+
+    // Create meshes for obstacles that don't have one yet
+    obstacles.list.forEach(obs => {
+        const key = `${obs.x},${obs.z}`;
+        if (existingMeshMap.has(key)) {
+            obs.mesh = existingMeshMap.get(key);
+            return;
+        }
+        const data = createObstacleMeshInstance(
+            { x: obs.x, z: obs.z }, obs.type, materials, obstacles.group
+        );
+        if (data) {
+            obs.mesh = data.meshGroup;
+            obs.occupiedCells = obs.occupiedCells || data.cells;
+        }
+    });
 }
 
 export function checkObstacleCollision(position, gameState) {

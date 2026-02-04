@@ -1,4 +1,4 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState } from './types';
 import { randomCardinalDirection } from './spawn';
 
@@ -17,14 +17,14 @@ export type FoodEffects = {
   addScoreMultiplier: boolean;
 };
 
-export function checkAndEatFoodCore(state: CoreState, position: { x: number; z: number }): FoodEatResult | null {
+export function checkAndEatFoodCore(state: CoreState, position: { x: number; z: number }, isAlphaActive = false): FoodEatResult | null {
   const food = state.food;
   if (!food?.positions) return null;
 
   for (let i = 0; i < food.positions.length; i++) {
     const item = food.positions[i];
     if (position.x === item.x && position.z === item.z) {
-      const effects = getFoodEffects(item.type, state.player?.alphaMode?.active || false);
+      const effects = getFoodEffects(item.type, isAlphaActive);
       return {
         index: i,
         type: item.type,

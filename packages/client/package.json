@@ -6,16 +6,22 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "test:core": "node scripts/core-smoke.mjs",
-    "test:serialize": "node scripts/serialize-smoke.mjs"
+    "test:core": "tsx scripts/core-smoke.mjs",
+    "test:serialize": "tsx scripts/serialize-smoke.mjs",
+    "test:determinism": "tsx scripts/determinism-test.mjs",
+    "test:multiplayer": "node scripts/headless-client.mjs",
+    "load-test": "node scripts/load-test.mjs"
   },
   "dependencies": {
-    "three": "^0.160.0",
-    "snek-shared": "workspace:*"
+    "colyseus.js": "^0.15.27",
+    "lil-gui": "^0.21.0",
+    "snek-shared": "workspace:*",
+    "three": "^0.160.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
     "@types/three": "^0.160.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.4.0",
     "vite": "^5.0.0"
   }

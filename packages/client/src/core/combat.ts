@@ -1,5 +1,7 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState } from './types';
+import { generateUniquePositionCore } from './spawn';
+import { createPlayerState } from './state';
 
 export type EnemyCollisionResult = {
   enemyId: number;
@@ -7,6 +9,35 @@ export type EnemyCollisionResult = {
   isTail: boolean;
   isHead: boolean;
 } | null;
+
+export type PlayerCollisionResult = {
+  targetPlayerId: string;
+  segmentIndex: number;
+  isHead: boolean;
+  isTail: boolean;
+} | null;
+
+/**
+ * Check if a position collides with any other player's segments.
+ * Skips the player identified by `excludePlayerId` and any dead players.
+ */
+export function checkPlayerCollisionCore(
+  state: CoreState,
+  pos: { x: number; z: number },
+  excludePlayerId: string
+): PlayerCollisionResult {
+  for (const [pid, player] of Object.entries(state.players)) {
+    if (pid === excludePlayerId || player.dead) continue;
+    for (let i = 0; i < player.segments.length; i++) {
+      const seg = player.segments[i];
+      if (seg.x === pos.x && seg.z === pos.z) {
+        const isTail = i >= player.segments.length - CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
+        return { targetPlayerId: pid, segmentIndex: i, isHead: i === 0, isTail };
+      }
+    }
+  }
+  return null;
+}
 
 export function checkEnemyCollisionCoreDetailed(state: CoreState, pos: { x: number; z: number }): EnemyCollisionResult {
   for (const enemy of state.enemies.list) {
@@ -44,5 +75,42 @@ export function processEnemyRespawnsCore(state: CoreState) {
     }
   }
   state.enemies.respawnQueue = remaining;
+  return respawned;
+}
+
+/**
+ * Mark a player as dead and schedule respawn.
+ */
+export function killPlayerCore(state: CoreState, playerId: string) {
+  const player = state.players[playerId];
+  if (!player || player.dead) return;
+  player.dead = true;
+  player.respawnAt = state.tick + CONFIG.PLAYER_RESPAWN_DELAY_TICKS;
+}
+
+/**
+ * Check all dead players and respawn those whose respawnAt tick has arrived.
+ * Returns list of respawned player IDs.
+ */
+export function processPlayerRespawnsCore(state: CoreState): string[] {
+  const respawned: string[] = [];
+  for (const [pid, player] of Object.entries(state.players)) {
+    if (!player.dead || player.respawnAt <= 0) continue;
+    if (state.tick >= player.respawnAt) {
+      // Reset player to fresh state, preserving identity
+      const fresh = createPlayerState(pid);
+      const startPos = generateUniquePositionCore(state, CONFIG.START_SAFE_ZONE);
+      fresh.segments = [];
+      for (let i = 0; i < CONFIG.PLAYER_RESPAWN_LENGTH; i++) {
+        fresh.segments.push({ x: startPos.x - i, y: 0, z: startPos.z });
+      }
+      fresh.direction = { x: 1, y: 0, z: 0 };
+      fresh.nextDirection = { x: 1, y: 0, z: 0 };
+      fresh.speed = CONFIG.BASE_SNAKE_SPEED;
+      fresh.colorIndex = player.colorIndex; // preserve color assignment
+      state.players[pid] = fresh;
+      respawned.push(pid);
+    }
+  }
   return respawned;
 }

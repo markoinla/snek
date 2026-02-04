@@ -1,4 +1,4 @@
-import * as CONFIG from '../config.js';
+import CONFIG from '../config.js';
 import type { CoreState, FoodItem } from './types';
 
 export function generateUniquePositionCore(state: CoreState, safeZoneRadius = 0) {
@@ -29,8 +29,10 @@ export function generateUniquePositionCore(state: CoreState, safeZoneRadius = 0)
 }
 
 export function isPositionOccupiedCore(state: CoreState, targetPos: { x: number; z: number }) {
-  if (state.player?.segments?.some((segment: { x: number; z: number }) => segment.x === targetPos.x && segment.z === targetPos.z)) {
-    return true;
+  for (const player of Object.values(state.players)) {
+    if (player.segments?.some((segment: { x: number; z: number }) => segment.x === targetPos.x && segment.z === targetPos.z)) {
+      return true;
+    }
   }
   if (state.food?.positions?.some((f: { x: number; z: number }) => f.x === targetPos.x && f.z === targetPos.z)) {
     return true;
@@ -96,6 +98,21 @@ export function addFoodCore(state: CoreState, safeZoneRadius = 0) {
 
   state.food.positions.push(spawned);
   return spawned;
+}
+
+const OBSTACLE_TYPES = ['tree', 'bush'];
+
+export function spawnObstaclesCore(state: CoreState, count: number, safeZoneRadius = 0) {
+  for (let i = 0; i < count; i++) {
+    const pos = generateUniquePositionCore(state, safeZoneRadius);
+    const type = OBSTACLE_TYPES[state.rng.nextInt(OBSTACLE_TYPES.length)];
+    state.obstacles.list.push({
+      x: pos.x,
+      z: pos.z,
+      type,
+      occupiedCells: [{ x: pos.x, z: pos.z }],
+    });
+  }
 }
 
 export function randomCardinalDirection(state: CoreState) {

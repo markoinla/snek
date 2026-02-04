@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { FOOD_TYPES } from './constants.js'; // Import FOOD_TYPES for power-ups
 import { createSnakeSegmentMesh } from './utils.js';
 import { createExplosion } from './particleSystem.js';
@@ -13,6 +13,15 @@ import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState.js'; // For mode-adjusted settings
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
+let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }
+
+// Colors for multiplayer players (indexed by colorIndex)
+const PLAYER_COLORS = [
+    0x4CAF50, // green  (index 0 — local player default)
+    0x2196F3, // blue
+    0xF44336, // red
+    0xFFEB3B, // yellow
+];
 
 // --- Player State (managed within gameState.playerSnake) ---
 // gameState.playerSnake = {
@@ -174,6 +183,17 @@ export function updatePlayerStateOnly(deltaTime, currentTime, gameState) {
         }
 
         updatePowerUpState(currentTime, gameState);
+    } else {
+        // Core simulation handles gameplay logic (decay, activation, etc.)
+        // but we still need to update the UI from the shared state
+        updateAlphaModeProgressPoints(gameState);
+
+        if (playerSnake.alphaMode.active) {
+            const remainingTime = playerSnake.alphaMode.endTime - currentTime;
+            const totalDuration = Math.max(0.001, playerSnake.alphaMode.endTime - playerSnake.alphaMode.startTime);
+            const progress = Math.max(0, Math.min(1, remainingTime / totalDuration));
+            UI.updateAlphaModeUI(progress, remainingTime, playerSnake.alphaMode.scoreMultiplier);
+        }
     }
 
     if (playerSnake.enlargedHeadUntil > 0 && currentTime > playerSnake.enlargedHeadUntil) {
@@ -191,7 +211,7 @@ export function updatePlayerStateOnly(deltaTime, currentTime, gameState) {
     }
 }
 
-export function syncPlayerMeshes(gameState) {
+export function syncPlayerMeshes(gameState, frameDelta) {
     const { playerSnake, scene, materials } = gameState;
     if (!playerSnake?.segments || !scene || !materials?.snake) return;
 
@@ -201,20 +221,154 @@ export function syncPlayerMeshes(gameState) {
         return;
     }
 
+    const isMultiplayer = gameState.network?.enabled;
+    // In multiplayer, use frame-rate-independent exponential smoothing
+    const lerpFactor = isMultiplayer && frameDelta != null
+        ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
+        : 1.0;
+
     for (let i = 0; i < playerSnake.segments.length; i++) {
         const segment = playerSnake.segments[i];
         const mesh = playerSnakeMeshes[i];
         if (!mesh) continue;
-        mesh.position.set(
-            segment.x * CONFIG.UNIT_SIZE,
-            CONFIG.UNIT_SIZE / 2,
-            segment.z * CONFIG.UNIT_SIZE
-        );
+        const targetX = segment.x * CONFIG.UNIT_SIZE;
+        const targetY = CONFIG.UNIT_SIZE / 2;
+        const targetZ = segment.z * CONFIG.UNIT_SIZE;
+        if (lerpFactor >= 1.0) {
+            mesh.position.set(targetX, targetY, targetZ);
+        } else {
+            mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
+            mesh.position.y = targetY;
+            mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+        }
     }
-
-    updatePlayerSnakeTextures(gameState);
+    // Texture updates are driven by animation timer in updatePlayerStateOnly,
+    // no need to call updatePlayerSnakeTextures every render frame.
 }
 
+// --- Remote / Multiplayer Player Mesh Sync ---
+
+// Shared geometry for all remote player segments (avoids per-segment allocation)
+const _sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+function createRemotePlayerMeshes(playerId, segments, colorIndex, scene, materials) {
+    const meshes = [];
+    const color = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length] || PLAYER_COLORS[1];
+    segments.forEach((pos, index) => {
+        const isHead = index === 0;
+        const baseMat = isHead ? materials.snake.head1 : materials.snake.body1;
+        if (!baseMat) return;
+        const mat = baseMat.clone();
+        mat.color = new THREE.Color(color);
+        const mesh = new THREE.Mesh(_sharedBoxGeometry, mat);
+        mesh.scale.setScalar(CONFIG.UNIT_SIZE);
+        mesh.position.set(
+            pos.x * CONFIG.UNIT_SIZE,
+            CONFIG.UNIT_SIZE / 2,
+            pos.z * CONFIG.UNIT_SIZE
+        );
+        mesh.castShadow = true;
+        mesh.receiveShadow = false;
+        mesh.name = `remotePlayer_${playerId}_${index}`;
+        meshes.push(mesh);
+        scene.add(mesh);
+    });
+    return meshes;
+}
+
+function removeRemotePlayerMeshes(playerId, scene) {
+    const meshes = remotePlayerMeshes[playerId];
+    if (!meshes) return;
+    meshes.forEach(mesh => {
+        scene.remove(mesh);
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(m => m.dispose());
+            } else {
+                mesh.material.dispose();
+            }
+        }
+    });
+    delete remotePlayerMeshes[playerId];
+}
+
+export function syncAllPlayerMeshes(gameState, frameDelta) {
+    const { scene, materials, players, localPlayerId } = gameState;
+    if (!scene || !materials?.snake || !players) return;
+
+    const localId = localPlayerId || 'local';
+
+    // Sync local player via existing path
+    syncPlayerMeshes(gameState, frameDelta);
+
+    // Determine which remote players exist
+    const remoteIds = Object.keys(players).filter(id => id !== localId);
+
+    // Remove meshes for players that left
+    Object.keys(remotePlayerMeshes).forEach(id => {
+        if (!players[id]) {
+            removeRemotePlayerMeshes(id, scene);
+        }
+    });
+
+    // Frame-rate-independent exponential smoothing for remote players
+    const lerpFactor = frameDelta != null
+        ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
+        : 0.35;
+
+    // Sync each remote player
+    remoteIds.forEach(id => {
+        const player = players[id];
+        if (!player || !player.segments || player.segments.length === 0) {
+            // Player has no segments (possibly dead or not yet spawned) — hide
+            if (remotePlayerMeshes[id]) {
+                remotePlayerMeshes[id].forEach(m => { m.visible = false; });
+            }
+            return;
+        }
+
+        if (player.dead) {
+            // Dead player — hide meshes
+            if (remotePlayerMeshes[id]) {
+                remotePlayerMeshes[id].forEach(m => { m.visible = false; });
+            }
+            return;
+        }
+
+        const existingMeshes = remotePlayerMeshes[id];
+
+        // Recreate meshes if segment count changed or meshes don't exist
+        if (!existingMeshes || existingMeshes.length !== player.segments.length) {
+            removeRemotePlayerMeshes(id, scene);
+            remotePlayerMeshes[id] = createRemotePlayerMeshes(
+                id, player.segments, player.colorIndex || 1, scene, materials
+            );
+            return;
+        }
+
+        // Update positions with frame-rate-independent lerp
+        for (let i = 0; i < player.segments.length; i++) {
+            const seg = player.segments[i];
+            const mesh = existingMeshes[i];
+            if (!mesh || !seg) continue;
+            mesh.visible = true;
+            const targetX = seg.x * CONFIG.UNIT_SIZE;
+            const targetZ = seg.z * CONFIG.UNIT_SIZE;
+            mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
+            mesh.position.y = CONFIG.UNIT_SIZE / 2;
+            mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+        }
+    });
+}
+
+export function resetAllRemotePlayerMeshes(gameState) {
+    const { scene } = gameState;
+    Object.keys(remotePlayerMeshes).forEach(id => {
+        removeRemotePlayerMeshes(id, scene);
+    });
+    remotePlayerMeshes = {};
+}
 
 // --- Movement and Input ---
 
@@ -678,44 +832,45 @@ function growSnakeSegments(gameState, numSegments) {
 }
 
 // --- Camera ---
+
+// Reusable objects to avoid per-frame allocations
+const _lookDir = new THREE.Vector3();
+const _targetLookAt = new THREE.Vector3();
+const _targetCamPos = new THREE.Vector3();
+const _targetQuat = new THREE.Quaternion();
+const _dummyMatrix = new THREE.Matrix4();
+const _up = new THREE.Vector3(0, 1, 0);
+
 export function updateCamera(gameState) {
-    const { camera, playerSnake, scene } = gameState; // Assuming directionalLight is in scene's scope or passed in gameState
-    // Access lights from gameState
+    const { camera, playerSnake, scene } = gameState;
     const directionalLight = gameState.lights?.directionalLight;
 
     if (!camera || !playerSnake || playerSnake.segments.length === 0 || playerSnakeMeshes.length === 0 || !directionalLight) return;
 
     const headMesh = playerSnakeMeshes[0];
-    const headPos = headMesh.position; // Use the mesh position for smoother camera
+    const headPos = headMesh.position;
 
     // Target for camera to look at (slightly ahead of the snake)
     const lookAheadFactor = Math.max(2, CONFIG.CAMERA_DISTANCE * 0.2);
-    const lookDirection = new THREE.Vector3(playerSnake.direction.x, 0, playerSnake.direction.z).normalize();
-    const targetLookAt = headPos.clone().addScaledVector(lookDirection, lookAheadFactor);
+    _lookDir.set(playerSnake.direction.x, 0, playerSnake.direction.z).normalize();
+    _targetLookAt.copy(headPos).addScaledVector(_lookDir, lookAheadFactor);
 
     // Target for directional light (follows the head more closely)
-    if (directionalLight.target) { // Ensure target exists
-        // Smoothly move the light's target towards the snake head
-        directionalLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5); // Light target leads slightly less than camera
-        // Ensure the light source itself also updates if needed, although its position is usually fixed relative to the world
+    if (directionalLight.target) {
+        directionalLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5);
     }
 
     // Target position for the camera (behind the snake)
-    const cameraOffsetDirection = lookDirection.clone().multiplyScalar(-1); // Opposite direction
-    const targetCamPos = headPos.clone().addScaledVector(cameraOffsetDirection, CONFIG.CAMERA_DISTANCE);
-    targetCamPos.y = CONFIG.CAMERA_HEIGHT; // Maintain fixed height
+    _targetCamPos.copy(headPos).addScaledVector(_lookDir, -CONFIG.CAMERA_DISTANCE);
+    _targetCamPos.y = CONFIG.CAMERA_HEIGHT;
 
-    // Smoothly interpolate camera position using the new position smoothness setting
-    // Lower value = smoother movement
-    camera.position.lerp(targetCamPos, CONFIG.CAMERA_POSITION_SMOOTHNESS);
+    // Smoothly interpolate camera position
+    camera.position.lerp(_targetCamPos, CONFIG.CAMERA_POSITION_SMOOTHNESS);
 
-    // Smooth LookAt using Quaternion slerp for nicer rotation
-    const tempCam = camera.clone(); // Clone current camera state
-    tempCam.lookAt(targetLookAt);   // Point the clone at the target
-    
-    // Slerp the actual camera's quaternion towards the clone's quaternion
-    // Using the new rotation smoothness setting - lower value = smoother rotation
-    camera.quaternion.slerp(tempCam.quaternion, CONFIG.CAMERA_ROTATION_SMOOTHNESS);
+    // Smooth LookAt using Quaternion slerp — compute target quaternion without cloning camera
+    _dummyMatrix.lookAt(camera.position, _targetLookAt, _up);
+    _targetQuat.setFromRotationMatrix(_dummyMatrix);
+    camera.quaternion.slerp(_targetQuat, CONFIG.CAMERA_ROTATION_SMOOTHNESS);
 }
 
 // --- Power-ups ---
@@ -1247,8 +1402,8 @@ export function updateAlphaMode(currentTime, gameState) {
     
     // Calculate and update remaining time
     const remainingTime = playerSnake.alphaMode.endTime - currentTime;
-    const totalDuration = CONFIG.ALPHA_MODE_DURATION;
-    const progress = remainingTime / totalDuration;
+    const totalDuration = Math.max(0.001, playerSnake.alphaMode.endTime - playerSnake.alphaMode.startTime);
+    const progress = Math.max(0, Math.min(1, remainingTime / totalDuration));
     
     // Update score multiplier stack
     updateScoreMultiplierStack(currentTime, playerSnake);
@@ -1474,10 +1629,11 @@ function updateAlphaModeProgressPoints(gameState) {
     
     // Calculate progress as a percentage of the alpha points threshold
     const pointsProgress = playerSnake.alphaMode.alphaPoints;
-    const pointsNeeded = CONFIG.ALPHA_POINTS_THRESHOLD;
+    const pointsNeeded = getAdjustedSetting('ALPHA_POINTS_THRESHOLD') || CONFIG.ALPHA_POINTS_THRESHOLD;
     
     // Calculate percentage (0-100)
-    const percentage = Math.min(100, Math.floor((pointsProgress / pointsNeeded) * 100));
+    const safePointsNeeded = pointsNeeded > 0 ? pointsNeeded : 1;
+    const percentage = Math.min(100, Math.floor((pointsProgress / safePointsNeeded) * 100));
     
     // Only update the UI if the percentage has changed or every 10 frames
     // This saves performance by reducing DOM updates
@@ -1486,7 +1642,7 @@ function updateAlphaModeProgressPoints(gameState) {
         (gameState.frameCount % 10 === 0)) {
         
         // Update the UI to show alpha points progress
-        UI.updateAlphaModeProgress(percentage, pointsProgress, pointsNeeded);
+        UI.updateAlphaModeProgress(percentage, pointsProgress, safePointsNeeded);
         
         // Store the last displayed percentage to avoid redundant updates
         playerSnake.alphaMode.lastDisplayedPercentage = percentage;

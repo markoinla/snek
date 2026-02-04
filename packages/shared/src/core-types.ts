@@ -51,6 +51,10 @@ export type PlayerState = {
     queue: Array<{ x: number; y: number; z: number }>;
     lastDirection: { x: number; y: number; z: number };
   };
+  dead: boolean;
+  respawnAt: number;
+  score: ScoreState;
+  colorIndex: number;
 };
 
 export type EnemyState = {
@@ -88,10 +92,17 @@ export type CoreState = {
     nextFloat: () => number;
     nextInt: (maxExclusive: number) => number;
   };
-  player: PlayerState;
+  players: Record<string, PlayerState>;
   enemies: { list: EnemyState[]; kills: number; respawnQueue?: Array<{ id: number; respawnTime: number }> };
   food: { positions: FoodItem[] };
   obstacles: ObstaclesState;
-  score: ScoreState;
   flags: CoreFlags;
+};
+
+export type SerializableRng = {
+  seed: number;
+};
+
+export type SerializableCoreState = Omit<CoreState, 'rng'> & {
+  rng: SerializableRng;
 };

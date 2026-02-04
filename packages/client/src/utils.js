@@ -1,6 +1,6 @@
 // js/utils.js - Corrected
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { GEOMETRIES } from './constants.js'; // <-- ADD THIS IMPORT
 
 // Checks if a grid cell is occupied by various elements

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { PATHS, GEOMETRIES } from './constants.js';
 import { performanceSettings } from './deviceUtils.js';
 

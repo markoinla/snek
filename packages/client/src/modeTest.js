@@ -1,7 +1,7 @@
 // Mode Test Helper
 // Import this in the console to check if mode settings are being applied
 
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { gameState, getAdjustedSetting, saveGameMode } from './gameState.js';
 
 export function testGameModes() {

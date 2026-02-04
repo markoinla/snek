@@ -1,0 +1,68 @@
+# Loop Summary
+
+**Status:** Completed successfully
+**Iterations:** 9
+**Duration:** 52m 7s
+
+## Tasks
+
+- [x] 1.1 Update `CoreState` type: `player` → `players: Record<string, PlayerState>`, add `dead`/`respawnAt`/`score`/`colorIndex` to `PlayerState`, remove top-level `score`
+- [x] 1.2 Update events: add `playerId` to `EventEnvelope`, add `playerId` to player-specific event payloads, add `PlayerRespawned` event type, bump EVENT_SCHEMA_VERSION to 2
+- [x] 1.3 Serialization: verified round-trip with `players` map (JSON handles Record naturally)
+- [x] 1.4 Input types: `playerId` already existed; now stamped from `gameState.localPlayerId`
+- [x] 1.5 Update `createInitialCoreState()`: empty `players: {}`, add `createPlayerState(id)` helper
+- [x] 1.6 Update `sync.ts`: bind/apply `players` map, alias `playerSnake` and `score` to local player
+- [x] 1.7 Update test scripts: `state.player` → `state.players["test"]`, fix event envelope access
+- [x] All simulation files refactored to use `state.players[playerId]` (player.ts, step.ts, alpha.ts, powerups.ts, food.ts, spawn.ts)
+- [x] Server: player creation on join, removal on leave, input routing with playerId stamp
+- [x] Client: main.ts creates local player, gameState.js has players/localPlayerId, inputHandler stamps playerId
+- [x] Tests pass: test:core, test:serialize, test:determinism
+- [x] 2.1 Refactor `player.ts`: accept `playerId` param (done in Phase 1)
+- [x] 2.2 Refactor `step.ts`: multi-player loop with sorted playerIds for determinism (done in Phase 1)
+- [x] 2.3 Add player-vs-player collision in `combat.ts` (checkPlayerCollisionCore + PvP in step.ts, PlayerKilledPlayer event, PVP_COLLISION death reason)
+- [x] 2.4 Refactor `powerups.ts`: accept `playerId` param (done in Phase 1)
+- [x] 2.5 Refactor `alpha.ts`: accept `playerId` param on all functions (done in Phase 1)
+- [x] 2.6 Refactor `food.ts`: accept `isAlphaActive` param instead of `state.player` (done in Phase 1)
+- [x] 2.7 Refactor `spawn.ts`: iterate all players in `isPositionOccupiedCore()` (done in Phase 1)
+- [x] 2.8 Death/respawn fields in PlayerState (done in Phase 1.1)
+- [x] Run all tests after PvP collision (test:core, test:serialize, test:determinism all pass)
+- [x] 3.1 Player creation on join (done in Phase 1)
+- [x] 3.2 Player removal on leave (done in Phase 1)
+- [x] 3.3 Input routing with playerId stamp (done in Phase 1)
+- [x] 3.4 Remove single-player init from `initializeCoreState()` (done in Phase 1)
+- [x] 3.5 Update `ServerMeta` type with `sessionId` — added to protocol.ts, server sends it in meta, client uses it for localPlayerId
+- [x] 3.6 Room configuration (`maxClients = 4`) — set in SnekRoom.onCreate()
+- [x] 3.7 Broadcast events alongside snapshot — added `Events` message type, server accumulates stepCore events and broadcasts on snapshot interval, client stores in `pendingServerEvents` queue
+- [x] Fix TS build errors — added `allowImportingTsExtensions` to tsconfig, typed callback params in colyseusClient.ts
+- [x] Build + all tests pass (test:core, test:serialize, test:determinism)
+- [x] 4.1 Add `gameState.players` and `gameState.localPlayerId` (done in Phase 1)
+- [x] 4.2 Update snapshot handling in `colyseusClient.ts` (done in Phase 1)
+- [x] 4.3 Add obstacle mesh sync — syncObstacleMeshes() called from updateFromSnapshot() in colyseusClient.ts, creates meshes for server-sent obstacles
+- [x] 4.4 Render multiple player snakes — remotePlayerMeshes cache, syncAllPlayerMeshes() creates/removes/updates color-tinted meshes per remote player, hides dead players
+- [x] 4.5 Fix event processing in multiplayer — extracted processEventEnvelopes() shared handler, multiplayer branch drains pendingServerEvents with playerId filtering
+- [x] 4.6 Camera (no change — follows playerSnake alias)
+- [x] 4.7 Input sending: stamp `playerId` (done in Phase 1)
+- [x] 5.1 Player death in simulation — `killPlayerCore()` sets `dead=true` + `respawnAt` on all death types (wall/self/obstacle/enemy/PvP)
+- [x] 5.2 Player respawn logic — `processPlayerRespawnsCore()` resets dead players after PLAYER_RESPAWN_DELAY_TICKS, emits PlayerRespawned
+- [x] 5.3 Per-player score (done in Phase 1 — score now in PlayerState)
+- [x] 5.4 Client death/respawn UI — showRespawnOverlay/hideRespawnOverlay wired into PlayerDead/PlayerRespawned events, countdown timer included
+- [x] 5.5 Config constants — PLAYER_RESPAWN_DELAY_TICKS=90 (3s at 30Hz), PLAYER_RESPAWN_LENGTH=3
+- [x] 6.1 Multiplayer scoreboard — updateScoreboard() called from updateFromSnapshot(), sorted by score, color dots, local/dead styling
+- [x] 6.2 Player color system — server assigns incrementing colorIndex (0-3) on join via nextColorIndex counter
+- [x] 6.3 Disconnect cleanup — resetAllRemotePlayerMeshes() on room.onLeave + room.onError, hideRespawnOverlay + hideScoreboard on disconnect
+- [x] 6.4 Smooth rendering / interpolation — frame-rate-independent exponential smoothing (1-e^(-speed*dt)) via MULTIPLAYER_LERP_SPEED=12; mesh sync moved outside 30Hz substep loop to run once per 60fps render frame; snapshot handler delegates interpolation to render loop
+- [x] 6.5 Single-player backward compatibility (ensured via "local" player ID pattern)
+- [x] 6.6 Update tests — all offline tests pass (test:core, test:serialize, test:determinism); server-dependent tests (test:multiplayer, load-test) require running server
+
+## Events
+
+- 13 total events
+- 7 task.done
+- 3 loop.complete
+- 1 loop.terminate
+- 1 task.resume
+- 1 task.start
+
+## Final Commit
+
+f65fbb1: feat: frame-rate-independent interpolation for multiplayer rendering

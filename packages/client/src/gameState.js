@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 
 // Centralized Game State
 // This object will be passed around to modules that need access to shared state.
@@ -16,8 +16,8 @@ export const gameState = {
     clock: null,
     frameCount: 0, // Track frame count for throttling UI updates
     simulation: {
-        tickRate: 15, // Fixed simulation ticks per second
-        fixedDelta: 1 / 15, // 1 / tickRate
+        tickRate: 30, // Fixed simulation ticks per second
+        fixedDelta: 1 / 30, // 1 / tickRate
         accumulator: 0,
         time: 0,
         lastTimeMs: 0,
@@ -104,6 +104,21 @@ export const gameState = {
         useCoreSimulation: true,
     },
     inputQueue: [],
+    network: {
+        enabled: false,
+        status: 'idle',
+        room: null,
+        sessionId: null,
+        lastSnapshotTick: 0,
+        lastSnapshotTimeMs: 0,
+        snapshotIntervalMs: 100,
+        sendInput: null,
+        pendingServerEvents: [],
+    },
+
+    // Multiplayer player state
+    players: {},
+    localPlayerId: 'local',
 
     // Input cleanup function
     cleanupInput: null,
@@ -111,6 +126,9 @@ export const gameState = {
 
 // Function to load high score from localStorage
 function loadHighScore() {
+    if (typeof localStorage === 'undefined') {
+        return 0;
+    }
     try {
         const savedHighScore = localStorage.getItem('alphaSnek_highScore');
         return savedHighScore ? parseInt(savedHighScore, 10) : 0;
@@ -122,6 +140,9 @@ function loadHighScore() {
 
 // Function to save high score to localStorage
 export function saveHighScore(score) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
     try {
         localStorage.setItem('alphaSnek_highScore', score.toString());
         console.log('High score saved:', score);
@@ -132,6 +153,9 @@ export function saveHighScore(score) {
 
 // Function to save the current game mode to localStorage
 export function saveGameMode(mode) {
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
     try {
         localStorage.setItem('alphaSnek_gameMode', mode);
         console.log('Game mode saved:', mode);
@@ -177,6 +201,9 @@ export function getAdjustedSetting(settingName) {
 
 // Function to load game mode from localStorage
 function loadGameMode() {
+    if (typeof localStorage === 'undefined') {
+        return CONFIG.GAME_MODES.NORMAL;
+    }
     try {
         const savedGameMode = localStorage.getItem('alphaSnek_gameMode');
         // Make sure we return a valid mode, defaulting to NORMAL if needed

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import * as CONFIG from './config.js';
+import CONFIG from './config.js';
 import { GEOMETRIES } from './constants.js';
 import { createSnakeSegmentMesh, generateUniquePosition, isPositionOccupied } from './utils.js';
 import { findClosestFood, addNewFoodItem } from './food.js';
@@ -102,7 +102,7 @@ function initializeEnemy(id, gameState) {
     };
 
     enemies.list.push(newEnemy);
-    updateEnemySnakeTextures(newEnemy, gameState); // Set initial textures
+    updateEnemyMaterialsAfterMove(newEnemy, gameState); // Set initial textures
     Logger.gameplay.info(`Enemy ${id} initialized.`);
 }
 
@@ -190,7 +190,7 @@ export function renderEnemyKillEffects(enemyId, gameState) {
     });
 }
 
-export function syncEnemyMeshes(gameState) {
+export function syncEnemyMeshes(gameState, frameDelta) {
     const { scene, materials, enemies } = gameState;
     if (!scene || !materials?.enemy || !enemies?.list) return;
 
@@ -214,6 +214,11 @@ export function syncEnemyMeshes(gameState) {
     });
 
     // Sync meshes for existing enemies
+    const isMultiplayer = gameState.network?.enabled;
+    const lerpFactor = isMultiplayer && frameDelta != null
+        ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
+        : 1.0;
+
     enemies.list.forEach(enemy => {
         const meshes = enemyMeshes[enemy.id];
         if (!meshes || meshes.length !== enemy.snake.length) {
@@ -244,13 +249,20 @@ export function syncEnemyMeshes(gameState) {
             meshes.forEach((mesh, index) => {
                 const seg = enemy.snake[index];
                 if (!mesh || !seg) return;
-                mesh.position.set(
-                    seg.x * CONFIG.UNIT_SIZE,
-                    CONFIG.UNIT_SIZE / 2,
-                    seg.z * CONFIG.UNIT_SIZE
-                );
+                const targetX = seg.x * CONFIG.UNIT_SIZE;
+                const targetZ = seg.z * CONFIG.UNIT_SIZE;
+                if (lerpFactor >= 1.0) {
+                    mesh.position.set(targetX, CONFIG.UNIT_SIZE / 2, targetZ);
+                } else {
+                    mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
+                    mesh.position.y = CONFIG.UNIT_SIZE / 2;
+                    mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+                }
             });
         }
+
+        // Apply edible tail materials (needed when core simulation drives state)
+        updateEnemyMaterialsAfterMove(enemy, gameState);
     });
 }
 
@@ -267,7 +279,7 @@ export function updateEnemies(deltaTime, currentTime, gameState) {
         if (enemy.animationTimer > 0.25) { // Slower animation than player?
             enemy.animationFrame = (enemy.animationFrame + 1) % 2;
             enemy.animationTimer = 0;
-            updateEnemySnakeTextures(enemy, gameState);
+            updateEnemyMaterialsAfterMove(enemy, gameState);
         }
 
         // Determine next move (AI) - Decouple from movement timing
@@ -626,61 +638,52 @@ function moveEnemy(enemy, gameState) {
     updateEnemyMaterialsAfterMove(enemy, gameState);
 }
 
+// Cached material for edible tail segments — created once, reused for all enemies
+let edibleTailMaterial = null;
+
+function getEdibleTailMaterial() {
+    if (!edibleTailMaterial) {
+        edibleTailMaterial = new THREE.MeshLambertMaterial({
+            color: CONFIG.ENEMY_TAIL_COLOR,
+            side: THREE.FrontSide,
+        });
+    }
+    return edibleTailMaterial;
+}
+
 export function updateEnemyMaterialsAfterMove(enemy, gameState) {
     const { materials } = gameState;
     if (!materials?.enemy) return;
-    
+
     const meshes = enemyMeshes[enemy.id];
     if (!meshes) return;
-    
+
+    const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
+    const tailMat = getEdibleTailMaterial();
+
     // Apply materials to each segment
     meshes.forEach((mesh, index) => {
         if (!mesh) return;
-        
+
         if (index === 0) {
             // Head
-            mesh.material = enemy.animationFrame === 0 ? 
-                materials.enemy.head1 : 
+            mesh.material = enemy.animationFrame === 0 ?
+                materials.enemy.head1 :
                 materials.enemy.head2;
-        } else {
-            // Check if this is one of the last N segments (tail)
-            const tailSegments = CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS;
-            if (meshes.length >= tailSegments && 
-                index >= meshes.length - tailSegments) {
-                // This is part of the edible tail
-                // Use the same material but with a cyan overlay to indicate it's edible
-                // The cyan color is already part of our sprite sheet for the edible tail
-                mesh.material = enemy.animationFrame === 0 ? 
-                    materials.enemy.body1.clone() : 
-                    materials.enemy.body2.clone();
-                
-                // Set to a noticeably darker tail color for edible segments
-                const tailColor = new THREE.Color(CONFIG.ENEMY_TAIL_COLOR).multiplyScalar(0.45);
-                mesh.material.color.copy(tailColor);
-                mesh.material.needsUpdate = true;
-                
-                // Reduce emissive so the darkening is visible
-                mesh.material.emissive.setHex(0x000000);
-                mesh.material.emissiveIntensity = 0.0;
-                
-                // Add a subtle pulsing animation to draw attention to edible segments
-                const pulseSpeed = 1.5; // Speed of pulsing
-                const pulseIntensity = 0.2; // How much the emission changes
-                
-                // Store the current time to use for pulsing
+        } else if (meshes.length >= tailSegments && index >= meshes.length - tailSegments) {
+            // Edible tail segment — use shared cached material
+            if (mesh.material !== tailMat) {
+                mesh.material = tailMat;
                 mesh.userData.pulseStartTime = Date.now() / 1000;
                 mesh.userData.isPulsing = true;
-            } else {
-                // Regular body segment
-                mesh.material = enemy.animationFrame === 0 ? 
-                    materials.enemy.body1 : 
-                    materials.enemy.body2;
             }
+        } else {
+            // Regular body segment
+            mesh.material = enemy.animationFrame === 0 ?
+                materials.enemy.body1 :
+                materials.enemy.body2;
         }
     });
-    
-    // Log for debugging
-    Logger.gameplay.info(`Updated enemy ${enemy.id} materials. Tail segments colored: ${CONFIG.ENEMY_TAIL_EDIBLE_SEGMENTS}`);
 }
 
 // --- Collision Check (External) ---
@@ -798,17 +801,3 @@ export function checkEnemyRespawns(gameState) {
     enemies.respawnQueue = stillWaiting;
 }
 
-function updateEnemySnakeTextures(enemy, gameState) {
-    const { materials } = gameState;
-    const meshes = enemyMeshes[enemy.id];
-     if (!meshes || !materials?.enemy) return;
-
-    meshes.forEach((mesh, index) => {
-        if (!mesh) return;
-        if (index === 0) {
-            mesh.material = (enemy.animationFrame === 0 ? materials.enemy.head1 : materials.enemy.head2);
-        } else {
-            mesh.material = (enemy.animationFrame === 0 ? materials.enemy.body1 : materials.enemy.body2);
-        }
-    });
-}
