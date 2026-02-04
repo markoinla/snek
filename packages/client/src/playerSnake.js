@@ -1152,7 +1152,7 @@ let playerEdibleTailMaterial = null;
 
 function getPlayerEdibleTailMaterial() {
     if (!playerEdibleTailMaterial) {
-        playerEdibleTailMaterial = new THREE.MeshLambertMaterial({
+        playerEdibleTailMaterial = new THREE.MeshToonMaterial({
             color: PALETTE.players[0].accent,
             side: THREE.FrontSide,
         });

@@ -796,8 +796,8 @@ function updateGroundColor() {
     if (gameState.environment && gameState.environment.groundMesh) {
         const groundMesh = gameState.environment.groundMesh;
         if (groundMesh.material) {
-            (groundMesh.material as THREE.MeshLambertMaterial).color.set(PALETTE.ground.base);
-            (groundMesh.material as THREE.MeshLambertMaterial).needsUpdate = true;
+            (groundMesh.material as THREE.MeshToonMaterial).color.set(PALETTE.ground.base);
+            (groundMesh.material as THREE.MeshToonMaterial).needsUpdate = true;
             Logger.system.info("Ground color updated from palette.");
         }
     }

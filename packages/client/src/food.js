@@ -21,11 +21,9 @@ function createAppleModel(material) {
     const appleGroup = new THREE.Group();
     const unitSize = CONFIG.UNIT_SIZE * 0.4; // Larger blocks for simpler design
     
-    // Apple body material - solid red color
-    const appleBodyMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0xDD2C00, // Bright red color for the apple
-        roughness: 0.7,
-        metalness: 0.1
+    // Apple body material - solid red color (cel-shaded)
+    const appleBodyMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.apple,
     });
     
     // Create the main apple body (center block)
@@ -37,10 +35,8 @@ function createAppleModel(material) {
     appleGroup.add(mainBody);
     
     // Create a small indentation at the top (darker red block)
-    const indentMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x8B0000, // Darker red color for the indentation
-        roughness: 0.8,
-        metalness: 0.1
+    const indentMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.appleIndent,
     });
     const indent = new THREE.Mesh(GEOMETRIES.cube, indentMaterial);
     indent.scale.set(unitSize * 0.6, unitSize * 0.3, unitSize * 0.6);
@@ -49,10 +45,8 @@ function createAppleModel(material) {
     appleGroup.add(indent);
     
     // Create the stem (brown block)
-    const stemMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x654321, // Dark brown color for the stem
-        roughness: 0.9,
-        metalness: 0.1
+    const stemMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.appleStem,
     });
     
     // Stem block
@@ -63,10 +57,8 @@ function createAppleModel(material) {
     appleGroup.add(stem);
     
     // Create the leaf (green block)
-    const leafMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x228B22, // Forest green color for the leaf
-        roughness: 0.7,
-        metalness: 0.1
+    const leafMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.appleLeaf,
     });
     
     // Leaf block
@@ -266,8 +258,8 @@ function createBlockyFrog(group, material, type) {
 
     const darkMat = cloneMaterialWithTint(material, 0.65);
     const spotMat = cloneMaterialWithTint(material, 0.5);
-    const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    const eyeWhiteMat = new THREE.MeshToonMaterial({ color: 0xffffff });
+    const eyeBlackMat = new THREE.MeshToonMaterial({ color: 0x111111 });
 
     // --- Body: wide, flat, toad-like ---
     const body = new THREE.Mesh(GEOMETRIES.cube, material);
