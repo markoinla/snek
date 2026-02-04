@@ -152,8 +152,12 @@ async function init() {
     addManagedEventListener(window, 'gamePaused', pauseGame);
     addManagedEventListener(window, 'gameResumed', resumeGame);
     
-    // Show intro screen (only shown for first-time users)
-    UI.showIntroScreen();
+    // Show intro screen (only shown for first-time users; room code URLs handled below)
+    const initPath = window.location.pathname;
+    const isRoomCodeUrl = /^\/[A-Z0-9]{6}$/.test(initPath);
+    if (!isRoomCodeUrl) {
+        UI.showIntroScreen();
+    }
     
     // Event Listeners
     addManagedEventListener(window, 'resize', onWindowResize);
@@ -194,22 +198,32 @@ async function init() {
         startMultiplayer({ createRoom: true });
     });
 
-    // Direct room code URL (e.g. /A3FH2K) — auto-join that room
+    // Direct room code URL (e.g. /A3FH2K) — prompt for name if needed, then join
     const path = window.location.pathname;
     const roomCodeMatch = path.match(/^\/([A-Z0-9]{6})$/);
     if (roomCodeMatch) {
         const roomCode = roomCodeMatch[1];
-        try {
-            await connectMultiplayer(gameState, { playerName: UI.getPlayerName(), roomCode });
-            UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
-        } catch (error) {
-            Logger.system.warn('Room not found or connection failed', error);
-            window.history.replaceState({}, '', '/');
-            UI.showIntroScreen();
-            UI.showPowerUpTextEffect('Room not found', 0xff4444);
+        const joinRoom = async () => {
+            UI.hideNameOverlay();
+            UI.startGame();
+            try {
+                await connectMultiplayer(gameState, { playerName: UI.getPlayerName(), roomCode });
+                UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
+            } catch (error) {
+                Logger.system.warn('Room not found or connection failed', error);
+                window.history.replaceState({}, '', '/');
+                UI.showIntroScreen();
+                UI.showPowerUpTextEffect('Room not found', 0xff4444);
+            }
+        };
+        const name = UI.getPlayerName();
+        if (name) {
+            await joinRoom();
+        } else {
+            UI.showNameOverlay(() => { joinRoom(); });
         }
     } else if (path === '/multi') {
-        // Legacy /multi URL — skip lobby, auto-join
+        // Legacy /multi URL — skip intro, auto-join
         try {
             await connectMultiplayer(gameState, { playerName: UI.getPlayerName() });
             UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);

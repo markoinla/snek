@@ -487,9 +487,8 @@ function typeTitle() {
 // Function to show the intro screen
 export function showIntroScreen() {
     const path = window.location.pathname;
-    // If navigated directly to /single, /multi, or a room code URL, skip intro
-    const isRoomCode = /^\/[A-Z0-9]{6}$/.test(path);
-    if (path === '/single' || path === '/multi' || isRoomCode) {
+    // If navigated directly to /single or /multi, skip intro (room codes handled by main.ts)
+    if (path === '/single' || path === '/multi') {
         startGame();
         return;
     }

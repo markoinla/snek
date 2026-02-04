@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
 import Colyseus from 'colyseus';
+const matchMaker = (Colyseus as any).matchMaker;
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { Schema, type, MapSchema } from '@colyseus/schema';
 import {
@@ -357,12 +358,12 @@ app.post('/join-by-code', async (req, res) => {
     return res.status(400).json({ error: 'roomCode is required' });
   }
   try {
-    const rooms = await (gameServer as any).matchMaker.query({ name: 'snek' });
+    const rooms = await matchMaker.query({ name: 'snek' });
     const target = rooms.find((r: any) => r.metadata?.roomCode === roomCode);
     if (!target) {
       return res.status(404).json({ error: `Room ${roomCode} not found` });
     }
-    const reservation = await (gameServer as any).matchMaker.joinById(target.roomId, options);
+    const reservation = await matchMaker.joinById(target.roomId, options);
     res.json(reservation);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Failed to join room' });
@@ -371,7 +372,7 @@ app.post('/join-by-code', async (req, res) => {
 
 app.get('/rooms', async (_req, res) => {
   try {
-    const rooms = await (gameServer as any).matchMaker.query({ name: 'snek' });
+    const rooms = await matchMaker.query({ name: 'snek' });
     const result = rooms.map((r: any) => ({
       roomId: r.roomId,
       roomCode: r.metadata?.roomCode || '',
