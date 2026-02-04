@@ -97,7 +97,12 @@ export function processPlayerRespawnsCore(state: CoreState): string[] {
   for (const [pid, player] of Object.entries(state.players)) {
     if (!player.dead || player.respawnAt <= 0) continue;
     if (state.tick >= player.respawnAt) {
-      // Reset player to fresh state, preserving identity
+      // Reset player to fresh state, preserving identity and persistent stats
+      const prevScore = player.score.current;
+      const prevName = player.name;
+      const prevColorIndex = player.colorIndex;
+      const prevPlayerKills = player.playerKills || 0;
+
       const fresh = createPlayerState(pid);
       const startPos = generateUniquePositionCore(state, CONFIG.START_SAFE_ZONE);
       fresh.segments = [];
@@ -107,7 +112,10 @@ export function processPlayerRespawnsCore(state: CoreState): string[] {
       fresh.direction = { x: 1, y: 0, z: 0 };
       fresh.nextDirection = { x: 1, y: 0, z: 0 };
       fresh.speed = CONFIG.BASE_SNAKE_SPEED;
-      fresh.colorIndex = player.colorIndex; // preserve color assignment
+      fresh.colorIndex = prevColorIndex;
+      fresh.name = prevName;
+      fresh.score.current = prevScore;
+      fresh.playerKills = prevPlayerKills;
       state.players[pid] = fresh;
       respawned.push(pid);
     }

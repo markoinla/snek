@@ -1180,6 +1180,7 @@ export function updateScoreboard(players, localPlayerId) {
             id,
             name: p.name || `P${(p.colorIndex ?? 0) + 1}`,
             score: p.score?.current ?? 0,
+            playerKills: p.playerKills ?? 0,
             colorIndex: p.colorIndex ?? 0,
             dead: !!p.dead,
             isLocal: id === localPlayerId,
@@ -1201,12 +1202,17 @@ export function updateScoreboard(players, localPlayerId) {
         name.className = 'mp-scoreboard-name';
         name.textContent = entry.isLocal ? `${entry.name} (You)` : entry.name;
 
+        const kills = document.createElement('span');
+        kills.className = 'mp-scoreboard-kills';
+        kills.textContent = `${entry.playerKills}K`;
+
         const score = document.createElement('span');
         score.className = 'mp-scoreboard-score';
         score.textContent = entry.score;
 
         row.appendChild(colorDot);
         row.appendChild(name);
+        row.appendChild(kills);
         row.appendChild(score);
         scoreboardEntries.appendChild(row);
     });

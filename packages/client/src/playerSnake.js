@@ -218,9 +218,9 @@ export function updatePlayerStateOnly(deltaTime, currentTime, gameState) {
 
         if (playerSnake.alphaMode.active) {
             const remainingTime = playerSnake.alphaMode.endTime - currentTime;
-            const totalDuration = Math.max(0.001, playerSnake.alphaMode.endTime - playerSnake.alphaMode.startTime);
-            const progress = Math.max(0, Math.min(1, remainingTime / totalDuration));
-            UI.updateAlphaModeUI(progress, remainingTime, playerSnake.alphaMode.scoreMultiplier);
+            const baseDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
+            const progress = Math.max(0, Math.min(1, remainingTime / baseDuration));
+            UI.updateAlphaModeUI(progress, Math.max(0, remainingTime), playerSnake.alphaMode.scoreMultiplier);
         }
     }
 
@@ -870,13 +870,17 @@ export function killEnemySnake(enemyId, gameState) {
         if (playerSnake.alphaMode.active) {
             // Get the extension time from config
             const extensionTime = CONFIG.ALPHA_MODE_EXTENSION_PER_ENEMY;
-            
-            // Extend alpha mode duration
+
+            // Extend alpha mode duration, capped at max
             playerSnake.alphaMode.endTime += extensionTime;
-            
+            const maxEnd = playerSnake.alphaMode.startTime + CONFIG.ALPHA_MODE_MAX_DURATION;
+            if (playerSnake.alphaMode.endTime > maxEnd) {
+                playerSnake.alphaMode.endTime = maxEnd;
+            }
+
             // Show a message indicating the alpha mode extension
             UI.showPowerUpTextEffect(`+${extensionTime}s ALPHA TIME`, PALETTE.alpha.primary);
-            
+
             Logger.gameplay.info(`Alpha mode extended by ${extensionTime} seconds! New end time:`, playerSnake.alphaMode.endTime);
         }
         
@@ -989,8 +993,8 @@ export function applyPowerUp(type, gameState) {
     if (type !== 'normal') {
         const bloom = getBloomPass();
         if (bloom) {
-            bloom.strength = 0.55;
-            bloom.threshold = 0.65;
+            bloom.strength = 0.15;
+            bloom.threshold = 0.85;
             // updateAlphaModeVisuals() eases these back to defaults each frame
         }
     }
@@ -1252,13 +1256,9 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
 
-        // Apply Alpha Mode color (purple) and emissive for bloom
+        // Apply Alpha Mode color (purple) — no emissive glow
         headMaterial.color.setHex(PALETTE.alpha.primary);
-        headMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
-        headMaterial.emissiveIntensity = 0.4;
         bodyMaterial.color.setHex(PALETTE.alpha.primary);
-        bodyMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
-        bodyMaterial.emissiveIntensity = 0.3;
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
@@ -1307,13 +1307,9 @@ function updatePlayerMaterialsAfterMove(gameState) {
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
 
-        // Apply Alpha Mode color (purple) and emissive for bloom
+        // Apply Alpha Mode color (purple) — no emissive glow
         headMaterial.color.setHex(PALETTE.alpha.primary);
-        headMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
-        headMaterial.emissiveIntensity = 0.4;
         bodyMaterial.color.setHex(PALETTE.alpha.primary);
-        bodyMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
-        bodyMaterial.emissiveIntensity = 0.3;
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
@@ -1582,16 +1578,16 @@ export function updateAlphaMode(currentTime, gameState) {
         return;
     }
     
-    // Calculate and update remaining time
+    // Calculate and update remaining time using base duration as reference
     const remainingTime = playerSnake.alphaMode.endTime - currentTime;
-    const totalDuration = Math.max(0.001, playerSnake.alphaMode.endTime - playerSnake.alphaMode.startTime);
-    const progress = Math.max(0, Math.min(1, remainingTime / totalDuration));
-    
+    const baseDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
+    const progress = Math.max(0, Math.min(1, remainingTime / baseDuration));
+
     // Update score multiplier stack
     updateScoreMultiplierStack(currentTime, playerSnake);
-    
+
     // Update UI with remaining time and current score multiplier
-    UI.updateAlphaModeUI(progress, remainingTime, playerSnake.alphaMode.scoreMultiplier);
+    UI.updateAlphaModeUI(progress, Math.max(0, remainingTime), playerSnake.alphaMode.scoreMultiplier);
 }
 
 // Helper function to update the score multiplier stack
@@ -1988,11 +1984,11 @@ function checkPositionCollision(pos1, pos2, forgiveness = 0) {
 }
 
 // Default postprocessing values (set once, used for alpha mode revert)
-const DEFAULT_BLOOM_STRENGTH = 0.3;
-const DEFAULT_BLOOM_THRESHOLD = 0.85;
-const DEFAULT_OUTLINE_STRENGTH = 3.0;
-const ALPHA_BLOOM_STRENGTH = 0.55;
-const ALPHA_BLOOM_THRESHOLD = 0.6;
+const DEFAULT_BLOOM_STRENGTH = 0.0;
+const DEFAULT_BLOOM_THRESHOLD = 1.0;
+const DEFAULT_OUTLINE_STRENGTH = 1.5;
+const ALPHA_BLOOM_STRENGTH = 0.3;
+const ALPHA_BLOOM_THRESHOLD = 0.75;
 const ALPHA_OUTLINE_STRENGTH = 4.0;
 
 /**

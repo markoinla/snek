@@ -1,11 +1,31 @@
 # Loop Summary
 
 **Status:** Completed successfully
-**Iterations:** 9
-**Duration:** 52m 7s
+**Iterations:** 15
+**Duration:** 1h 3m 40s
 
 ## Tasks
 
+- [x] Task 1: Postprocessing pipeline (EffectComposer + bloom)
+- [x] Task 2: Centralized color palette module
+- [x] Task 3: Migrate materials to MeshToonMaterial
+- [x] Task 4: Outline postprocessing pass
+- [x] Task 5: Lighting overhaul (warm/cool split + fog)
+- [x] Task 6: Procedural gradient sky + drifting clouds
+- [x] Task 7: Ground improvements (grid overlay + rocks)
+- [x] Task 8: Animation utility module (tween system)
+- [x] Task 9: Snake body wave motion
+- [x] Task 10: Head squash/stretch + smooth turning
+- [x] Task 11: Eating feedback (chomp + food squish)
+- [x] Task 12: Death scatter effect
+- [x] Task 13: Alpha mode activation effects
+- [x] Task 14: Speed trail particles
+- [x] Task 15: UI visual integration
+- [x] Task 16: Dynamic bloom on powerup/alpha
+- [x] Task 17: Emissive glow on powerup food
+- [x] Task 18: Respawn assembly animation
+- [x] Task 19: Consistent shadow casting (already implemented across all meshes)
+- [x] Task 20: Mobile postprocessing toggle
 - [x] 1.1 Update `CoreState` type: `player` → `players: Record<string, PlayerState>`, add `dead`/`respawnAt`/`score`/`colorIndex` to `PlayerState`, remove top-level `score`
 - [x] 1.2 Update events: add `playerId` to `EventEnvelope`, add `playerId` to player-specific event payloads, add `PlayerRespawned` event type, bump EVENT_SCHEMA_VERSION to 2
 - [x] 1.3 Serialization: verified round-trip with `players` map (JSON handles Record naturally)
@@ -56,13 +76,13 @@
 
 ## Events
 
-- 13 total events
-- 7 task.done
-- 3 loop.complete
-- 1 loop.terminate
+- 29 total events
+- 19 task.done
+- 5 loop.complete
+- 2 loop.terminate
+- 2 task.start
 - 1 task.resume
-- 1 task.start
 
 ## Final Commit
 
-f65fbb1: feat: frame-rate-independent interpolation for multiplayer rendering
+c24305f: fix: prevent alpha players from killing other alpha players in PvP

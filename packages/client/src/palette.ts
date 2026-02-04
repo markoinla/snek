@@ -7,8 +7,8 @@ export const PALETTE = {
   // Environment
   sky: {
     zenith: 0x87CEEB,    // light sky blue
-    horizon: 0xFFF8E7,   // warm cream
-    fog: 0xE8F0E8,       // soft green-white
+    horizon: 0xB0D4F1,   // muted sky blue
+    fog: 0xD4E5F7,       // matches horizon
   },
 
   ground: {

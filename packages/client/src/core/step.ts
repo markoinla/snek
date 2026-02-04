@@ -67,6 +67,11 @@ export function stepCore(state: CoreState, delta: number): StepResult {
 
               if (alphaActive) {
                 player.alphaMode.endTime += CONFIG.ALPHA_MODE_EXTENSION_PER_ENEMY;
+                // Cap at max duration from activation start
+                const maxEnd = player.alphaMode.startTime + CONFIG.ALPHA_MODE_MAX_DURATION;
+                if (player.alphaMode.endTime > maxEnd) {
+                  player.alphaMode.endTime = maxEnd;
+                }
                 addScoreMultiplierCore(state, playerId, state.time);
               } else {
                 addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
@@ -97,6 +102,7 @@ export function stepCore(state: CoreState, delta: number): StepResult {
             if (attackerAlpha && !victimAlpha) {
               // Attacker wins — victim dies
               killPlayerCore(state, pvpCollision.targetPlayerId);
+              player.playerKills = (player.playerKills || 0) + 1;
               const pvpScore1 = Math.round(CONFIG.ENEMY_KILL_SCORE * player.alphaMode.scoreMultiplier);
               player.score.current += pvpScore1;
               allEvents.push({ type: EventType.ScoreChanged, playerId, payload: { score: player.score.current } });
@@ -107,6 +113,7 @@ export function stepCore(state: CoreState, delta: number): StepResult {
               // Victim wins — attacker dies
               if (!attackerGhost) {
                 killPlayerCore(state, playerId);
+                victim.playerKills = (victim.playerKills || 0) + 1;
                 const pvpScore2 = Math.round(CONFIG.ENEMY_KILL_SCORE * victim.alphaMode.scoreMultiplier);
                 victim.score.current += pvpScore2;
                 allEvents.push({ type: EventType.ScoreChanged, playerId: pvpCollision.targetPlayerId, payload: { score: victim.score.current } });
@@ -132,6 +139,7 @@ export function stepCore(state: CoreState, delta: number): StepResult {
             if ((attackerAlpha && !victimAlpha) || pvpCollision.isTail) {
               // Alpha attacker or tail-eater kills victim
               killPlayerCore(state, pvpCollision.targetPlayerId);
+              player.playerKills = (player.playerKills || 0) + 1;
               const pvpScore3 = Math.round(CONFIG.ENEMY_KILL_SCORE * (attackerAlpha ? player.alphaMode.scoreMultiplier : 1));
               player.score.current += pvpScore3;
               allEvents.push({ type: EventType.ScoreChanged, playerId, payload: { score: player.score.current } });
@@ -179,6 +187,11 @@ export function stepCore(state: CoreState, delta: number): StepResult {
           }
           if (foodResult.effects.alphaModeExtension > 0 && player.alphaMode.active) {
             player.alphaMode.endTime += foodResult.effects.alphaModeExtension;
+            // Cap at max duration from activation start
+            const maxEndFood = player.alphaMode.startTime + CONFIG.ALPHA_MODE_MAX_DURATION;
+            if (player.alphaMode.endTime > maxEndFood) {
+              player.alphaMode.endTime = maxEndFood;
+            }
             if (foodResult.effects.addScoreMultiplier) {
               addScoreMultiplierCore(state, playerId, state.time);
             }
