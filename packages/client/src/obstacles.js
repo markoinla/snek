@@ -282,17 +282,31 @@ export function syncObstacleMeshes(gameState) {
         scene.add(obstacles.group);
     }
 
-    // Build a set of existing meshed obstacles by position key
-    const meshedKeys = new Set();
-    obstacles.list.forEach(obs => {
-        if (obs.mesh) {
-            meshedKeys.add(`${obs.x},${obs.z}`);
-        }
-    });
+    // Build a lookup of obstacle positions from the authoritative list
+    const wantedKeys = new Set();
+    obstacles.list.forEach(obs => wantedKeys.add(`${obs.x},${obs.z}`));
 
-    // Create meshes for obstacles that arrived from the server without one
+    // Build a map of existing meshes by position key
+    const existingMeshMap = new Map();
+    // Iterate children in reverse for safe removal
+    for (let i = obstacles.group.children.length - 1; i >= 0; i--) {
+        const child = obstacles.group.children[i];
+        const key = `${Math.round(child.position.x)},${Math.round(child.position.z)}`;
+        if (wantedKeys.has(key) && !existingMeshMap.has(key)) {
+            existingMeshMap.set(key, child);
+        } else {
+            // Remove stale/duplicate meshes
+            obstacles.group.remove(child);
+        }
+    }
+
+    // Create meshes for obstacles that don't have one yet
     obstacles.list.forEach(obs => {
-        if (obs.mesh) return; // Already has a mesh
+        const key = `${obs.x},${obs.z}`;
+        if (existingMeshMap.has(key)) {
+            obs.mesh = existingMeshMap.get(key);
+            return;
+        }
         const data = createObstacleMeshInstance(
             { x: obs.x, z: obs.z }, obs.type, materials, obstacles.group
         );

@@ -176,8 +176,7 @@ async function init() {
         document.body.appendChild(stats.dom);
     }
 
-    const multiplayerFlag = urlParams.get('multiplayer');
-    const multiplayerEnabled = multiplayerFlag === '1' || multiplayerFlag === 'true' || CONFIG.MULTIPLAYER_DEFAULT_ENABLED;
+    const multiplayerEnabled = window.location.pathname === '/multi';
     if (multiplayerEnabled) {
         try {
             await connectMultiplayer(gameState);

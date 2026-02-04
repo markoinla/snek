@@ -14,6 +14,7 @@ export type PlayerCollisionResult = {
   targetPlayerId: string;
   segmentIndex: number;
   isHead: boolean;
+  isTail: boolean;
 } | null;
 
 /**
@@ -30,7 +31,8 @@ export function checkPlayerCollisionCore(
     for (let i = 0; i < player.segments.length; i++) {
       const seg = player.segments[i];
       if (seg.x === pos.x && seg.z === pos.z) {
-        return { targetPlayerId: pid, segmentIndex: i, isHead: i === 0 };
+        const isTail = i >= player.segments.length - CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
+        return { targetPlayerId: pid, segmentIndex: i, isHead: i === 0, isTail };
       }
     }
   }

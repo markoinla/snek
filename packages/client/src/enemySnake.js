@@ -644,7 +644,7 @@ let edibleTailMaterial = null;
 function getEdibleTailMaterial() {
     if (!edibleTailMaterial) {
         edibleTailMaterial = new THREE.MeshLambertMaterial({
-            color: 0xff0000,
+            color: CONFIG.ENEMY_TAIL_COLOR,
             side: THREE.FrontSide,
         });
     }

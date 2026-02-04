@@ -100,6 +100,21 @@ export function addFoodCore(state: CoreState, safeZoneRadius = 0) {
   return spawned;
 }
 
+const OBSTACLE_TYPES = ['tree', 'bush'];
+
+export function spawnObstaclesCore(state: CoreState, count: number, safeZoneRadius = 0) {
+  for (let i = 0; i < count; i++) {
+    const pos = generateUniquePositionCore(state, safeZoneRadius);
+    const type = OBSTACLE_TYPES[state.rng.nextInt(OBSTACLE_TYPES.length)];
+    state.obstacles.list.push({
+      x: pos.x,
+      z: pos.z,
+      type,
+      occupiedCells: [{ x: pos.x, z: pos.z }],
+    });
+  }
+}
+
 export function randomCardinalDirection(state: CoreState) {
   const dirs = [
     { x: 1, z: 0 },

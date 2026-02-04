@@ -321,7 +321,15 @@ canvas { display: block; }
 }
 
 /* Buttons */
-#startButton {
+.start-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: auto;
+    width: 100%;
+}
+
+.start-mode-button {
     background-color: #BB86FC; /* Material Design primary */
     color: #000; /* Dark text on light button */
     border: none;
@@ -330,25 +338,32 @@ canvas { display: block; }
     font-size: 1em;
     border-radius: 4px; /* Squared corners for modern look */
     cursor: pointer;
-    margin-top: auto; /* Push to bottom of flex container */
     font-family: 'Roboto', 'Arial', sans-serif;
     font-weight: 500;
     letter-spacing: 1.25px;
     text-transform: uppercase; /* Material buttons use uppercase */
     transition: all 0.2s ease;
-    box-shadow: none; /* Remove shadow for flatter design */
+    box-shadow: none;
     position: relative;
     overflow: hidden;
-    width: 100%; /* Full width for login style */
-    margin-bottom: 8px;
+    width: 100%;
 }
 
-#startButton:hover {
-    background-color: #9D4EDD; /* Slightly darker on hover */
+.start-mode-button:hover {
+    background-color: #9D4EDD;
 }
 
-#startButton:active {
-    transform: scale(0.98); /* Subtle press effect */
+.start-mode-button:active {
+    transform: scale(0.98);
+}
+
+.start-mode-button.multiplayer {
+    background-color: #03DAC6; /* Material Design teal */
+    color: #000;
+}
+
+.start-mode-button.multiplayer:hover {
+    background-color: #019d8e;
 }
 
 #restartButton {
@@ -547,7 +562,7 @@ canvas { display: block; }
         font-size: 0.9em;
     }
     
-    #startButton, #restartButton {
+    .start-mode-button, #restartButton {
         height: 40px;
         padding: 0 16px;
         font-size: 0.9em;
@@ -655,7 +670,7 @@ canvas { display: block; }
         font-size: 0.85em;
     }
     
-    #startButton, #restartButton {
+    .start-mode-button, #restartButton {
         height: 36px;
         padding: 0 12px;
         font-size: 0.85em;

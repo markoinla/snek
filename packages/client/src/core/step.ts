@@ -107,14 +107,14 @@ export function stepCore(state: CoreState, delta: number): StepResult {
             }
           } else {
             // Head hits other player's body segment
-            if (attackerAlpha) {
-              // Alpha attacker kills victim
+            if (attackerAlpha || pvpCollision.isTail) {
+              // Alpha attacker or tail-eater kills victim
               killPlayerCore(state, pvpCollision.targetPlayerId);
               addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
               allEvents.push({ type: EventType.PlayerKilledPlayer, playerId, payload: { victimId: pvpCollision.targetPlayerId, headOn: false } });
               allEvents.push({ type: EventType.PlayerDead, playerId: pvpCollision.targetPlayerId, payload: { reason: 'PVP_COLLISION' } });
             } else if (!attackerGhost) {
-              // Non-alpha attacker dies
+              // Non-alpha attacker hitting non-tail body dies
               killPlayerCore(state, playerId);
               allEvents.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'PVP_COLLISION' } });
               continue;

@@ -37,7 +37,8 @@ const inGameMusicButton = document.getElementById('musicToggleButton');
 
 // Intro screen elements
 const introScreen = document.getElementById('introScreen');
-const startButton = document.getElementById('startButton');
+const singlePlayerButton = document.getElementById('singlePlayerButton');
+const multiPlayerButton = document.getElementById('multiPlayerButton');
 const controlsText = document.getElementById('controlsText');
 const objectiveText = document.getElementById('objectiveText');
 const alphaModeText = document.getElementById('alphaModeText');
@@ -160,19 +161,17 @@ if (document.readyState === 'loading') {
 
 // Set up event listeners
 function setupEventListeners() {
-    // Start button
-    if (startButton) {
-        startButton.addEventListener('click', function() {
-            // If this is the first time, start the game
-            // If this is from the help screen, resume the game
-            // No need to check display style since the button is only visible when intro screen is shown
-            if (gameStarted) {
-                // This is the help screen, resume the game
-                resumeGameFromHelp();
-            } else {
-                // This is the first-time intro screen, start the game
-                startGame();
-            }
+    // Mode selection buttons
+    if (singlePlayerButton) {
+        singlePlayerButton.addEventListener('click', function() {
+            window.history.pushState({}, '', '/single');
+            startGame();
+        });
+    }
+    if (multiPlayerButton) {
+        multiPlayerButton.addEventListener('click', function() {
+            window.history.pushState({}, '', '/multi');
+            startGame();
         });
     }
     
@@ -432,7 +431,13 @@ export function hasGameStarted() {
 
 // Function to show the intro screen
 export function showIntroScreen() {
-    // Only show intro screen for first-time users
+    const path = window.location.pathname;
+    // If navigated directly to /single or /multi, skip intro
+    if (path === '/single' || path === '/multi') {
+        startGame();
+        return;
+    }
+    // Only show intro screen for first-time users on root path
     if (firstTimeUser) {
         if (introScreen) {
             introScreen.style.display = 'flex';
@@ -442,6 +447,13 @@ export function showIntroScreen() {
         // For returning players, just start the game directly
         startGame();
     }
+}
+
+/**
+ * Returns whether the current URL path indicates multiplayer mode.
+ */
+export function isMultiplayerPath() {
+    return window.location.pathname === '/multi';
 }
 
 // Function to show the help screen (reuses the intro screen)
