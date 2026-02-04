@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import CONFIG from './config';
 import { PATHS, FOOD_TYPES, GEOMETRIES } from './constants';
 import { Logger } from './debugLogger.js';
+import { PALETTE } from './palette';
 
 async function loadTexture(loader, path, applySRGB = true, configFn = null) {
     return new Promise((resolve, reject) => {
@@ -202,20 +203,20 @@ export async function loadAndCreateMaterials() {
         });
 
         // Obstacle Materials
-        materials.obstacle.tree_trunk = new THREE.MeshLambertMaterial({ 
-            map: treeTrunkTexture, 
-            color: 0x966F33
+        materials.obstacle.tree_trunk = new THREE.MeshLambertMaterial({
+            map: treeTrunkTexture,
+            color: PALETTE.obstacle.trunk
         });
-        materials.obstacle.tree_leaves = new THREE.MeshLambertMaterial({ 
-            map: treeLeavesTexture, 
-            color: 0x388E3C,
+        materials.obstacle.tree_leaves = new THREE.MeshLambertMaterial({
+            map: treeLeavesTexture,
+            color: PALETTE.obstacle.leaves,
             transparent: true, // Enable transparency for the leaves
             alphaTest: 0.5,    // Only render pixels with alpha > 0.5
             side: THREE.DoubleSide // Render both sides of the leaves
         });
         materials.obstacle.bush = new THREE.MeshLambertMaterial({
             map: treeLeavesTexture,
-            color: 0x8BC34A,
+            color: PALETTE.obstacle.bush,
             transparent: true,
             alphaTest: 0.5,
             side: THREE.DoubleSide
@@ -257,26 +258,24 @@ export async function loadAndCreateMaterials() {
         });
 
         // Environment Materials
-        materials.ground = new THREE.MeshLambertMaterial({ 
-            map: groundTileTex, 
+        materials.ground = new THREE.MeshLambertMaterial({
+            map: groundTileTex,
             side: THREE.FrontSide,
-            // Apply color tint if configured
-            color: CONFIG.GROUND_COLOR || 0xFFFFFF // Use white (no tint) if GROUND_COLOR is null
+            color: PALETTE.ground.base
         });
-        Logger.system.info("Ground material created with color:", CONFIG.GROUND_COLOR ? 
-            "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
+        Logger.system.info("Ground material created with palette color:", "#" + PALETTE.ground.base.toString(16).padStart(6, '0'));
         
         // Create wall material with ivy texture
         materials.wall = new THREE.MeshLambertMaterial({
             map: wallIvyTex,
-            color: 0xffffff, // Use white to let the texture color show through
+            color: PALETTE.wall.base,
             side: THREE.DoubleSide
         });
         
-        materials.grass = new THREE.MeshLambertMaterial({ 
-            color: 0x558B2F, 
+        materials.grass = new THREE.MeshLambertMaterial({
+            color: PALETTE.vegetation.grass,
             side: THREE.DoubleSide
-        }); // Simple green for grass blades
+        });
         
         // Skybox should remain as MeshBasicMaterial
         materials.skybox = new THREE.MeshBasicMaterial({ 

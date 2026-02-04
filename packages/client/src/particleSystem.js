@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import CONFIG from './config';
 import { GEOMETRIES } from './constants';
+import { PALETTE } from './palette';
 
 let activeParticles = [];
 let particleMaterialRef = null; // Hold reference to the material
@@ -55,7 +56,7 @@ export function createNormalFoodEffect(scene, camera, position) {
         return;
     }
 
-    const baseColor = new THREE.Color(CONFIG.PARTICLE_COLOR_NORMAL_FOOD);
+    const baseColor = new THREE.Color(PALETTE.particles.normalFood);
     const count = adjustParticleCount(CONFIG.PARTICLE_COUNT_NORMAL_FOOD);
     
     if (count <= 0) return;
@@ -162,7 +163,7 @@ export function createKillEffect(scene, camera, position) {
         return;
     }
     
-    const color = new THREE.Color(CONFIG.PARTICLE_COLOR_KILL);
+    const color = new THREE.Color(PALETTE.particles.kill);
     const size = CONFIG.PARTICLE_SIZE * 1.5; // Larger particles
     const lifespan = CONFIG.PARTICLE_LIFESPAN * 1.5; // Longer lifespan
     const speed = CONFIG.PARTICLE_SPEED * 1.2; // Faster particles

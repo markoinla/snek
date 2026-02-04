@@ -7,6 +7,7 @@ import { createExplosion, createKillEffect } from './particleSystem.js';
 import { checkEnemyCollisionCore } from './core/collision.ts';
 import { checkObstacleCollision } from './obstacles.js'; // Make sure this import exists
 import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { PALETTE } from './palette';
 
 let enemyMeshes = {}; // Store meshes keyed by enemy ID: { id: [mesh1, mesh2,...] }
 
@@ -184,7 +185,7 @@ export function renderEnemyKillEffects(enemyId, gameState) {
                 camera,
                 mesh.position.clone(),
                 CONFIG.PARTICLE_COUNT_KILL / meshes.length,
-                CONFIG.PARTICLE_COLOR_KILL
+                PALETTE.particles.kill
             );
         }
     });
@@ -644,7 +645,7 @@ let edibleTailMaterial = null;
 function getEdibleTailMaterial() {
     if (!edibleTailMaterial) {
         edibleTailMaterial = new THREE.MeshLambertMaterial({
-            color: CONFIG.ENEMY_TAIL_COLOR,
+            color: PALETTE.enemy.tail,
             side: THREE.FrontSide,
         });
     }
@@ -741,7 +742,7 @@ export function killEnemySnake(enemyId, gameState) {
                     gameState.camera, 
                     mesh.position.clone(), 
                     CONFIG.PARTICLE_COUNT_KILL / meshes.length, // Distribute particles among segments
-                    CONFIG.PARTICLE_COLOR_KILL
+                    PALETTE.particles.kill
                 );
             }
             

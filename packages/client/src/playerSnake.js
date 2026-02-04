@@ -8,6 +8,7 @@ import { checkEnemyCollision, killEnemySnake as killEnemy } from './enemySnake.j
 import { checkAndEatFood } from './food.js';
 import { evaluatePlayerMove } from './core/player.ts';
 import * as UI from './ui.js'; // For power-up UI updates
+import { PALETTE } from './palette';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState'; // For mode-adjusted settings
@@ -786,7 +787,7 @@ export function killEnemySnake(enemyId, gameState) {
         UI.updateKills(gameState.enemies.kills);
         
         // Show kill message with particle effect color
-        UI.showPowerUpTextEffect(UI.getRandomEnemyKillMessage(), CONFIG.PARTICLE_COLOR_KILL);
+        UI.showPowerUpTextEffect(UI.getRandomEnemyKillMessage(), PALETTE.particles.kill);
         
         // Trigger camera shake
         startCameraShake(gameState);
@@ -806,7 +807,7 @@ export function killEnemySnake(enemyId, gameState) {
             playerSnake.alphaMode.endTime += extensionTime;
             
             // Show a message indicating the alpha mode extension
-            UI.showPowerUpTextEffect(`+${extensionTime}s ALPHA TIME`, CONFIG.ALPHA_MODE_COLOR);
+            UI.showPowerUpTextEffect(`+${extensionTime}s ALPHA TIME`, PALETTE.alpha.primary);
             
             Logger.gameplay.info(`Alpha mode extended by ${extensionTime} seconds! New end time:`, playerSnake.alphaMode.endTime);
         }
@@ -1152,7 +1153,7 @@ let playerEdibleTailMaterial = null;
 function getPlayerEdibleTailMaterial() {
     if (!playerEdibleTailMaterial) {
         playerEdibleTailMaterial = new THREE.MeshLambertMaterial({
-            color: CONFIG.PLAYER_TAIL_COLOR,
+            color: PALETTE.players[0].accent,
             side: THREE.FrontSide,
         });
     }
@@ -1179,8 +1180,8 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
 
         // Apply Alpha Mode color (purple)
-        headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
-        bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+        headMaterial.color.setHex(PALETTE.alpha.primary);
+        bodyMaterial.color.setHex(PALETTE.alpha.primary);
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
@@ -1230,8 +1231,8 @@ function updatePlayerMaterialsAfterMove(gameState) {
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
 
         // Apply Alpha Mode color (purple)
-        headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
-        bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+        headMaterial.color.setHex(PALETTE.alpha.primary);
+        bodyMaterial.color.setHex(PALETTE.alpha.primary);
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
@@ -1562,7 +1563,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
         Audio.playAlphaKillVoice();
         
         // Show the next message in the sequence for Alpha Mode kills
-        UI.showPowerUpTextEffect(getNextAlphaKillMessage(), CONFIG.ALPHA_MODE_COLOR);
+        UI.showPowerUpTextEffect(getNextAlphaKillMessage(), PALETTE.alpha.primary);
         
         return true;
     } else if (collision.isTail) {

@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import CONFIG from './config';
 import { PATHS, GEOMETRIES } from './constants';
 import { performanceSettings } from './deviceUtils.js';
+import { PALETTE } from './palette';
 
 export function createScene() {
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(CONFIG.FOG_COLOR, CONFIG.FOG_DENSITY);
+    scene.fog = new THREE.FogExp2(PALETTE.sky.fog, CONFIG.FOG_DENSITY);
     return scene;
 }
 

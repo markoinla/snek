@@ -8,6 +8,7 @@ import { checkAndEatFoodCore } from './core/food.ts';
 import * as UI from './ui.js';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { PALETTE } from './palette';
 import { getAdjustedSetting } from './gameState'; // Import for mode-adjusted settings
 
 /**
@@ -560,7 +561,7 @@ export function checkAndEatFood(position, gameState) {
             // Add alpha points (core handles alpha-mode multiplier)
             addAlphaPoints(coreResult.effects.alphaPoints, gameState);
             if (gameState.playerSnake.alphaMode.active) {
-                UI.showPowerUpTextEffect(`+${coreResult.effects.alphaPoints.toFixed(0)} ALPHA PTS!`, CONFIG.ALPHA_MODE_COLOR);
+                UI.showPowerUpTextEffect(`+${coreResult.effects.alphaPoints.toFixed(0)} ALPHA PTS!`, PALETTE.alpha.primary);
             }
         }
 

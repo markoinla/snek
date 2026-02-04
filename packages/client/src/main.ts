@@ -26,6 +26,7 @@ import { spawnFoodCore } from './core/spawn.ts';
 import { spawnInitialEnemiesCore } from './core/enemy.ts';
 import { connectMultiplayer } from './network/colyseusClient.ts';
 import { initPostprocessing, resizePostprocessing, renderPostprocessing } from './postprocessing';
+import { PALETTE } from './palette';
 
 // FPS counter
 let stats: any;
@@ -790,16 +791,14 @@ function validateConfig() {
     Logger.system.info("Configuration validated.");
 }
 
-// Function to update ground color from config
+// Function to update ground color from palette
 function updateGroundColor() {
     if (gameState.environment && gameState.environment.groundMesh) {
         const groundMesh = gameState.environment.groundMesh;
         if (groundMesh.material) {
-            // Update the color directly
-            (groundMesh.material as THREE.MeshStandardMaterial).color.set(CONFIG.GROUND_COLOR || 0xFFFFFF);
-            (groundMesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
-            Logger.system.info("Ground color updated to:", CONFIG.GROUND_COLOR ? 
-                "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
+            (groundMesh.material as THREE.MeshLambertMaterial).color.set(PALETTE.ground.base);
+            (groundMesh.material as THREE.MeshLambertMaterial).needsUpdate = true;
+            Logger.system.info("Ground color updated from palette.");
         }
     }
 }
