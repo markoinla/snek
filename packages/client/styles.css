@@ -171,6 +171,7 @@ canvas { display: block; }
     display: flex;
     flex-direction: column;
     gap: 6px;
+    animation: borderGlow 4s ease-in-out infinite;
 }
 
 #info, #kills, #highScoreInfo {
@@ -235,6 +236,31 @@ canvas { display: block; }
     border-left: 3px solid var(--neon-green);
     box-shadow: 0 0 8px rgba(57, 255, 20, 0.15);
     font-size: 0.85em;
+    font-family: var(--font-pixel);
+    font-size: 0.5em;
+    letter-spacing: 0.5px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Type-specific power-up colors */
+.power-up-item[data-powerup-type="speed"] {
+    border-left-color: #8BC34A;
+    box-shadow: 0 0 8px rgba(139, 195, 74, 0.2);
+}
+
+.power-up-item[data-powerup-type="shrink"] {
+    border-left-color: var(--neon-purple);
+    box-shadow: 0 0 8px rgba(187, 134, 252, 0.2);
+}
+
+.power-up-item[data-powerup-type="score_x2"] {
+    border-left-color: #FFD700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+}
+
+.power-up-item[data-powerup-type="ghost"] {
+    border-left-color: #BDBDBD;
+    box-shadow: 0 0 8px rgba(189, 189, 189, 0.15);
 }
 
 /* Power-up Text Effect */
@@ -1326,6 +1352,7 @@ canvas { display: block; }
     color: white;
     font-size: 0.85em;
     pointer-events: none;
+    animation: borderGlow 4s ease-in-out infinite;
 }
 
 .mp-scoreboard.active {

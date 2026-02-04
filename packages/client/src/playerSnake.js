@@ -1144,22 +1144,15 @@ function updatePowerUpInfoDisplay(gameState, message = '') {
     
     // If we have active power-ups, display them
     if (playerSnake.activePowerUps.length > 0) {
-        // Create a combined message of all active power-ups
-        const powerUpMessages = playerSnake.activePowerUps.map(powerUp => {
-            // Calculate remaining time and round to 1 decimal place
+        // Build structured power-up data for type-aware UI display
+        const powerUpItems = playerSnake.activePowerUps.map(powerUp => {
             const remainingSeconds = Math.max(0, powerUp.endTime - currentTime);
-            // Format to show only one decimal place
             const remainingTime = remainingSeconds.toFixed(1);
-            
-            // Get the power-up description
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === powerUp.type);
             const description = foodTypeInfo ? foodTypeInfo.description : powerUp.type;
-            
-            return `${description}: ${remainingTime}s`;
+            return { type: powerUp.type, text: `${description}: ${remainingTime}s` };
         });
-        
-        // Join the messages with a separator
-        UI.updatePowerUpInfo(powerUpMessages.join(' | '));
+        UI.updatePowerUpInfo(powerUpItems);
     } else {
         // No active power-ups
         UI.updatePowerUpInfo('');

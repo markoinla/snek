@@ -808,40 +808,40 @@ export function hideGameOver() {
     updateMobileControlsVisibility();
 }
 
-export function updatePowerUpInfo(text) {
-    if (powerUpInfoElement) {
-        // Clear previous content
-        powerUpInfoElement.innerHTML = '';
-        
-        // If there's no text, hide the element
-        if (!text) {
-            powerUpInfoElement.style.display = 'none';
-            return;
-        }
-        
-        // Check if the text contains multiple power-ups (separated by |)
-        if (text.includes('|')) {
-            // Split the text into individual power-ups
-            const powerUps = text.split('|').map(item => item.trim());
-            
-            // Create a div for each power-up
-            powerUps.forEach(powerUp => {
-                const powerUpDiv = document.createElement('div');
-                powerUpDiv.className = 'power-up-item';
-                powerUpDiv.textContent = powerUp;
-                powerUpInfoElement.appendChild(powerUpDiv);
-            });
-        } else {
-            // Single power-up, create one div
-            const powerUpDiv = document.createElement('div');
-            powerUpDiv.className = 'power-up-item';
-            powerUpDiv.textContent = text;
-            powerUpInfoElement.appendChild(powerUpDiv);
-        }
-        
-        // Show the container
-        powerUpInfoElement.style.display = 'flex';
+export function updatePowerUpInfo(data) {
+    if (!powerUpInfoElement) return;
+
+    // Clear previous content
+    powerUpInfoElement.innerHTML = '';
+
+    // Normalise input: accept '' / null, a plain string (legacy), or an array of {type, text}
+    if (!data || (typeof data === 'string' && data.trim() === '') || (Array.isArray(data) && data.length === 0)) {
+        powerUpInfoElement.style.display = 'none';
+        return;
     }
+
+    let items;
+    if (Array.isArray(data)) {
+        // Structured format: [{type, text}, ...]
+        items = data;
+    } else if (typeof data === 'string') {
+        // Legacy string format — split by '|'
+        items = data.split('|').map(s => ({ type: '', text: s.trim() }));
+    } else {
+        return;
+    }
+
+    items.forEach(item => {
+        const powerUpDiv = document.createElement('div');
+        powerUpDiv.className = 'power-up-item';
+        if (item.type) {
+            powerUpDiv.setAttribute('data-powerup-type', item.type);
+        }
+        powerUpDiv.textContent = item.text;
+        powerUpInfoElement.appendChild(powerUpDiv);
+    });
+
+    powerUpInfoElement.style.display = 'flex';
 }
 
 export function showPowerUpTextEffect(text, color = 0xffffff) {
