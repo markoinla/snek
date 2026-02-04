@@ -733,11 +733,21 @@ export function updateFoodAnimations(gameState, deltaTime) {
                 appleModel.position.y = CONFIG.UNIT_SIZE * 0.45 + bobHeight;
             }
         } else if (foodMesh.userData.foodType !== 'normal' && foodMesh.userData.movementProperties) {
+            // Pulse emissiveIntensity on powerup frogs for a glow effect
+            const glowTime = gameState.simulation?.time ?? gameState.clock.getElapsedTime();
+            const phase = foodMesh.userData.movementProperties.phaseOffset1 || 0;
+            const intensity = 1.0 + 1.2 * (0.5 + 0.5 * Math.sin(glowTime * 3.0 + phase));
+            foodMesh.traverse(child => {
+                if (child.isMesh && child.material && child.material.emissive) {
+                    child.material.emissiveIntensity = intensity;
+                }
+            });
+
             if (gameState.flags.useCoreSimulation) {
                 // Keep power-ups static in X/Z while core simulation is authoritative,
                 // but still allow hopping for visual feedback.
                 const props = foodMesh.userData.movementProperties;
-                const time = gameState.simulation?.time ?? gameState.clock.getElapsedTime();
+                const time = glowTime;
                 const baseHop = Math.abs(
                     Math.sin((time + props.phaseOffset1) * props.hopFrequency * 2)
                 );
