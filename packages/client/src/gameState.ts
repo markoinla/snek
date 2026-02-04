@@ -65,6 +65,7 @@ export interface GameState {
         wallGroup: THREE.Group | null;
         grassInstances: any;
         skybox: any;
+        clouds: THREE.Group | null;
     };
     cameraEffects: {
         shake: {
@@ -182,6 +183,7 @@ export const gameState: GameState = {
         wallGroup: null,
         grassInstances: null,
         skybox: null,
+        clouds: null,
     },
 
     // Camera effects

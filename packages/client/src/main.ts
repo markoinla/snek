@@ -730,6 +730,14 @@ function render() {
     // Update camera (even slightly after game over for effect?)
     Player.updateCamera(gameState);
 
+    // Drift clouds
+    if (gameState.environment.clouds) {
+        gameState.environment.clouds.children.forEach((cloud: any) => {
+            cloud.position.x += Math.cos(cloud.userData.driftDirection) * cloud.userData.driftSpeed * frameTime;
+            cloud.position.z += Math.sin(cloud.userData.driftDirection) * cloud.userData.driftSpeed * frameTime;
+        });
+    }
+
     // Update camera effects (shake, etc.)
     updateCameraEffects(gameState.simulation.time);
 

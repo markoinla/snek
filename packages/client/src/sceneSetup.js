@@ -74,17 +74,71 @@ export function createLights(scene) {
     return { hemiLight, sunLight, fillLight };
 }
 
-export function createSkybox(scene, texture) {
-    if (!texture) {
-        console.error("Skybox texture not loaded!");
-        return null;
+export function createSkybox(scene) {
+    const skyGeo = new THREE.SphereGeometry(CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 3, 32, 15);
+    const skyMat = new THREE.ShaderMaterial({
+        uniforms: {
+            topColor:    { value: new THREE.Color(PALETTE.sky.zenith) },
+            bottomColor: { value: new THREE.Color(PALETTE.sky.horizon) },
+            offset:      { value: 20 },
+            exponent:    { value: 0.6 },
+        },
+        vertexShader: `
+            varying vec3 vWorldPosition;
+            void main() {
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform vec3 topColor;
+            uniform vec3 bottomColor;
+            uniform float offset;
+            uniform float exponent;
+            varying vec3 vWorldPosition;
+            void main() {
+                float h = normalize(vWorldPosition + offset).y;
+                gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+            }
+        `,
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false,
+    });
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+    return sky;
+}
+
+export function createClouds(scene) {
+    const clouds = new THREE.Group();
+    const cloudGeo = new THREE.PlaneGeometry(8, 4);
+
+    for (let i = 0; i < 12; i++) {
+        const cloudMat = new THREE.MeshBasicMaterial({
+            color: 0xFFFFFF,
+            transparent: true,
+            opacity: 0.3 + Math.random() * 0.3,
+            side: THREE.DoubleSide,
+            fog: false,
+            depthWrite: false,
+        });
+        const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+        const spread = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 1.5;
+        cloud.position.set(
+            (Math.random() - 0.5) * spread,
+            CONFIG.GRID_SIZE * 0.3 + Math.random() * CONFIG.GRID_SIZE * 0.2,
+            (Math.random() - 0.5) * spread
+        );
+        cloud.rotation.x = -Math.PI / 2;
+        cloud.scale.set(1 + Math.random() * 2, 1 + Math.random(), 1);
+        cloud.userData.driftSpeed = 0.2 + Math.random() * 0.3;
+        cloud.userData.driftDirection = Math.random() * Math.PI * 2;
+        clouds.add(cloud);
     }
-    const skyboxSize = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 5;
-    const skyboxGeo = new THREE.BoxGeometry(skyboxSize, skyboxSize, skyboxSize);
-    const skyboxMat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, fog: false });
-    const skybox = new THREE.Mesh(skyboxGeo, skyboxMat);
-    scene.add(skybox);
-    return skybox;
+    scene.add(clouds);
+    return clouds;
 }
 
 export function createGround(scene, material) {
@@ -217,7 +271,8 @@ export function setupBasicScene(scene, materials) {
     const groundMesh = createGround(scene, materials.ground);
     const wallGroup = createWalls(scene, materials.wall);
     const grassInstances = createGrass(scene, materials.grass); // Use grass material
-    const skybox = createSkybox(scene, materials.skybox?.map); // Access texture via material
+    const skybox = createSkybox(scene); // Procedural gradient sky
+    const clouds = createClouds(scene);
 
-    return { groundMesh, wallGroup, grassInstances, skybox };
+    return { groundMesh, wallGroup, grassInstances, skybox, clouds };
 }
