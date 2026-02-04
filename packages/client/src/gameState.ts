@@ -64,6 +64,7 @@ export interface GameState {
         groundMesh: THREE.Mesh | null;
         wallGroup: THREE.Group | null;
         grassInstances: any;
+        rocks: any;
         skybox: any;
         clouds: THREE.Group | null;
     };
@@ -182,6 +183,7 @@ export const gameState: GameState = {
         groundMesh: null,
         wallGroup: null,
         grassInstances: null,
+        rocks: null,
         skybox: null,
         clouds: null,
     },

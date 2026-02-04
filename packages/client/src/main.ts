@@ -338,6 +338,35 @@ function onGameResumed() {
     }
 }
 
+// --- Environment Rebuild ---
+// Removes old environment objects and recreates them with current CONFIG values.
+// This ensures walls, ground, etc. match GRID_SIZE after config changes.
+function rebuildEnvironment() {
+    const scene = gameState.scene;
+    const env = gameState.environment;
+    if (!scene || !env) return;
+
+    // Remove old environment objects from the scene
+    if (env.wallGroup) scene.remove(env.wallGroup);
+    if (env.groundMesh) scene.remove(env.groundMesh);
+    if (env.grassInstances) scene.remove(env.grassInstances);
+    if (env.rocks) scene.remove(env.rocks);
+    if (env.skybox) scene.remove(env.skybox);
+    if (env.clouds) scene.remove(env.clouds);
+
+    // Also remove the grid helper (child of scene, placed by createGround)
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+        const child = scene.children[i];
+        if (child instanceof THREE.GridHelper) {
+            scene.remove(child);
+        }
+    }
+
+    // Recreate with current CONFIG
+    const newEnv = SceneSetup.setupBasicScene(scene, gameState.materials);
+    gameState.environment = { ...newEnv };
+}
+
 // --- Game Reset ---
 function resetGame() {
     Logger.system.info("--- RESETTING GAME ---");
@@ -371,23 +400,27 @@ function resetGame() {
         // Reset individual game components - the order matters here!
         // Each of these calls should properly clean up their THREE.js objects
         // to prevent memory leaks
-        
+
         // Clean up any active particles first
         Particles.resetParticles(gameState.scene);
-        
+
         // Reset food objects - this removes food meshes from the scene
-        Food.resetFood(gameState); 
-        
+        Food.resetFood(gameState);
+
         // Second stage: Recreate game world with slight delays
         setTimeout(() => {
             // Reset obstacles - removes obstacle meshes from the scene
-            Obstacles.resetObstacles(gameState); 
-            
+            Obstacles.resetObstacles(gameState);
+
             // Reset enemies - removes enemy snake meshes from the scene
-            Enemy.resetEnemies(gameState); 
-            
-            // Reset player - removes player snake meshes from the scene 
+            Enemy.resetEnemies(gameState);
+
+            // Reset player - removes player snake meshes from the scene
             Player.resetPlayer(gameState);
+
+            // Rebuild environment (walls, ground, grass, etc.) so they
+            // match the current CONFIG.GRID_SIZE if it was changed.
+            rebuildEnvironment();
             
             // Final stage: Spawn new entities with slight delays
             setTimeout(() => {
@@ -736,8 +769,6 @@ function render() {
     // Update alpha mode postprocessing effects (bloom/outline)
     Player.updateAlphaModeVisuals(gameState, frameTime);
 
-    // Emit speed trail particles when moving fast
-    Player.updateSpeedTrail(gameState, frameTime);
 
     // Rebuild outline selection from visible game meshes
     syncOutlinedObjects();
