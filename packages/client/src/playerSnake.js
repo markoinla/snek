@@ -1676,15 +1676,50 @@ export function playPlayerDeathEffects(gameState) {
 
     Audio.playSoundEffect('playerDeath');
 
-    if (playerSnakeMeshes.length > 0) {
-        createExplosion(
-            scene,
-            camera,
-            playerSnakeMeshes[0].position,
-            CONFIG.PARTICLE_COUNT_DEATH,
-            0xff4444
-        );
-    }
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+
+    // Particle explosion at head position
+    createExplosion(
+        scene,
+        camera,
+        head.position.clone(),
+        CONFIG.PARTICLE_COUNT_DEATH,
+        PALETTE.particles.death
+    );
+
+    // Scatter each segment outward from head
+    const count = playerSnakeMeshes.length;
+    playerSnakeMeshes.forEach((mesh, i) => {
+        if (!mesh) return;
+        // Cancel any in-flight tweens on this segment
+        cancelTween(mesh);
+
+        // Scatter direction: evenly spread around a circle with slight randomness
+        const angle = (i / Math.max(count, 1)) * Math.PI * 2 + Math.random() * 0.5;
+        const distance = 2 + Math.random() * 3;
+        const targetX = mesh.position.x + Math.cos(angle) * distance;
+        const targetZ = mesh.position.z + Math.sin(angle) * distance;
+        const peakY = 1.5 + Math.random() * 2;
+
+        // Horizontal scatter
+        tween(mesh, 'position', 'x', mesh.position.x, targetX, 0.4, ease.outQuad);
+        tween(mesh, 'position', 'z', mesh.position.z, targetZ, 0.4, ease.outQuad);
+
+        // Arc up then fall down, then shrink away
+        tween(mesh, 'position', 'y', mesh.position.y, peakY, 0.2, ease.outQuad, () => {
+            tween(mesh, 'position', 'y', peakY, -0.5, 0.3, ease.inOutCubic, () => {
+                tweenUniform(mesh, 'scale', 1.0, 0, 0.2, ease.linear, () => {
+                    scene.remove(mesh);
+                });
+            });
+        });
+
+        // Spin during scatter
+        const spinDir = Math.random() > 0.5 ? 1 : -1;
+        tween(mesh, 'rotation', 'x', 0, Math.PI * 2 * spinDir, 0.7, ease.outQuad);
+        tween(mesh, 'rotation', 'z', 0, Math.PI * (Math.random() > 0.5 ? 1 : -1), 0.7, ease.outQuad);
+    });
 }
 
 // Update Alpha Mode progress based on score
