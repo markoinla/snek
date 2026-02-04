@@ -34,6 +34,7 @@ export function createPlayerState(id: string): PlayerState {
     respawnAt: 0,
     score: { current: 0, multiplier: 1 },
     colorIndex: 0,
+    playerKills: 0,
   };
 }
 

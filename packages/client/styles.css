@@ -1410,6 +1410,15 @@ canvas { display: block; }
     font-size: 0.5em;
 }
 
+.mp-scoreboard-kills {
+    font-variant-numeric: tabular-nums;
+    min-width: 20px;
+    text-align: right;
+    font-family: var(--font-pixel);
+    font-size: 0.5em;
+    opacity: 0.6;
+}
+
 .mp-scoreboard-score {
     font-variant-numeric: tabular-nums;
     min-width: 30px;

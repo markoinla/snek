@@ -57,6 +57,7 @@ export type PlayerState = {
   respawnAt: number;
   score: ScoreState;
   colorIndex: number;
+  playerKills: number;
 };
 
 export type EnemyState = {

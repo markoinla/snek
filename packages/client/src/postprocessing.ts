@@ -25,17 +25,17 @@ export function initPostprocessing(
   outlinePass = new OutlinePass(resolution, scene, camera);
   outlinePass.visibleEdgeColor = color(PALETTE.outline.edge);
   outlinePass.hiddenEdgeColor = color(PALETTE.outline.edgeGlow);
-  outlinePass.edgeStrength = 3.0;
-  outlinePass.edgeThickness = 1.0;
+  outlinePass.edgeStrength = 1.5;
+  outlinePass.edgeThickness = 0.5;
   outlinePass.edgeGlow = 0.0;
   outlinePass.pulsePeriod = 0;
   composer.addPass(outlinePass);
 
   bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.3,   // strength (subtle)
-    0.4,   // radius
-    0.85   // threshold — only bright things bloom
+    0.0,   // strength (disabled by default)
+    0.3,   // radius
+    1.0    // threshold — nothing blooms at default
   );
   composer.addPass(bloomPass);
 

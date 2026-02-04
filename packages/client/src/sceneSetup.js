@@ -81,7 +81,7 @@ export function createSkybox(scene) {
             topColor:    { value: new THREE.Color(PALETTE.sky.zenith) },
             bottomColor: { value: new THREE.Color(PALETTE.sky.horizon) },
             offset:      { value: 20 },
-            exponent:    { value: 0.6 },
+            exponent:    { value: 1.0 },
         },
         vertexShader: `
             varying vec3 vWorldPosition;

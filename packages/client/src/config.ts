@@ -67,6 +67,7 @@ const CONFIG = {
     // Alpha Mode settings
     ALPHA_MODE_SCORE_THRESHOLD: 1000,
     ALPHA_MODE_DURATION: 6,
+    ALPHA_MODE_MAX_DURATION: 18,           // Maximum alpha mode duration after extensions (3x base)
     ALPHA_MODE_SPEED_MULTIPLIER: 1.5,
     ALPHA_MODE_COLOR: 0x9C27B0,
     ALPHA_MODE_EXTENSION_PER_ENEMY: 1.5,
@@ -127,7 +128,7 @@ const CONFIG = {
     WALL_HEIGHT: 3,
     WALL_THICKNESS: 1,
     FOG_COLOR: 0xFFFFFF,
-    FOG_DENSITY: 0.03,
+    FOG_DENSITY: 0.007,
     START_SAFE_ZONE: 5,
     GROUND_COLOR: 0x4682B4,
 
