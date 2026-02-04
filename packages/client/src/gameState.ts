@@ -106,6 +106,7 @@ export interface GameState {
         sendInput: ((input: InputMessage) => void) | null;
         pendingServerEvents: any[];
     };
+    composer: any | null;
     players: Record<string, any>;
     localPlayerId: string;
     cleanupInput: (() => void) | null;
@@ -225,6 +226,9 @@ export const gameState: GameState = {
         sendInput: null,
         pendingServerEvents: [],
     },
+
+    // Postprocessing
+    composer: null,
 
     // Multiplayer player state
     players: {},
