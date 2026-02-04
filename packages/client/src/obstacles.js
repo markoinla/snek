@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { OBSTACLE_TYPES, GEOMETRIES } from './constants.js';
+import CONFIG from './config';
+import { OBSTACLE_TYPES, GEOMETRIES } from './constants';
 import { generateUniquePosition } from './utils.js';
-import { getAdjustedSetting } from './gameState.js'; // Import for mode-adjusted settings
+import { getAdjustedSetting } from './gameState'; // Import for mode-adjusted settings
 import { checkObstacleCollisionCore } from './core/collision.ts';
 
 function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {

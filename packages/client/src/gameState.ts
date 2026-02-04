@@ -1,9 +1,119 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
+import CONFIG from './config';
+import type { CoreState, InputMessage } from 'snek-shared';
+
+export interface GameState {
+    core: CoreState | null;
+    scene: THREE.Scene | null;
+    camera: THREE.PerspectiveCamera | null;
+    renderer: THREE.WebGLRenderer | null;
+    materials: Record<string, any> | null;
+    lights: {
+        ambientLight: THREE.AmbientLight | null;
+        directionalLight: THREE.DirectionalLight | null;
+    };
+    clock: THREE.Clock | null;
+    frameCount: number;
+    simulation: {
+        tickRate: number;
+        fixedDelta: number;
+        accumulator: number;
+        time: number;
+        lastTimeMs: number;
+        maxSubSteps: number;
+    };
+    gameMode: string;
+    playerSnake: {
+        segments: any[];
+        direction: { x: number; y: number; z: number };
+        nextDirection: { x: number; y: number; z: number };
+        speed: number;
+        moveTimer: number;
+        animationFrame: number;
+        animationTimer: number;
+        scoreMultiplier: number;
+        ghostModeActive: boolean;
+        activePowerUp: { type: string; endTime: number } | null;
+        enlargedHeadUntil: number;
+        alphaMode: {
+            active: boolean;
+            startTime: number;
+            endTime: number;
+            lastScoreThreshold: number;
+            [key: string]: any;
+        };
+        [key: string]: any;
+    };
+    enemies: {
+        list: any[];
+        kills: number;
+        [key: string]: any;
+    };
+    food: {
+        positions: any[];
+        meshes: THREE.Mesh[];
+    };
+    obstacles: {
+        list: any[];
+        group: THREE.Group | null;
+        [key: string]: any;
+    };
+    particles: Record<string, any>;
+    environment: {
+        groundMesh: THREE.Mesh | null;
+        wallGroup: THREE.Group | null;
+        grassInstances: any;
+        skybox: any;
+    };
+    cameraEffects: {
+        shake: {
+            active: boolean;
+            startTime: number;
+            duration: number;
+            intensity: number;
+            originalPosition: THREE.Vector3;
+        };
+    };
+    score: {
+        current: number;
+        multiplier: number;
+    };
+    highScore: number;
+    stats: {
+        applesEaten: number;
+        frogsEaten: number;
+        snakesEaten: number;
+    };
+    flags: {
+        gameOver: boolean;
+        gameStarted: boolean;
+        gamePaused: boolean;
+        gameRunning: boolean;
+        restartRequested: boolean;
+        animating: boolean;
+        audioHealthCheckRun: boolean;
+        useCoreSimulation: boolean;
+    };
+    inputQueue: InputMessage[];
+    network: {
+        enabled: boolean;
+        status: string;
+        room: any;
+        sessionId: string | null;
+        lastSnapshotTick: number;
+        lastSnapshotTimeMs: number;
+        snapshotIntervalMs: number;
+        sendInput: ((input: InputMessage) => void) | null;
+        pendingServerEvents: any[];
+    };
+    players: Record<string, any>;
+    localPlayerId: string;
+    cleanupInput: (() => void) | null;
+}
 
 // Centralized Game State
 // This object will be passed around to modules that need access to shared state.
-export const gameState = {
+export const gameState: GameState = {
     core: null,
     scene: null,
     camera: null,
@@ -26,7 +136,7 @@ export const gameState = {
 
     // Game mode - Normal or Casual
     gameMode: loadGameMode(),
-    
+
     // Game Objects State
     playerSnake: {
         segments: [],
@@ -125,7 +235,7 @@ export const gameState = {
 };
 
 // Function to load high score from localStorage
-function loadHighScore() {
+function loadHighScore(): number {
     if (typeof localStorage === 'undefined') {
         return 0;
     }
@@ -139,7 +249,7 @@ function loadHighScore() {
 }
 
 // Function to save high score to localStorage
-export function saveHighScore(score) {
+export function saveHighScore(score: number): void {
     if (typeof localStorage === 'undefined') {
         return;
     }
@@ -152,14 +262,14 @@ export function saveHighScore(score) {
 }
 
 // Function to save the current game mode to localStorage
-export function saveGameMode(mode) {
+export function saveGameMode(mode: string): void {
     if (typeof localStorage === 'undefined') {
         return;
     }
     try {
         localStorage.setItem('alphaSnek_gameMode', mode);
         console.log('Game mode saved:', mode);
-        
+
         // Update gameState with the new mode
         gameState.gameMode = mode;
     } catch (error) {
@@ -168,18 +278,18 @@ export function saveGameMode(mode) {
 }
 
 // Function to get the current mode settings based on gameState.gameMode
-export function getCurrentModeSettings() {
-    const modeKey = gameState.gameMode === CONFIG.GAME_MODES.CASUAL ? 
+export function getCurrentModeSettings(): Record<string, number> {
+    const modeKey = gameState.gameMode === CONFIG.GAME_MODES.CASUAL ?
         CONFIG.GAME_MODES.CASUAL : CONFIG.GAME_MODES.NORMAL;
-    
-    return CONFIG.MODE_SETTINGS[modeKey];
+
+    return CONFIG.MODE_SETTINGS[modeKey as keyof typeof CONFIG.MODE_SETTINGS];
 }
 
 // Function to get a game setting adjusted for the current mode
 // For example: getAdjustedSetting('BASE_SNAKE_SPEED') will return the base speed multiplied by the mode's speed multiplier
-export function getAdjustedSetting(settingName) {
+export function getAdjustedSetting(settingName: string): number | null {
     const modeSettings = getCurrentModeSettings();
-    
+
     switch (settingName) {
         case 'BASE_SNAKE_SPEED':
             return CONFIG.BASE_SNAKE_SPEED * modeSettings.SNAKE_SPEED_MULTIPLIER;
@@ -200,14 +310,14 @@ export function getAdjustedSetting(settingName) {
 }
 
 // Function to load game mode from localStorage
-function loadGameMode() {
+function loadGameMode(): string {
     if (typeof localStorage === 'undefined') {
         return CONFIG.GAME_MODES.NORMAL;
     }
     try {
         const savedGameMode = localStorage.getItem('alphaSnek_gameMode');
         // Make sure we return a valid mode, defaulting to NORMAL if needed
-        return savedGameMode === CONFIG.GAME_MODES.CASUAL ? 
+        return savedGameMode === CONFIG.GAME_MODES.CASUAL ?
             CONFIG.GAME_MODES.CASUAL : CONFIG.GAME_MODES.NORMAL;
     } catch (error) {
         console.warn('Could not load game mode from localStorage:', error);
@@ -216,7 +326,7 @@ function loadGameMode() {
 }
 
 // Function to safely reset parts of the state, preserving essential refs like scene, camera, renderer
-export function resetGameStateForNewGame() {
+export function resetGameStateForNewGame(): void {
      console.log("Resetting game state for new game...");
 
      // Reset Player

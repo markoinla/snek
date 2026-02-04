@@ -1,19 +1,18 @@
-// @ts-nocheck
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { gameState, resetGameStateForNewGame, saveHighScore, getAdjustedSetting } from './gameState.js';
+import CONFIG from './config';
+import { gameState, resetGameStateForNewGame, saveHighScore, getAdjustedSetting } from './gameState';
 import * as Utils from './utils.js';
 import * as SceneSetup from './sceneSetup.js';
 import * as Materials from './materials.js';
 import * as UI from './ui.js';
-import * as Input from './inputHandler.js';
+import * as Input from './inputHandler';
 import * as Particles from './particleSystem.js';
 import * as Food from './food.js';
 import * as Obstacles from './obstacles.js';
 import * as Player from './playerSnake.js';
 import * as Enemy from './enemySnake.js';
 import * as Audio from './audioSystem.js';
-import { FOOD_TYPES } from './constants.js';
+import { FOOD_TYPES } from './constants';
 import { performanceSettings } from './deviceUtils.js';
 import { initLogger, Logger, isLoggingEnabled } from './debugLogger.js';
 import Stats from '../lib/stats.module.js';
@@ -28,13 +27,13 @@ import { spawnInitialEnemiesCore } from './core/enemy.ts';
 import { connectMultiplayer } from './network/colyseusClient.ts';
 
 // FPS counter
-let stats;
+let stats: any;
 
 // Store event listener references so we can clean them up
-const globalEventListeners = [];
+const globalEventListeners: Array<{ target: EventTarget; type: string; listener: EventListenerOrEventListenerObject }> = [];
 
 // Helper function to add event listeners that we can clean up later
-function addManagedEventListener(target, type, listener, options) {
+function addManagedEventListener(target: EventTarget, type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void {
     target.addEventListener(type, listener, options);
     globalEventListeners.push({ target, type, listener });
 }
@@ -172,7 +171,7 @@ async function init() {
     
     // Add stats display if query string parameter is set
     if (urlParams.get('stats') === 'true') {
-        stats = new Stats();
+        stats = new (Stats as any)();
         document.body.appendChild(stats.dom);
     }
 
@@ -211,8 +210,8 @@ function startGameplay() {
     gameState.flags.gamePaused = false;
     
     // Force audio context start (browser requirement for audio)
-    if (window.fixAudio) {
-        window.fixAudio();
+    if ((window as any).fixAudio) {
+        (window as any).fixAudio();
     }
     
     // Start animation if not already running
@@ -340,7 +339,7 @@ function resetGame() {
                     }
                 if (gameState.flags.useCoreSimulation && !multiplayerEnabled) {
                     const foodCount = getAdjustedSetting('NUM_INITIAL_FOOD') || CONFIG.NUM_INITIAL_FOOD;
-                    spawnFoodCore(gameState.core, foodCount);
+                    spawnFoodCore(gameState.core!, foodCount);
                     Food.syncFoodMeshes(gameState);
                 } else if (!multiplayerEnabled) {
                     Food.spawnInitialFood(gameState); // Spawn food after obstacles
@@ -348,7 +347,7 @@ function resetGame() {
                 
                 setTimeout(() => {
                     if (gameState.flags.useCoreSimulation && !multiplayerEnabled) {
-                        spawnInitialEnemiesCore(gameState.core, CONFIG.NUM_ENEMIES);
+                        spawnInitialEnemiesCore(gameState.core!, CONFIG.NUM_ENEMIES);
                         Enemy.syncEnemyMeshes(gameState);
                     } else if (!multiplayerEnabled) {
                         Enemy.spawnInitialEnemies(gameState); // Spawn enemies last
@@ -431,10 +430,10 @@ export function requestRestart() {
 
 // --- Event Processing ---
 // Shared event handler for both single-player (local sim) and multiplayer (server events)
-function processEventEnvelopes(envelopes, state, isMultiplayer) {
+function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: boolean): void {
     const localId = state.localPlayerId || 'local';
 
-    envelopes.forEach(envelope => {
+    envelopes.forEach((envelope: any) => {
         if (envelope.version !== EVENT_SCHEMA_VERSION) {
             Logger.system.warn(`Event schema mismatch. Expected ${EVENT_SCHEMA_VERSION}, got ${envelope.version}`);
             return;
@@ -501,6 +500,7 @@ function processEventEnvelopes(envelopes, state, isMultiplayer) {
         }
         if (event.type === EventType.AlphaModeActivated && isLocalPlayer) {
             UI.showAlphaModeActivation();
+            // @ts-expect-error -- function missing from audioSystem.js (pre-existing)
             Audio.playAlphaModeActivation();
         }
         if (event.type === EventType.AlphaModeEnded && isLocalPlayer) {
@@ -599,14 +599,14 @@ function render() {
                         gameState.inputQueue.sort((a, b) => a.tick - b.tick);
                     }
                     while (gameState.inputQueue.length > 0) {
-                        const input = gameState.inputQueue.shift();
-                        if (input.tick < gameState.core.tick) {
+                        const input = gameState.inputQueue.shift()!;
+                        if (input.tick < gameState.core!.tick) {
                             continue;
                         }
-                        applyPlayerInput(gameState.core, input);
+                        applyPlayerInput(gameState.core!, input);
                     }
 
-                    const coreResult = stepCore(gameState.core, deltaTime);
+                    const coreResult = stepCore(gameState.core!, deltaTime);
                     if (coreResult?.events?.length) {
                         processEventEnvelopes(coreResult.events, gameState, false);
                     }
@@ -647,7 +647,7 @@ function render() {
     updateCameraEffects(gameState.simulation.time);
 
     // Render the scene
-    gameState.renderer.render(gameState.scene, gameState.camera);
+    gameState.renderer!.render(gameState.scene!, gameState.camera!);
 
     // Update stats display if present
     if (stats) {
@@ -656,7 +656,7 @@ function render() {
 }
 
 // --- Camera Effects ---
-function updateCameraEffects(currentTime) {
+function updateCameraEffects(currentTime: number): void {
     const { camera, cameraEffects } = gameState;
     if (!camera || !cameraEffects || !cameraEffects.shake) return; // Add safety check
     
@@ -699,20 +699,20 @@ function onWindowResize() {
 // --- Configuration Validation ---
 function validateConfig() {
     // Validate food spawn ratios
-    const foodRatios = CONFIG.FOOD_SPAWN_RATIOS;
+    const foodRatios = CONFIG.FOOD_SPAWN_RATIOS as Record<string, number>;
     let totalRatio = 0;
-    
+
     // Calculate total of all ratios
     for (const type in foodRatios) {
         if (foodRatios.hasOwnProperty(type)) {
             totalRatio += foodRatios[type];
         }
     }
-    
+
     // Check if ratios add up to 100
     if (Math.abs(totalRatio - 100) > 0.001) { // Allow for tiny floating point errors
         Logger.system.warn(`Food spawn ratios do not add up to 100! Current total: ${totalRatio}`);
-        
+
         // Normalize ratios to ensure they add up to 100
         const normalizationFactor = 100 / totalRatio;
         for (const type in foodRatios) {
@@ -736,8 +736,8 @@ function updateGroundColor() {
         const groundMesh = gameState.environment.groundMesh;
         if (groundMesh.material) {
             // Update the color directly
-            groundMesh.material.color.set(CONFIG.GROUND_COLOR || 0xFFFFFF);
-            groundMesh.material.needsUpdate = true;
+            (groundMesh.material as THREE.MeshStandardMaterial).color.set(CONFIG.GROUND_COLOR || 0xFFFFFF);
+            (groundMesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
             Logger.system.info("Ground color updated to:", CONFIG.GROUND_COLOR ? 
                 "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
         }

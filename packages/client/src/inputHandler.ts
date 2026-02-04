@@ -1,16 +1,18 @@
 import { turnLeft as playerTurnLeft, turnRight as playerTurnRight } from './playerSnake.js';
 import { INPUT_SCHEMA_VERSION } from 'snek-shared';
+import type { TurnInput } from 'snek-shared';
 import { requestRestart } from './main.ts'; // Assuming main exports a restart function
+import type { GameState } from './gameState';
 
-export function setupInputListeners(gameState, uiElements) {
+export function setupInputListeners(gameState: GameState, uiElements: { leftButton: HTMLElement | null; rightButton: HTMLElement | null }): () => void {
     // Track how many inputs we've sent since the last snapshot so each one
     // targets a unique future server tick.  Reset when a snapshot arrives
     // (the snapshot handler sets network.lastSnapshotTick).
     let inputSequence = 0;
     let lastSeenSnapshotTick = 0;
 
-    const enqueueInput = (turn) => {
-        const baseTick = gameState.core.tick;
+    const enqueueInput = (turn: TurnInput): void => {
+        const baseTick = gameState.core!.tick;
 
         if (gameState.network?.enabled) {
             // Reset sequence counter when a new snapshot arrives
@@ -34,7 +36,7 @@ export function setupInputListeners(gameState, uiElements) {
         gameState.inputQueue.push(input);
     };
 
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
         if (gameState.flags.gameOver) {
             if (event.key.toLowerCase() === 'r') {
                 requestRestart(); // Request restart via main module
@@ -74,7 +76,7 @@ export function setupInputListeners(gameState, uiElements) {
         }
     };
 
-    const handleTouchLeft = (e) => {
+    const handleTouchLeft = (e: TouchEvent): void => {
         if (gameState.flags.gameOver) return;
         e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
@@ -86,7 +88,7 @@ export function setupInputListeners(gameState, uiElements) {
         }
     };
 
-    const handleTouchRight = (e) => {
+    const handleTouchRight = (e: TouchEvent): void => {
          if (gameState.flags.gameOver) return;
          e.preventDefault(); // Prevent scrolling/zooming
         if (gameState.flags.useCoreSimulation) {
@@ -97,28 +99,28 @@ export function setupInputListeners(gameState, uiElements) {
             gameState.playerSnake.immediateDirectionChange = true;
         }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
 
     // --- Touch Controls ---
     // Use touchstart for responsiveness
     if (uiElements.leftButton) {
-        uiElements.leftButton.addEventListener('touchstart', handleTouchLeft, { passive: false });
+        uiElements.leftButton.addEventListener('touchstart', handleTouchLeft as EventListener, { passive: false });
         // Optional: Add touchend/touchcancel if needed, but touchstart is usually sufficient for discrete actions
     }
     if (uiElements.rightButton) {
-        uiElements.rightButton.addEventListener('touchstart', handleTouchRight, { passive: false });
+        uiElements.rightButton.addEventListener('touchstart', handleTouchRight as EventListener, { passive: false });
     }
-    
+
     // Return a cleanup function
     return () => {
         console.log("Removing input listeners");
         window.removeEventListener('keydown', handleKeyDown);
         if (uiElements.leftButton) {
-            uiElements.leftButton.removeEventListener('touchstart', handleTouchLeft);
+            uiElements.leftButton.removeEventListener('touchstart', handleTouchLeft as EventListener);
         }
         if (uiElements.rightButton) {
-            uiElements.rightButton.removeEventListener('touchstart', handleTouchRight);
+            uiElements.rightButton.removeEventListener('touchstart', handleTouchRight as EventListener);
         }
     };
 }

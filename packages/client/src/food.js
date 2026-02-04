@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { FOOD_TYPES, GEOMETRIES, PATHS } from './constants.js';
+import CONFIG from './config';
+import { FOOD_TYPES, GEOMETRIES, PATHS } from './constants';
 import { generateUniquePosition } from './utils.js';
 import { createExplosion, createNormalFoodEffect, createFrogEffect } from './particleSystem.js';
 import { applyPowerUp, addScoreMultiplier, addAlphaPoints } from './playerSnake.js'; // Import specific functions
@@ -8,7 +8,7 @@ import { checkAndEatFoodCore } from './core/food.ts';
 import * as UI from './ui.js';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
-import { getAdjustedSetting } from './gameState.js'; // Import for mode-adjusted settings
+import { getAdjustedSetting } from './gameState'; // Import for mode-adjusted settings
 
 /**
  * Creates a blocky apple model made of a few cubes

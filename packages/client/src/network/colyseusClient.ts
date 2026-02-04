@@ -14,7 +14,7 @@ import { Logger } from '../debugLogger.js';
 import * as UI from '../ui.js';
 import * as Player from '../playerSnake.js';
 import * as Obstacles from '../obstacles.js';
-import CONFIG from '../config.js';
+import CONFIG from '../config';
 
 type NetworkStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error';
 

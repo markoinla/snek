@@ -1,4 +1,4 @@
-import CONFIG from '../config.js';
+import CONFIG from '../config';
 import type { CoreState, FoodItem } from './types';
 
 export function generateUniquePositionCore(state: CoreState, safeZoneRadius = 0) {

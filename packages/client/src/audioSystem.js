@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
+import CONFIG from './config';
 import { Logger } from './debugLogger.js';
 
 // Detection for mobile devices

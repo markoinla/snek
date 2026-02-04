@@ -230,20 +230,20 @@ const CONFIG = {
 };
 
 // --- Defaults (frozen deep copy for reset) ---
-function deepFreeze(obj) {
+function deepFreeze<T extends Record<string, unknown>>(obj: T): Readonly<T> {
     Object.freeze(obj);
     for (const val of Object.values(obj)) {
-        if (val && typeof val === 'object') deepFreeze(val);
+        if (val && typeof val === 'object') deepFreeze(val as Record<string, unknown>);
     }
     return obj;
 }
 
-const DEFAULTS = deepFreeze(JSON.parse(JSON.stringify(CONFIG)));
+const DEFAULTS = deepFreeze(JSON.parse(JSON.stringify(CONFIG)) as typeof CONFIG);
 
 // --- Persistence ---
 const STORAGE_KEY = 'snek_adminConfig';
 
-function deepAssign(target, source) {
+function deepAssign(target: Record<string, any>, source: Record<string, any>): void {
     for (const key of Object.keys(source)) {
         if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) &&
             target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
@@ -254,12 +254,12 @@ function deepAssign(target, source) {
     }
 }
 
-export function saveOverrides() {
+export function saveOverrides(): void {
     try {
-        const diff = {};
+        const diff: Record<string, any> = {};
         for (const key of Object.keys(DEFAULTS)) {
-            if (JSON.stringify(CONFIG[key]) !== JSON.stringify(DEFAULTS[key])) {
-                diff[key] = CONFIG[key];
+            if (JSON.stringify((CONFIG as any)[key]) !== JSON.stringify((DEFAULTS as any)[key])) {
+                diff[key] = (CONFIG as any)[key];
             }
         }
         if (Object.keys(diff).length > 0) {
@@ -272,14 +272,16 @@ export function saveOverrides() {
     }
 }
 
-export function resetAllConfig() {
+export function resetAllConfig(): void {
     deepAssign(CONFIG, DEFAULTS);
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
 }
 
-export function getDefaults() {
+export function getDefaults(): Readonly<typeof CONFIG> {
     return DEFAULTS;
 }
+
+export type GameConfig = typeof CONFIG;
 
 // Load saved overrides on module init
 try {

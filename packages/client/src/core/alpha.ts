@@ -1,5 +1,5 @@
-import CONFIG from '../config.js';
-import { getAdjustedSetting } from '../gameState.js';
+import CONFIG from '../config';
+import { getAdjustedSetting } from '../gameState';
 import type { CoreState, CoreStepResult } from './types';
 import { EventType } from 'snek-shared';
 

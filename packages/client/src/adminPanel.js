@@ -1,5 +1,5 @@
 import GUI from 'lil-gui';
-import CONFIG, { saveOverrides, resetAllConfig } from './config.js';
+import CONFIG, { saveOverrides, resetAllConfig } from './config';
 
 let gui = null;
 

@@ -6,7 +6,7 @@ import {
   applyConfigUpdate,
   resetConfig,
 } from './configManager.ts';
-import { getDefaults } from '../../client/src/config.js';
+import { getDefaults } from '../../client/src/config';
 import { renderAdminHTML } from './adminPanel.html.ts';
 
 function authMiddleware(req: Request, res: Response, next: NextFunction): void {

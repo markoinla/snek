@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { PATHS, FOOD_TYPES, GEOMETRIES } from './constants.js';
+import CONFIG from './config';
+import { PATHS, FOOD_TYPES, GEOMETRIES } from './constants';
 import { Logger } from './debugLogger.js';
 
 async function loadTexture(loader, path, applySRGB = true, configFn = null) {

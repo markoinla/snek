@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { FOOD_TYPES } from './constants.js'; // Import FOOD_TYPES for power-ups
+import CONFIG from './config';
+import { FOOD_TYPES } from './constants'; // Import FOOD_TYPES for power-ups
 import { createSnakeSegmentMesh } from './utils.js';
 import { createExplosion } from './particleSystem.js';
 import { setGameOver } from './main.ts'; // To trigger game over
@@ -10,7 +10,7 @@ import { evaluatePlayerMove } from './core/player.ts';
 import * as UI from './ui.js'; // For power-up UI updates
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
-import { getAdjustedSetting } from './gameState.js'; // For mode-adjusted settings
+import { getAdjustedSetting } from './gameState'; // For mode-adjusted settings
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }

@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import CONFIG, { getDefaults } from '../../client/src/config.js';
+import CONFIG, { getDefaults } from '../../client/src/config';
 
 const CONFIG_FILE_PATH = process.env.CONFIG_FILE_PATH
   ?? path.join(import.meta.dirname, '..', 'config-overrides.json');

@@ -1,4 +1,4 @@
-import CONFIG from '../config.js';
+import CONFIG from '../config';
 import type { CoreState, CoreStepResult, StepResult } from './types';
 import { EventType, EVENT_SCHEMA_VERSION } from 'snek-shared';
 import { updatePlayerCore } from './player';
@@ -52,7 +52,10 @@ export function stepCore(state: CoreState, delta: number): StepResult {
 
           if (canEat) {
             if (killEnemyCore(state, enemyCollision.enemyId)) {
-              if (enemyCollision.isTail && !alphaActive) {
+              if (alphaActive) {
+                player.alphaMode.endTime += CONFIG.ALPHA_MODE_EXTENSION_PER_ENEMY;
+                addScoreMultiplierCore(state, playerId, state.time);
+              } else {
                 addAlphaPointsCore(state, playerId, CONFIG.ALPHA_POINTS_ENEMY, allEvents);
               }
               allEvents.push({

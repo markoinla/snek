@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { PATHS, GEOMETRIES } from './constants.js';
+import CONFIG from './config';
+import { PATHS, GEOMETRIES } from './constants';
 import { performanceSettings } from './deviceUtils.js';
 
 export function createScene() {

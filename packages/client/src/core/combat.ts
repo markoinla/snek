@@ -1,4 +1,4 @@
-import CONFIG from '../config.js';
+import CONFIG from '../config';
 import type { CoreState } from './types';
 import { generateUniquePositionCore } from './spawn';
 import { createPlayerState } from './state';

@@ -1,7 +1,7 @@
 // js/utils.js - Corrected
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { GEOMETRIES } from './constants.js'; // <-- ADD THIS IMPORT
+import CONFIG from './config';
+import { GEOMETRIES } from './constants'; // <-- ADD THIS IMPORT
 
 // Checks if a grid cell is occupied by various elements
 export function isPositionOccupied(targetPos, gameState, checkFood = true, checkObstacles = true, checkPlayerSnake = true, checkEnemySnakes = true) {

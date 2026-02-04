@@ -14,7 +14,7 @@ import {
   type ServerMeta,
 } from 'snek-shared';
 import type { CoreState, SerializableCoreState, EventEnvelope } from 'snek-shared';
-import CONFIG from '../../client/src/config.js';
+import CONFIG from '../../client/src/config';
 import { loadConfigOverrides } from './configManager.ts';
 import { createAdminRouter } from './adminRoutes.ts';
 import { createInitialCoreState, createPlayerState } from '../../client/src/core/state.ts';

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
+import CONFIG from './config';
 
 // Asset Paths
 export const PATHS = {
@@ -22,10 +22,19 @@ export const PATHS = {
     whiteDaisy: 'assets/textures/white_daisy.png', // White daisy texture
     whiteTulip: 'assets/textures/white_tulip.png', // White tulip texture
     yellowFlower: 'assets/textures/yellow_flower.png', // Yellow flower texture
-};
+} as const;
 
 // Food Types Definition
-export const FOOD_TYPES = [
+export interface FoodTypeEntry {
+    type: string;
+    svgPath: string;
+    colorHint: THREE.Color;
+    powerUpDuration: number;
+    description: string;
+    effectText: string;
+}
+
+export const FOOD_TYPES: FoodTypeEntry[] = [
     { type: 'normal', svgPath: PATHS.foodNormal, colorHint: new THREE.Color(0xDD2C00), powerUpDuration: 0, description: "Normal Food", effectText: "+1" },
     { type: 'speed', svgPath: PATHS.frogSpeed, colorHint: new THREE.Color(0x8BC34A), powerUpDuration: CONFIG.POWERUP_SPEED_DURATION, description: "Speed Boost Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SPEED_BOOST },
     { type: 'shrink', svgPath: PATHS.frogShrink, colorHint: new THREE.Color(0x9C27B0), powerUpDuration: 0, description: "Shrink Frog", effectText: CONFIG.GAME_TEXT.POWERUPS.SHRINK },
@@ -34,13 +43,18 @@ export const FOOD_TYPES = [
 ];
 
 // Obstacle Types Definition
-export const OBSTACLE_TYPES = [
+export const OBSTACLE_TYPES: Array<{ type: string }> = [
     { type: 'tree' },
     { type: 'bush' }
 ];
 
 // Predefined Geometries (to avoid recreation)
-export const GEOMETRIES = {
+export const GEOMETRIES: {
+    cube: THREE.BoxGeometry;
+    particle: THREE.PlaneGeometry;
+    groundPlane: THREE.PlaneGeometry | null;
+    grassBlade: THREE.PlaneGeometry;
+} = {
     cube: new THREE.BoxGeometry(1, 1, 1), // Use UNIT_SIZE scaling on mesh instead
     particle: new THREE.PlaneGeometry(1, 1), // Scaled later
     groundPlane: null, // Created dynamically based on GRID_SIZE

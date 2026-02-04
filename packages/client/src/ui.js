@@ -1,6 +1,6 @@
 // --- DOM Element References ---
-import CONFIG from './config.js';
-import { gameState } from './gameState.js';
+import CONFIG from './config';
+import { gameState } from './gameState';
 import * as Audio from './audioSystem.js';
 
 // Get DOM elements

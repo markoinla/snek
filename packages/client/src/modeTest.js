@@ -1,8 +1,8 @@
 // Mode Test Helper
 // Import this in the console to check if mode settings are being applied
 
-import CONFIG from './config.js';
-import { gameState, getAdjustedSetting, saveGameMode } from './gameState.js';
+import CONFIG from './config';
+import { gameState, getAdjustedSetting, saveGameMode } from './gameState';
 
 export function testGameModes() {
     console.log("%c===== GAME MODE TEST =====", "font-size: 14px; font-weight: bold; color: #4CAF50;");

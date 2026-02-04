@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { GEOMETRIES } from './constants.js';
+import CONFIG from './config';
+import { GEOMETRIES } from './constants';
 import { createSnakeSegmentMesh, generateUniquePosition, isPositionOccupied } from './utils.js';
 import { findClosestFood, addNewFoodItem } from './food.js';
 import { createExplosion, createKillEffect } from './particleSystem.js';

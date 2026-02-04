@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import CONFIG from './config.js';
-import { GEOMETRIES } from './constants.js';
+import CONFIG from './config';
+import { GEOMETRIES } from './constants';
 
 let activeParticles = [];
 let particleMaterialRef = null; // Hold reference to the material
