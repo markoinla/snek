@@ -129,7 +129,7 @@ export function stepCore(state: CoreState, delta: number): StepResult {
             }
           } else {
             // Head hits other player's body segment
-            if (attackerAlpha || pvpCollision.isTail) {
+            if ((attackerAlpha && !victimAlpha) || pvpCollision.isTail) {
               // Alpha attacker or tail-eater kills victim
               killPlayerCore(state, pvpCollision.targetPlayerId);
               const pvpScore3 = Math.round(CONFIG.ENEMY_KILL_SCORE * (attackerAlpha ? player.alphaMode.scoreMultiplier : 1));
