@@ -561,6 +561,7 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
             // @ts-expect-error -- function missing from audioSystem.js (pre-existing)
             Audio.playAlphaModeActivation();
             Player.updatePlayerSnakeTextures(state, true);
+            Player.triggerAlphaActivationVisuals(state);
         }
         if (event.type === EventType.AlphaModeEnded && isLocalPlayer) {
             UI.showPowerUpTextEffect("Alpha Mode ended");
@@ -728,6 +729,9 @@ function render() {
         Enemy.syncEnemyMeshes(gameState, interpolationDelta);
         Food.syncFoodMeshes(gameState);
     }
+
+    // Update alpha mode postprocessing effects (bloom/outline)
+    Player.updateAlphaModeVisuals(gameState, frameTime);
 
     // Rebuild outline selection from visible game meshes
     syncOutlinedObjects();

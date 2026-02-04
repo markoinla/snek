@@ -13,6 +13,7 @@ import * as Audio from './audioSystem.js'; // Import audio system for sound effe
 import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState'; // For mode-adjusted settings
 import { tween, tweenUniform, ease, cancelTween } from './animations';
+import { getOutlinePass, getBloomPass } from './postprocessing';
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }
@@ -1244,13 +1245,17 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
     let headMaterial, bodyMaterial;
 
     if (playerSnake.alphaMode.active) {
-        // In Alpha Mode, use purple-tinted materials
+        // In Alpha Mode, use purple-tinted materials with emissive glow
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
 
-        // Apply Alpha Mode color (purple)
+        // Apply Alpha Mode color (purple) and emissive for bloom
         headMaterial.color.setHex(PALETTE.alpha.primary);
+        headMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        headMaterial.emissiveIntensity = 0.4;
         bodyMaterial.color.setHex(PALETTE.alpha.primary);
+        bodyMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        bodyMaterial.emissiveIntensity = 0.3;
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
@@ -1295,13 +1300,17 @@ function updatePlayerMaterialsAfterMove(gameState) {
     let headMaterial, bodyMaterial;
 
     if (playerSnake.alphaMode.active) {
-        // In Alpha Mode, use purple-tinted materials
+        // In Alpha Mode, use purple-tinted materials with emissive glow
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
 
-        // Apply Alpha Mode color (purple)
+        // Apply Alpha Mode color (purple) and emissive for bloom
         headMaterial.color.setHex(PALETTE.alpha.primary);
+        headMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        headMaterial.emissiveIntensity = 0.4;
         bodyMaterial.color.setHex(PALETTE.alpha.primary);
+        bodyMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        bodyMaterial.emissiveIntensity = 0.3;
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
@@ -1455,38 +1464,85 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
  */
 export function activateAlphaMode(currentTime, gameState) {
     const { playerSnake } = gameState;
-    
+
     // Get the duration adjusted for game mode (longer in Casual mode)
     const alphaDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
-    
+
     // Set up Alpha Mode parameters
     playerSnake.alphaMode.active = true;
     playerSnake.alphaMode.progress = 1.0;  // Start at full progress
     playerSnake.alphaMode.startTime = currentTime;
     playerSnake.alphaMode.endTime = currentTime + alphaDuration;
-    
+
     // Set base score multiplier
     playerSnake.alphaMode.scoreMultiplier = CONFIG.ALPHA_MODE_SCORE_MULTIPLIER;
-    
+
     // Add a new score multiplier to the stack
     addScoreMultiplier(currentTime, gameState);
-    
+
     // Track consecutive activations
     playerSnake.alphaMode.consecutiveActivations++;
-    
+
     // Show UI effect
     UI.showAlphaModeActivation();
-    
+
     // Play activation sound
     Audio.playAlphaModeActivation();
-    
+
     // Update the UI to show Alpha Mode is active
     UI.updateAlphaModeUI(1.0, alphaDuration, playerSnake.alphaMode.scoreMultiplier);
-    
+
     Logger.gameplay.info(`Alpha Mode activated for ${alphaDuration} seconds, multiplier: ${playerSnake.alphaMode.scoreMultiplier}`);
 
     // Force texture update to apply alpha mode color immediately
     updatePlayerSnakeTextures(gameState, true);
+
+    // --- Visual activation effects ---
+    triggerAlphaActivationEffects(gameState);
+}
+
+/** Trigger alpha activation visuals (exported for use from event handlers). */
+export function triggerAlphaActivationVisuals(gameState) {
+    triggerAlphaActivationEffects(gameState);
+}
+
+/**
+ * Visual juice for alpha mode activation:
+ *  - Purple particle burst at the head
+ *  - Body scale pulse (enlarge → bounce back)
+ *  - Camera shake
+ *  - Boost bloom + switch outline to purple (revert handled in updateAlphaModeVisuals)
+ */
+function triggerAlphaActivationEffects(gameState) {
+    const { scene, camera } = gameState;
+    const head = playerSnakeMeshes[0];
+    if (!head || !scene || !camera) return;
+
+    // 1. Purple particle burst at head
+    createExplosion(scene, camera, head.position.clone(), 30, PALETTE.alpha.glow);
+
+    // 2. Body scale pulse — every segment pops out then bounces back
+    playerSnakeMeshes.forEach((mesh) => {
+        if (!mesh) return;
+        cancelTween(mesh, 'scale', 'alphaPulse');
+        tweenUniform(mesh, 'scale', 1.35, 1.0, 0.3, ease.outElastic, undefined, 'alphaPulse');
+    });
+
+    // 3. Camera shake
+    startCameraShake(gameState);
+
+    // 4. Boost bloom strength briefly (reverts in updateAlphaModeVisuals)
+    const bloom = getBloomPass();
+    if (bloom) {
+        bloom.strength = 0.8;
+    }
+
+    // 5. Switch outline color to purple glow
+    const outline = getOutlinePass();
+    if (outline) {
+        outline.visibleEdgeColor.setHex(PALETTE.alpha.glow);
+        outline.edgeStrength = 4.5;
+    }
 }
 
 /**
@@ -1897,6 +1953,54 @@ function checkPositionCollision(pos1, pos2, forgiveness = 0) {
     } else {
         // Standard collision check (exact position match)
         return pos1.x === pos2.x && pos1.z === pos2.z;
+    }
+}
+
+// Default postprocessing values (set once, used for alpha mode revert)
+const DEFAULT_BLOOM_STRENGTH = 0.3;
+const DEFAULT_BLOOM_THRESHOLD = 0.85;
+const DEFAULT_OUTLINE_STRENGTH = 3.0;
+const ALPHA_BLOOM_STRENGTH = 0.55;
+const ALPHA_BLOOM_THRESHOLD = 0.6;
+const ALPHA_OUTLINE_STRENGTH = 4.0;
+
+/**
+ * Per-frame update of bloom/outline during alpha mode.
+ * Call from the render loop. Smoothly eases bloom back toward
+ * the alpha-active values after the initial spike, and restores
+ * defaults when alpha mode ends.
+ */
+export function updateAlphaModeVisuals(gameState, deltaTime) {
+    const { playerSnake } = gameState;
+    if (!playerSnake) return;
+
+    const bloom = getBloomPass();
+    const outline = getOutlinePass();
+    const active = playerSnake.alphaMode?.active;
+
+    if (active) {
+        // Ease bloom from spike toward sustained alpha values
+        if (bloom) {
+            bloom.strength += (ALPHA_BLOOM_STRENGTH - bloom.strength) * Math.min(1, 3 * deltaTime);
+            bloom.threshold += (ALPHA_BLOOM_THRESHOLD - bloom.threshold) * Math.min(1, 3 * deltaTime);
+        }
+        if (outline) {
+            outline.edgeStrength += (ALPHA_OUTLINE_STRENGTH - outline.edgeStrength) * Math.min(1, 3 * deltaTime);
+        }
+    } else {
+        // Revert to defaults
+        if (bloom && Math.abs(bloom.strength - DEFAULT_BLOOM_STRENGTH) > 0.01) {
+            bloom.strength += (DEFAULT_BLOOM_STRENGTH - bloom.strength) * Math.min(1, 5 * deltaTime);
+            bloom.threshold += (DEFAULT_BLOOM_THRESHOLD - bloom.threshold) * Math.min(1, 5 * deltaTime);
+        }
+        if (outline) {
+            if (outline.visibleEdgeColor.getHex() !== PALETTE.outline.edge) {
+                outline.visibleEdgeColor.setHex(PALETTE.outline.edge);
+            }
+            if (Math.abs(outline.edgeStrength - DEFAULT_OUTLINE_STRENGTH) > 0.05) {
+                outline.edgeStrength += (DEFAULT_OUTLINE_STRENGTH - outline.edgeStrength) * Math.min(1, 5 * deltaTime);
+            }
+        }
     }
 }
 

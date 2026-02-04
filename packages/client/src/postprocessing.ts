@@ -8,6 +8,7 @@ import { PALETTE, color } from './palette';
 
 let composer: EffectComposer | null = null;
 let outlinePass: OutlinePass | null = null;
+let bloomPass: UnrealBloomPass | null = null;
 
 export function initPostprocessing(
   renderer: THREE.WebGLRenderer,
@@ -30,7 +31,7 @@ export function initPostprocessing(
   outlinePass.pulsePeriod = 0;
   composer.addPass(outlinePass);
 
-  const bloomPass = new UnrealBloomPass(
+  bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     0.3,   // strength (subtle)
     0.4,   // radius
@@ -97,4 +98,9 @@ export function clearOutlinedObjects(): void {
 /** Get the outline pass instance for advanced configuration. */
 export function getOutlinePass(): OutlinePass | null {
   return outlinePass;
+}
+
+/** Get the bloom pass instance for dynamic bloom adjustments. */
+export function getBloomPass(): UnrealBloomPass | null {
+  return bloomPass;
 }
