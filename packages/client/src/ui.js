@@ -192,10 +192,10 @@ function setupEventListeners() {
         multiPlayerButton.addEventListener('click', function() {
             const name = getPlayerName();
             if (name) {
-                window.dispatchEvent(new CustomEvent('multiplayerCreateRoom'));
+                window.dispatchEvent(new CustomEvent('multiplayerJoin'));
             } else {
                 showNameOverlay(() => {
-                    window.dispatchEvent(new CustomEvent('multiplayerCreateRoom'));
+                    window.dispatchEvent(new CustomEvent('multiplayerJoin'));
                 });
             }
         });

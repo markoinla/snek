@@ -194,6 +194,10 @@ async function init() {
         }
     };
 
+    addManagedEventListener(window, 'multiplayerJoin', () => {
+        startMultiplayer();
+    });
+
     addManagedEventListener(window, 'multiplayerCreateRoom', () => {
         startMultiplayer({ createRoom: true });
     });

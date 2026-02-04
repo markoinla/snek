@@ -350,7 +350,7 @@ const gameServer = new Colyseus.Server({
   transport: new WebSocketTransport({ server: httpServer }),
 });
 
-gameServer.define('snek', SnekRoom).filterBy(['roomCode']);
+gameServer.define('snek', SnekRoom);
 
 app.post('/join-by-code', async (req, res) => {
   const { roomCode, ...options } = req.body;
