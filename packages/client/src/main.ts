@@ -139,8 +139,10 @@ async function init() {
     const env = SceneSetup.setupBasicScene(gameState.scene, gameState.materials);
     gameState.environment = { ...env };
 
-    // Setup postprocessing pipeline (bloom, etc.)
-    gameState.composer = initPostprocessing(gameState.renderer, gameState.scene, gameState.camera);
+    // Setup postprocessing pipeline (bloom, outline) — skip on mobile for performance
+    if (performanceSettings.postprocessing) {
+        gameState.composer = initPostprocessing(gameState.renderer, gameState.scene, gameState.camera);
+    }
 
     // Initialize Systems that need materials/scene
     Particles.initParticles(gameState.materials.particle);
@@ -754,8 +756,12 @@ function render() {
     // Update camera effects (shake, etc.)
     updateCameraEffects(gameState.simulation.time);
 
-    // Render the scene (through postprocessing pipeline)
-    renderPostprocessing();
+    // Render the scene
+    if (performanceSettings.postprocessing) {
+        renderPostprocessing();
+    } else {
+        gameState.renderer!.render(gameState.scene!, gameState.camera!);
+    }
 
     // Update stats display if present
     if (stats) {
@@ -800,7 +806,9 @@ function onWindowResize() {
         gameState.camera.aspect = window.innerWidth / window.innerHeight;
         gameState.camera.updateProjectionMatrix();
         gameState.renderer.setSize(window.innerWidth, window.innerHeight);
-        resizePostprocessing(window.innerWidth, window.innerHeight);
+        if (performanceSettings.postprocessing) {
+            resizePostprocessing(window.innerWidth, window.innerHeight);
+        }
         // Note: Pixel ratio is set once at init, usually doesn't need update
     }
 }
