@@ -1,6 +1,6 @@
 # Snek — Scratchpad
 
-Last updated: 2026-02-04 (Visual Overhaul — Task 7 complete)
+Last updated: 2026-02-04 (Visual Overhaul — Task 9 complete)
 
 ## Visual Overhaul Plan (20 tasks)
 
@@ -11,8 +11,8 @@ Last updated: 2026-02-04 (Visual Overhaul — Task 7 complete)
 - [x] Task 5: Lighting overhaul (warm/cool split + fog)
 - [x] Task 6: Procedural gradient sky + drifting clouds
 - [x] Task 7: Ground improvements (grid overlay + rocks)
-- [ ] Task 8: Animation utility module (tween system)
-- [ ] Task 9: Snake body wave motion
+- [x] Task 8: Animation utility module (tween system)
+- [x] Task 9: Snake body wave motion
 - [ ] Task 10: Head squash/stretch + smooth turning
 - [ ] Task 11: Eating feedback (chomp + food squish)
 - [ ] Task 12: Death scatter effect

@@ -228,18 +228,21 @@ export function syncPlayerMeshes(gameState, frameDelta) {
         ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
         : 1.0;
 
+    const elapsedTime = gameState.clock ? gameState.clock.getElapsedTime() : 0;
+
     for (let i = 0; i < playerSnake.segments.length; i++) {
         const segment = playerSnake.segments[i];
         const mesh = playerSnakeMeshes[i];
         if (!mesh) continue;
         const targetX = segment.x * CONFIG.UNIT_SIZE;
-        const targetY = CONFIG.UNIT_SIZE / 2;
+        const baseY = CONFIG.UNIT_SIZE / 2;
         const targetZ = segment.z * CONFIG.UNIT_SIZE;
+        const waveY = Math.sin(elapsedTime * CONFIG.WAVE_SPEED + i * CONFIG.WAVE_FREQUENCY) * CONFIG.WAVE_AMPLITUDE;
         if (lerpFactor >= 1.0) {
-            mesh.position.set(targetX, targetY, targetZ);
+            mesh.position.set(targetX, baseY + waveY, targetZ);
         } else {
             mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
-            mesh.position.y = targetY;
+            mesh.position.y = baseY + waveY;
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
         }
     }
@@ -361,6 +364,7 @@ export function syncAllPlayerMeshes(gameState, frameDelta) {
         }
 
         // Update positions with frame-rate-independent lerp
+        const remoteElapsed = gameState.clock ? gameState.clock.getElapsedTime() : 0;
         for (let i = 0; i < player.segments.length; i++) {
             const seg = player.segments[i];
             const mesh = existingMeshes[i];
@@ -368,8 +372,9 @@ export function syncAllPlayerMeshes(gameState, frameDelta) {
             mesh.visible = true;
             const targetX = seg.x * CONFIG.UNIT_SIZE;
             const targetZ = seg.z * CONFIG.UNIT_SIZE;
+            const waveY = Math.sin(remoteElapsed * CONFIG.WAVE_SPEED + i * CONFIG.WAVE_FREQUENCY) * CONFIG.WAVE_AMPLITUDE;
             mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
-            mesh.position.y = CONFIG.UNIT_SIZE / 2;
+            mesh.position.y = CONFIG.UNIT_SIZE / 2 + waveY;
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
         }
     });

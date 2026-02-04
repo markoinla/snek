@@ -247,16 +247,18 @@ export function syncEnemyMeshes(gameState, frameDelta) {
             });
             enemyMeshes[enemy.id] = newMeshes;
         } else {
+            const enemyElapsed = gameState.clock ? gameState.clock.getElapsedTime() : 0;
             meshes.forEach((mesh, index) => {
                 const seg = enemy.snake[index];
                 if (!mesh || !seg) return;
                 const targetX = seg.x * CONFIG.UNIT_SIZE;
                 const targetZ = seg.z * CONFIG.UNIT_SIZE;
+                const waveY = Math.sin(enemyElapsed * CONFIG.WAVE_SPEED + index * CONFIG.WAVE_FREQUENCY) * CONFIG.WAVE_AMPLITUDE;
                 if (lerpFactor >= 1.0) {
-                    mesh.position.set(targetX, CONFIG.UNIT_SIZE / 2, targetZ);
+                    mesh.position.set(targetX, CONFIG.UNIT_SIZE / 2 + waveY, targetZ);
                 } else {
                     mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
-                    mesh.position.y = CONFIG.UNIT_SIZE / 2;
+                    mesh.position.y = CONFIG.UNIT_SIZE / 2 + waveY;
                     mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
                 }
             });

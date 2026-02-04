@@ -19,6 +19,11 @@ const CONFIG = {
     ROCK_COUNT: 60,
     POWERUP_TEXT_ANIMATION_DURATION: 1500,
 
+    // Snake wave motion
+    WAVE_AMPLITUDE: 0.08,   // Vertical bob height (subtle)
+    WAVE_FREQUENCY: 2.5,    // Oscillations along body length
+    WAVE_SPEED: 4.0,        // Animation speed multiplier
+
     // Multiplayer settings
     MULTIPLAYER_DEFAULT_ENABLED: false,
     MULTIPLAYER_SERVER_URL: 'ws://localhost:2567',
