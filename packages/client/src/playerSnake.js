@@ -12,7 +12,7 @@ import { PALETTE } from './palette';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState'; // For mode-adjusted settings
-import { tween, ease, cancelTween } from './animations';
+import { tween, tweenUniform, ease, cancelTween } from './animations';
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }
@@ -40,6 +40,14 @@ function triggerHeadSquash() {
     tween(head, 'scale', 'y', 0.7, 1.0, 0.15, ease.outElastic);
     tween(head, 'scale', 'x', 1.2, 1.0, 0.15, ease.outElastic);
     tween(head, 'scale', 'z', 1.2, 1.0, 0.15, ease.outElastic);
+}
+
+// Trigger a chomp (scale pulse) on the head mesh when eating food.
+export function triggerHeadChomp() {
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+    cancelTween(head, 'scale');
+    tweenUniform(head, 'scale', 1.3, 1.0, 0.18, ease.outElastic);
 }
 
 // --- Player State (managed within gameState.playerSnake) ---
@@ -708,6 +716,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         let growSnake = false;
 
         if (eatenFood) {
+            triggerHeadChomp();
             Logger.gameplay.info("Food eaten in playerSnake.js:", eatenFood.type, "Alpha Mode active:", playerSnake.alphaMode?.active);
             
             // Calculate score with multiplier
@@ -765,9 +774,11 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
                  }
             }
         } else {
-             // Create a new mesh for the new head segment
+             // Create a new mesh for the new head segment with pop-in animation
              const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true); // Fix: Set isPlayer to true
              if (newMesh) {
+                 newMesh.scale.setScalar(0);
+                 tweenUniform(newMesh, 'scale', 0, 1.0, 0.2, ease.outBounce);
                  scene.add(newMesh);
                  playerSnakeMeshes.unshift(newMesh);
              }
@@ -892,9 +903,11 @@ function growSnakeSegments(gameState, numSegments) {
         const newSegment = { ...lastSegment }; // Clone the last segment position
         playerSnake.segments.push(newSegment);
         
-        // Create a mesh for the new segment
+        // Create a mesh for the new segment with pop-in animation
         const newMesh = createSnakeSegmentMesh(newSegment, false, materials, true); // Fix: Set isPlayer to true
         if (newMesh) {
+            newMesh.scale.setScalar(0);
+            tweenUniform(newMesh, 'scale', 0, 1.0, 0.2, ease.outBounce);
             scene.add(newMesh);
             playerSnakeMeshes.push(newMesh);
         }

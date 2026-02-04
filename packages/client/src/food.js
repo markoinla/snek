@@ -10,6 +10,7 @@ import * as Audio from './audioSystem.js'; // Import audio system for sound effe
 import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { PALETTE } from './palette';
 import { getAdjustedSetting } from './gameState'; // Import for mode-adjusted settings
+import { tweenUniform, tween, ease } from './animations';
 
 /**
  * Creates a blocky apple model made of a few cubes
@@ -453,6 +454,41 @@ function selectFoodTypeByRatio() {
     return 'normal';
 }
 
+// Dispose a food mesh's resources and remove it from the scene.
+function disposeFoodMesh(mesh, scene) {
+    if (!mesh) return;
+    if (mesh.isGroup) {
+        mesh.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry && child.geometry !== GEOMETRIES.cube &&
+                    child.geometry !== GEOMETRIES.particle) {
+                    child.geometry.dispose();
+                }
+                if (child.material && !child.userData?.useSharedMaterial) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => mat.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+        });
+    } else if (mesh.isMesh) {
+        if (mesh.geometry && mesh.geometry !== GEOMETRIES.cube &&
+            mesh.geometry !== GEOMETRIES.particle) {
+            mesh.geometry.dispose();
+        }
+        if (mesh.material && !mesh.userData?.useSharedMaterial) {
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(mat => mat.dispose());
+            } else {
+                mesh.material.dispose();
+            }
+        }
+    }
+    scene.remove(mesh);
+}
+
 // Returns the type of food eaten, or null if no food at position
 export function checkAndEatFood(position, gameState) {
      // *** Destructure camera here ***
@@ -576,49 +612,14 @@ export function checkAndEatFood(position, gameState) {
                     foodTypeInfo?.colorHint.getHex() || 0x8BC34A
                 );
             }
-            
-            // Properly dispose of food resources
-            if (eatenFoodMesh.isGroup) {
-                // Dispose resources for model made of multiple meshes (like apple or frog)
-                eatenFoodMesh.traverse((child) => {
-                    if (child.isMesh) {
-                        // Dispose of geometry if it's not shared/reused
-                        if (child.geometry && child.geometry !== GEOMETRIES.cube && 
-                            child.geometry !== GEOMETRIES.particle) {
-                            child.geometry.dispose();
-                        }
-                        
-                        // Dispose of material if it's unique to this food (not shared)
-                        if (child.material && !child.userData?.useSharedMaterial) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(mat => mat.dispose());
-                            } else {
-                                child.material.dispose();
-                            }
-                        }
-                    }
-                });
-            } else if (eatenFoodMesh.isMesh) {
-                // For single mesh food items
-                if (eatenFoodMesh.geometry && eatenFoodMesh.geometry !== GEOMETRIES.cube && 
-                    eatenFoodMesh.geometry !== GEOMETRIES.particle) {
-                    eatenFoodMesh.geometry.dispose();
-                }
-                
-                if (eatenFoodMesh.material && !eatenFoodMesh.userData?.useSharedMaterial) {
-                    if (Array.isArray(eatenFoodMesh.material)) {
-                        eatenFoodMesh.material.forEach(mat => mat.dispose());
-                    } else {
-                        eatenFoodMesh.material.dispose();
-                    }
-                }
-            }
-            
-            // Remove the food mesh from the scene
-            scene.remove(eatenFoodMesh);
-            
-            // Set to null to help garbage collection
-            food.meshes[eatenFoodIndex] = null;
+
+            // Squish animation: shrink to zero + spin, then dispose
+            const meshToSquish = eatenFoodMesh;
+            const startRotY = meshToSquish.rotation.y;
+            tweenUniform(meshToSquish, 'scale', 1.0, 0, 0.15, ease.inOutCubic, () => {
+                disposeFoodMesh(meshToSquish, scene);
+            });
+            tween(meshToSquish, 'rotation', 'y', startRotY, startRotY + Math.PI, 0.15, ease.linear);
         }
         if (foodTypeInfo?.effectText) {
              UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());

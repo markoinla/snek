@@ -523,6 +523,7 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
         if (event.type === EventType.FoodEaten) {
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
             if (isLocalPlayer) {
+                Player.triggerHeadChomp();
                 if (event.payload.type === 'normal') {
                     state.stats.applesEaten++;
                     Audio.playSoundEffect('eatApple');
