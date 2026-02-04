@@ -9,8 +9,9 @@ export interface GameState {
     renderer: THREE.WebGLRenderer | null;
     materials: Record<string, any> | null;
     lights: {
-        ambientLight: THREE.AmbientLight | null;
-        directionalLight: THREE.DirectionalLight | null;
+        hemiLight: THREE.HemisphereLight | null;
+        sunLight: THREE.DirectionalLight | null;
+        fillLight: THREE.DirectionalLight | null;
     };
     clock: THREE.Clock | null;
     frameCount: number;
@@ -121,8 +122,9 @@ export const gameState: GameState = {
     renderer: null,
     materials: null, // Loaded materials { snake, enemy, food, obstacle, etc. }
     lights: {
-        ambientLight: null,
-        directionalLight: null,
+        hemiLight: null,
+        sunLight: null,
+        fillLight: null,
     },
     clock: null,
     frameCount: 0, // Track frame count for throttling UI updates

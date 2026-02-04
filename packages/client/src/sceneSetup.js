@@ -34,33 +34,44 @@ export function createRenderer(canvas) {
 }
 
 export function createLights(scene) {
-    const ambientLight = new THREE.AmbientLight(0xcccccc, 0.65);
-    scene.add(ambientLight);
+    // Hemisphere light: sky-to-ground gradient for natural ambient fill
+    const hemiLight = new THREE.HemisphereLight(
+        PALETTE.sky.zenith,       // sky color (cool blue from above)
+        PALETTE.ground.base,      // ground color (warm green from below)
+        0.6
+    );
+    hemiLight.position.set(0, 50, 0);
+    scene.add(hemiLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffeedd, 0.8);
-    directionalLight.position.set(CONFIG.GRID_SIZE * 0.15, CONFIG.GRID_SIZE * 0.25, CONFIG.GRID_SIZE * 0.1);
-    
-    // Only enable shadows if performance settings allow
-    directionalLight.castShadow = performanceSettings.shadows;
-    
-    // Only configure shadow properties if shadows are enabled
+    // Warm key light (sun) — primary directional, casts shadows
+    const sunLight = new THREE.DirectionalLight(PALETTE.lighting.sun, 0.9);
+    sunLight.position.set(CONFIG.GRID_SIZE * 0.15, CONFIG.GRID_SIZE * 0.25, CONFIG.GRID_SIZE * 0.1);
+
+    sunLight.castShadow = performanceSettings.shadows;
+
     if (performanceSettings.shadows) {
-        directionalLight.shadow.mapSize.width = 1024;
-        directionalLight.shadow.mapSize.height = 1024;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.8; // Adjusted far plane
+        sunLight.shadow.mapSize.width = 1024;
+        sunLight.shadow.mapSize.height = 1024;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.8;
         const shadowCamSize = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE * 0.6;
-        directionalLight.shadow.camera.left = -shadowCamSize;
-        directionalLight.shadow.camera.right = shadowCamSize;
-        directionalLight.shadow.camera.top = shadowCamSize;
-        directionalLight.shadow.camera.bottom = -shadowCamSize;
-        directionalLight.shadow.bias = -0.001;
+        sunLight.shadow.camera.left = -shadowCamSize;
+        sunLight.shadow.camera.right = shadowCamSize;
+        sunLight.shadow.camera.top = shadowCamSize;
+        sunLight.shadow.camera.bottom = -shadowCamSize;
+        sunLight.shadow.bias = -0.001;
     }
-    
-    scene.add(directionalLight);
-    scene.add(directionalLight.target); // Important: Target needs to be added too
 
-    return { ambientLight, directionalLight };
+    scene.add(sunLight);
+    scene.add(sunLight.target);
+
+    // Cool fill light — opposite side, no shadows, balances warm key
+    const fillLight = new THREE.DirectionalLight(PALETTE.lighting.fill, 0.35);
+    fillLight.position.set(-CONFIG.GRID_SIZE * 0.1, CONFIG.GRID_SIZE * 0.15, -CONFIG.GRID_SIZE * 0.08);
+    fillLight.castShadow = false;
+    scene.add(fillLight);
+
+    return { hemiLight, sunLight, fillLight };
 }
 
 export function createSkybox(scene, texture) {

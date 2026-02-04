@@ -860,9 +860,9 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 export function updateCamera(gameState) {
     const { camera, playerSnake, scene } = gameState;
-    const directionalLight = gameState.lights?.directionalLight;
+    const sunLight = gameState.lights?.sunLight;
 
-    if (!camera || !playerSnake || playerSnake.segments.length === 0 || playerSnakeMeshes.length === 0 || !directionalLight) return;
+    if (!camera || !playerSnake || playerSnake.segments.length === 0 || playerSnakeMeshes.length === 0 || !sunLight) return;
 
     const headMesh = playerSnakeMeshes[0];
     const headPos = headMesh.position;
@@ -872,9 +872,9 @@ export function updateCamera(gameState) {
     _lookDir.set(playerSnake.direction.x, 0, playerSnake.direction.z).normalize();
     _targetLookAt.copy(headPos).addScaledVector(_lookDir, lookAheadFactor);
 
-    // Target for directional light (follows the head more closely)
-    if (directionalLight.target) {
-        directionalLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5);
+    // Sun light target follows the head for dynamic shadow positioning
+    if (sunLight.target) {
+        sunLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5);
     }
 
     // Target position for the camera (behind the snake)
