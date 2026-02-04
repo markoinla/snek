@@ -14,6 +14,8 @@ export const PALETTE = {
   ground: {
     base: 0x4A7C3F,      // natural grass green
     grid: 0x3D6B34,      // darker grid lines
+    rock: 0x808080,       // neutral gray decorative rocks
+    rockDark: 0x606060,   // darker rock variation
   },
 
   lighting: {

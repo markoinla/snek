@@ -16,6 +16,7 @@ const CONFIG = {
     MIN_SNAKE_LENGTH: 3,
     NUM_OBSTACLES: 30,
     GRASS_COUNT: 24000,
+    ROCK_COUNT: 60,
     POWERUP_TEXT_ANIMATION_DURATION: 1500,
 
     // Multiplayer settings

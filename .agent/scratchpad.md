@@ -1,6 +1,6 @@
 # Snek — Scratchpad
 
-Last updated: 2026-02-04 (Visual Overhaul — Batch 1 complete)
+Last updated: 2026-02-04 (Visual Overhaul — Task 7 complete)
 
 ## Visual Overhaul Plan (20 tasks)
 
@@ -8,9 +8,9 @@ Last updated: 2026-02-04 (Visual Overhaul — Batch 1 complete)
 - [x] Task 2: Centralized color palette module
 - [x] Task 3: Migrate materials to MeshToonMaterial
 - [x] Task 4: Outline postprocessing pass
-- [ ] Task 5: Lighting overhaul (warm/cool split + fog)
-- [ ] Task 6: Procedural gradient sky + drifting clouds
-- [ ] Task 7: Ground improvements (grid overlay + rocks)
+- [x] Task 5: Lighting overhaul (warm/cool split + fog)
+- [x] Task 6: Procedural gradient sky + drifting clouds
+- [x] Task 7: Ground improvements (grid overlay + rocks)
 - [ ] Task 8: Animation utility module (tween system)
 - [ ] Task 9: Snake body wave motion
 - [ ] Task 10: Head squash/stretch + smooth turning

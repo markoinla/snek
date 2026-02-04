@@ -158,6 +158,23 @@ export function createGround(scene, material) {
     groundMesh.receiveShadow = performanceSettings.shadows;
     
     scene.add(groundMesh);
+
+    // Subtle grid overlay for gameplay readability
+    const gridHelper = new THREE.GridHelper(
+        groundSize,
+        CONFIG.GRID_SIZE, // divisions = one per cell
+        PALETTE.ground.grid,
+        PALETTE.ground.grid
+    );
+    gridHelper.position.y = 0.01; // slightly above ground to avoid z-fighting
+    const gridMats = Array.isArray(gridHelper.material) ? gridHelper.material : [gridHelper.material];
+    for (const mat of gridMats) {
+        mat.transparent = true;
+        mat.opacity = 0.08;
+        mat.depthWrite = false;
+    }
+    scene.add(gridHelper);
+
     return groundMesh;
 }
 
@@ -259,6 +276,46 @@ export function createGrass(scene, material) {
     return grassInstances;
 }
 
+export function createRocks(scene, gradientMap) {
+    const rockGeo = new THREE.BoxGeometry(0.3, 0.2, 0.3);
+    const rockMat = new THREE.MeshToonMaterial({
+        color: PALETTE.ground.rock,
+        gradientMap,
+    });
+    const rocks = new THREE.InstancedMesh(rockGeo, rockMat, CONFIG.ROCK_COUNT);
+    rocks.castShadow = performanceSettings.shadows;
+    rocks.receiveShadow = performanceSettings.shadows;
+
+    const dummy = new THREE.Object3D();
+    const spread = CONFIG.GRID_SIZE * CONFIG.UNIT_SIZE;
+    const rockColor = new THREE.Color();
+
+    for (let i = 0; i < CONFIG.ROCK_COUNT; i++) {
+        dummy.position.set(
+            (Math.random() - 0.5) * spread,
+            0.05, // half-embedded in the ground
+            (Math.random() - 0.5) * spread
+        );
+        dummy.rotation.y = Math.random() * Math.PI * 2;
+        dummy.rotation.z = (Math.random() - 0.5) * 0.3; // slight tilt
+        const s = (0.6 + Math.random() * 0.8) * CONFIG.UNIT_SIZE;
+        dummy.scale.set(s, 0.4 + Math.random() * 0.6, s);
+        dummy.updateMatrix();
+        rocks.setMatrixAt(i, dummy.matrix);
+
+        // Per-instance color variation between rock and rockDark
+        const t = Math.random();
+        rockColor.set(PALETTE.ground.rock).lerp(
+            new THREE.Color(PALETTE.ground.rockDark), t
+        );
+        rocks.setColorAt(i, rockColor);
+    }
+    rocks.instanceMatrix.needsUpdate = true;
+    rocks.instanceColor.needsUpdate = true;
+    scene.add(rocks);
+    return rocks;
+}
+
 export function createBaseGeometries() {
      // Scale predefined geometries based on UNIT_SIZE if necessary
      // (Cube geometry is handled by mesh scaling)
@@ -271,8 +328,9 @@ export function setupBasicScene(scene, materials) {
     const groundMesh = createGround(scene, materials.ground);
     const wallGroup = createWalls(scene, materials.wall);
     const grassInstances = createGrass(scene, materials.grass); // Use grass material
+    const rocks = createRocks(scene, materials.gradientMap);
     const skybox = createSkybox(scene); // Procedural gradient sky
     const clouds = createClouds(scene);
 
-    return { groundMesh, wallGroup, grassInstances, skybox, clouds };
+    return { groundMesh, wallGroup, grassInstances, rocks, skybox, clouds };
 }
