@@ -78,7 +78,12 @@ The game has a strict separation between **deterministic core simulation** and *
 - `particleSystem.js` - Pool-based particle effects
 - `ui.js` - HTML overlay (score, kills, game over, power-ups)
 - `audioSystem.js` - Sound effects and music
-- `config.js` - All game constants (grid size, speeds, counts, camera)
+
+**Config & State** (`packages/client/src/`) are TypeScript:
+- `config.ts` - All game constants (grid size, speeds, counts, camera)
+- `constants.ts` - Asset paths, food type definitions, obstacle types, predefined geometries
+- `gameState.ts` - Centralized mutable game state (core state, player/enemy refs, score, network state)
+- `inputHandler.ts` - Keyboard/touch input binding, feeds turn inputs into core simulation
 
 **Entry point**: `main.ts` runs the animation loop at 60 FPS with fixed 30-tick simulation substeps.
 
@@ -94,7 +99,7 @@ Clients and servers must match `PROTOCOL_VERSION` (1), `STATE_SCHEMA_VERSION` (1
 
 ### Key Config
 
-Game constants live in `packages/client/src/config.js`: 80x80 grid, 0.25s base snake speed, 100 food items, 8 AI enemies, 30 Hz tick rate. Multiplayer defaults to `ws://localhost:2567`. Respawn delay is 90 ticks (3s), respawn length is 3 segments.
+Game constants live in `packages/client/src/config.ts`: 80x80 grid, 0.25s base snake speed, 100 food items, 8 AI enemies, 30 Hz tick rate. Multiplayer defaults to `ws://localhost:2567`. Respawn delay is 90 ticks (3s), respawn length is 3 segments. Bush obstacles slow players (`BUSH_SLOW_DURATION`, `BUSH_SLOW_MULTIPLIER`) rather than killing them.
 
 ### TypeScript Configuration
 

@@ -58,6 +58,6 @@ export const GEOMETRIES: {
     cube: new THREE.BoxGeometry(1, 1, 1), // Use UNIT_SIZE scaling on mesh instead
     particle: new THREE.PlaneGeometry(1, 1), // Scaled later
     groundPlane: null, // Created dynamically based on GRID_SIZE
-    grassBlade: new THREE.PlaneGeometry(0.1, 0.6), // Scaled by UNIT_SIZE later
+    grassBlade: new THREE.PlaneGeometry(0.1, 1.2), // Scaled by UNIT_SIZE later
 };
-GEOMETRIES.grassBlade.translate(0, 0.3, 0); // Center pivot at base
+GEOMETRIES.grassBlade.translate(0, 0.6, 0); // Center pivot at base

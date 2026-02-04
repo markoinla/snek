@@ -7,6 +7,7 @@ import { createExplosion, createKillEffect } from './particleSystem.js';
 import { checkEnemyCollisionCore } from './core/collision.ts';
 import { checkObstacleCollision } from './obstacles.js'; // Make sure this import exists
 import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { PALETTE } from './palette';
 
 let enemyMeshes = {}; // Store meshes keyed by enemy ID: { id: [mesh1, mesh2,...] }
 
@@ -184,7 +185,7 @@ export function renderEnemyKillEffects(enemyId, gameState) {
                 camera,
                 mesh.position.clone(),
                 CONFIG.PARTICLE_COUNT_KILL / meshes.length,
-                CONFIG.PARTICLE_COLOR_KILL
+                PALETTE.particles.kill
             );
         }
     });
@@ -246,17 +247,26 @@ export function syncEnemyMeshes(gameState, frameDelta) {
             });
             enemyMeshes[enemy.id] = newMeshes;
         } else {
+            const enemyElapsed = gameState.clock ? gameState.clock.getElapsedTime() : 0;
             meshes.forEach((mesh, index) => {
                 const seg = enemy.snake[index];
                 if (!mesh || !seg) return;
                 const targetX = seg.x * CONFIG.UNIT_SIZE;
                 const targetZ = seg.z * CONFIG.UNIT_SIZE;
+                const waveY = Math.sin(enemyElapsed * CONFIG.WAVE_SPEED + index * CONFIG.WAVE_FREQUENCY) * CONFIG.WAVE_AMPLITUDE;
                 if (lerpFactor >= 1.0) {
-                    mesh.position.set(targetX, CONFIG.UNIT_SIZE / 2, targetZ);
+                    mesh.position.set(targetX, CONFIG.UNIT_SIZE / 2 + waveY, targetZ);
                 } else {
                     mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
-                    mesh.position.y = CONFIG.UNIT_SIZE / 2;
+                    mesh.position.y = CONFIG.UNIT_SIZE / 2 + waveY;
                     mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+                }
+                // Smooth head rotation for enemies
+                if (index === 0 && enemy.direction) {
+                    const targetAngle = Math.atan2(enemy.direction.x, enemy.direction.z);
+                    let angleDiff = targetAngle - mesh.rotation.y;
+                    angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+                    mesh.rotation.y += angleDiff * 0.25;
                 }
             });
         }
@@ -643,8 +653,8 @@ let edibleTailMaterial = null;
 
 function getEdibleTailMaterial() {
     if (!edibleTailMaterial) {
-        edibleTailMaterial = new THREE.MeshLambertMaterial({
-            color: CONFIG.ENEMY_TAIL_COLOR,
+        edibleTailMaterial = new THREE.MeshToonMaterial({
+            color: PALETTE.enemy.tail,
             side: THREE.FrontSide,
         });
     }
@@ -741,7 +751,7 @@ export function killEnemySnake(enemyId, gameState) {
                     gameState.camera, 
                     mesh.position.clone(), 
                     CONFIG.PARTICLE_COUNT_KILL / meshes.length, // Distribute particles among segments
-                    CONFIG.PARTICLE_COLOR_KILL
+                    PALETTE.particles.kill
                 );
             }
             
@@ -799,5 +809,18 @@ export function checkEnemyRespawns(gameState) {
     
     // Update the respawn queue
     enemies.respawnQueue = stillWaiting;
+}
+
+/** Return all visible enemy meshes for outline pass. */
+export function getAllEnemyMeshes() {
+    const meshes = [];
+    for (const id of Object.keys(enemyMeshes)) {
+        const arr = enemyMeshes[id];
+        if (!arr) continue;
+        for (const m of arr) {
+            if (m && m.visible) meshes.push(m);
+        }
+    }
+    return meshes;
 }
 

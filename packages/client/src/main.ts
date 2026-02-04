@@ -25,6 +25,9 @@ import { applyPlayerInput } from './core/player.ts';
 import { spawnFoodCore } from './core/spawn.ts';
 import { spawnInitialEnemiesCore } from './core/enemy.ts';
 import { connectMultiplayer } from './network/colyseusClient.ts';
+import { initPostprocessing, resizePostprocessing, renderPostprocessing, setOutlinedObjects } from './postprocessing';
+import { PALETTE } from './palette';
+import { updateAnimations } from './animations';
 
 // FPS counter
 let stats: any;
@@ -136,6 +139,11 @@ async function init() {
     const env = SceneSetup.setupBasicScene(gameState.scene, gameState.materials);
     gameState.environment = { ...env };
 
+    // Setup postprocessing pipeline (bloom, outline) — skip on mobile for performance
+    if (performanceSettings.postprocessing) {
+        gameState.composer = initPostprocessing(gameState.renderer, gameState.scene, gameState.camera);
+    }
+
     // Initialize Systems that need materials/scene
     Particles.initParticles(gameState.materials.particle);
     
@@ -152,8 +160,12 @@ async function init() {
     addManagedEventListener(window, 'gamePaused', pauseGame);
     addManagedEventListener(window, 'gameResumed', resumeGame);
     
-    // Show intro screen (only shown for first-time users)
-    UI.showIntroScreen();
+    // Show intro screen (only shown for first-time users; room code URLs handled below)
+    const initPath = window.location.pathname;
+    const isRoomCodeUrl = /^\/[A-Z0-9]{6}$/.test(initPath);
+    if (!isRoomCodeUrl) {
+        UI.showIntroScreen();
+    }
     
     // Event Listeners
     addManagedEventListener(window, 'resize', onWindowResize);
@@ -190,26 +202,40 @@ async function init() {
         }
     };
 
+    addManagedEventListener(window, 'multiplayerJoin', () => {
+        startMultiplayer();
+    });
+
     addManagedEventListener(window, 'multiplayerCreateRoom', () => {
         startMultiplayer({ createRoom: true });
     });
 
-    // Direct room code URL (e.g. /A3FH2K) — auto-join that room
+    // Direct room code URL (e.g. /A3FH2K) — prompt for name if needed, then join
     const path = window.location.pathname;
     const roomCodeMatch = path.match(/^\/([A-Z0-9]{6})$/);
     if (roomCodeMatch) {
         const roomCode = roomCodeMatch[1];
-        try {
-            await connectMultiplayer(gameState, { playerName: UI.getPlayerName(), roomCode });
-            UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
-        } catch (error) {
-            Logger.system.warn('Room not found or connection failed', error);
-            window.history.replaceState({}, '', '/');
-            UI.showIntroScreen();
-            UI.showPowerUpTextEffect('Room not found', 0xff4444);
+        const joinRoom = async () => {
+            UI.hideNameOverlay();
+            UI.startGame();
+            try {
+                await connectMultiplayer(gameState, { playerName: UI.getPlayerName(), roomCode });
+                UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
+            } catch (error) {
+                Logger.system.warn('Room not found or connection failed', error);
+                window.history.replaceState({}, '', '/');
+                UI.showIntroScreen();
+                UI.showPowerUpTextEffect('Room not found', 0xff4444);
+            }
+        };
+        const name = UI.getPlayerName();
+        if (name) {
+            await joinRoom();
+        } else {
+            UI.showNameOverlay(() => { joinRoom(); });
         }
     } else if (path === '/multi') {
-        // Legacy /multi URL — skip lobby, auto-join
+        // Legacy /multi URL — skip intro, auto-join
         try {
             await connectMultiplayer(gameState, { playerName: UI.getPlayerName() });
             UI.showPowerUpTextEffect('Connected to multiplayer', 0x4caf50);
@@ -312,6 +338,35 @@ function onGameResumed() {
     }
 }
 
+// --- Environment Rebuild ---
+// Removes old environment objects and recreates them with current CONFIG values.
+// This ensures walls, ground, etc. match GRID_SIZE after config changes.
+function rebuildEnvironment() {
+    const scene = gameState.scene;
+    const env = gameState.environment;
+    if (!scene || !env) return;
+
+    // Remove old environment objects from the scene
+    if (env.wallGroup) scene.remove(env.wallGroup);
+    if (env.groundMesh) scene.remove(env.groundMesh);
+    if (env.grassInstances) scene.remove(env.grassInstances);
+    if (env.rocks) scene.remove(env.rocks);
+    if (env.skybox) scene.remove(env.skybox);
+    if (env.clouds) scene.remove(env.clouds);
+
+    // Also remove the grid helper (child of scene, placed by createGround)
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+        const child = scene.children[i];
+        if (child instanceof THREE.GridHelper) {
+            scene.remove(child);
+        }
+    }
+
+    // Recreate with current CONFIG
+    const newEnv = SceneSetup.setupBasicScene(scene, gameState.materials);
+    gameState.environment = { ...newEnv };
+}
+
 // --- Game Reset ---
 function resetGame() {
     Logger.system.info("--- RESETTING GAME ---");
@@ -345,23 +400,27 @@ function resetGame() {
         // Reset individual game components - the order matters here!
         // Each of these calls should properly clean up their THREE.js objects
         // to prevent memory leaks
-        
+
         // Clean up any active particles first
         Particles.resetParticles(gameState.scene);
-        
+
         // Reset food objects - this removes food meshes from the scene
-        Food.resetFood(gameState); 
-        
+        Food.resetFood(gameState);
+
         // Second stage: Recreate game world with slight delays
         setTimeout(() => {
             // Reset obstacles - removes obstacle meshes from the scene
-            Obstacles.resetObstacles(gameState); 
-            
+            Obstacles.resetObstacles(gameState);
+
             // Reset enemies - removes enemy snake meshes from the scene
-            Enemy.resetEnemies(gameState); 
-            
-            // Reset player - removes player snake meshes from the scene 
+            Enemy.resetEnemies(gameState);
+
+            // Reset player - removes player snake meshes from the scene
             Player.resetPlayer(gameState);
+
+            // Rebuild environment (walls, ground, grass, etc.) so they
+            // match the current CONFIG.GRID_SIZE if it was changed.
+            rebuildEnvironment();
             
             // Final stage: Spawn new entities with slight delays
             setTimeout(() => {
@@ -499,6 +558,7 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
         if (event.type === EventType.FoodEaten) {
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === event.payload.type);
             if (isLocalPlayer) {
+                Player.triggerHeadChomp();
                 if (event.payload.type === 'normal') {
                     state.stats.applesEaten++;
                     Audio.playSoundEffect('eatApple');
@@ -536,6 +596,7 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
             // @ts-expect-error -- function missing from audioSystem.js (pre-existing)
             Audio.playAlphaModeActivation();
             Player.updatePlayerSnakeTextures(state, true);
+            Player.triggerAlphaActivationVisuals(state);
         }
         if (event.type === EventType.AlphaModeEnded && isLocalPlayer) {
             UI.showPowerUpTextEffect("Alpha Mode ended");
@@ -559,8 +620,33 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
         if (event.type === EventType.PlayerRespawned && isLocalPlayer) {
             UI.hideRespawnOverlay();
             Player.syncPlayerMeshes(state);
+            Player.playRespawnAssemblyEffect(state);
         }
     });
+}
+
+// --- Outline Sync ---
+// Collects all visible game-object meshes and feeds them to the outline pass.
+// Called once per render frame, after mesh interpolation.
+function syncOutlinedObjects(): void {
+    const objects: THREE.Object3D[] = [];
+
+    // Player + remote player meshes
+    const playerMeshes = Player.getAllPlayerMeshes?.();
+    if (playerMeshes) objects.push(...playerMeshes);
+
+    // Enemy meshes
+    const enemyMeshes = Enemy.getAllEnemyMeshes?.();
+    if (enemyMeshes) objects.push(...enemyMeshes);
+
+    // Food meshes
+    if (gameState.food?.meshes) {
+        for (const m of gameState.food.meshes) {
+            if (m && m.visible !== false) objects.push(m);
+        }
+    }
+
+    setOutlinedObjects(objects);
 }
 
 // --- Main Loop ---
@@ -668,6 +754,9 @@ function render() {
         }
     }
 
+    // Advance tween animations (frame-rate independent, runs every render frame)
+    updateAnimations(frameTime);
+
     // Mesh interpolation runs once per render frame (60fps) for smooth visuals.
     // In multiplayer mode, frameTime drives the exponential smoothing.
     if (gameState.flags.useCoreSimulation && gameState.flags.gameRunning && !gameState.flags.gameOver) {
@@ -677,14 +766,33 @@ function render() {
         Food.syncFoodMeshes(gameState);
     }
 
+    // Update alpha mode postprocessing effects (bloom/outline)
+    Player.updateAlphaModeVisuals(gameState, frameTime);
+
+
+    // Rebuild outline selection from visible game meshes
+    syncOutlinedObjects();
+
     // Update camera (even slightly after game over for effect?)
     Player.updateCamera(gameState);
-    
+
+    // Drift clouds
+    if (gameState.environment.clouds) {
+        gameState.environment.clouds.children.forEach((cloud: any) => {
+            cloud.position.x += Math.cos(cloud.userData.driftDirection) * cloud.userData.driftSpeed * frameTime;
+            cloud.position.z += Math.sin(cloud.userData.driftDirection) * cloud.userData.driftSpeed * frameTime;
+        });
+    }
+
     // Update camera effects (shake, etc.)
     updateCameraEffects(gameState.simulation.time);
 
     // Render the scene
-    gameState.renderer!.render(gameState.scene!, gameState.camera!);
+    if (performanceSettings.postprocessing) {
+        renderPostprocessing();
+    } else {
+        gameState.renderer!.render(gameState.scene!, gameState.camera!);
+    }
 
     // Update stats display if present
     if (stats) {
@@ -729,6 +837,9 @@ function onWindowResize() {
         gameState.camera.aspect = window.innerWidth / window.innerHeight;
         gameState.camera.updateProjectionMatrix();
         gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+        if (performanceSettings.postprocessing) {
+            resizePostprocessing(window.innerWidth, window.innerHeight);
+        }
         // Note: Pixel ratio is set once at init, usually doesn't need update
     }
 }
@@ -767,16 +878,14 @@ function validateConfig() {
     Logger.system.info("Configuration validated.");
 }
 
-// Function to update ground color from config
+// Function to update ground color from palette
 function updateGroundColor() {
     if (gameState.environment && gameState.environment.groundMesh) {
         const groundMesh = gameState.environment.groundMesh;
         if (groundMesh.material) {
-            // Update the color directly
-            (groundMesh.material as THREE.MeshStandardMaterial).color.set(CONFIG.GROUND_COLOR || 0xFFFFFF);
-            (groundMesh.material as THREE.MeshStandardMaterial).needsUpdate = true;
-            Logger.system.info("Ground color updated to:", CONFIG.GROUND_COLOR ? 
-                "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
+            (groundMesh.material as THREE.MeshToonMaterial).color.set(PALETTE.ground.base);
+            (groundMesh.material as THREE.MeshToonMaterial).needsUpdate = true;
+            Logger.system.info("Ground color updated from palette.");
         }
     }
 }

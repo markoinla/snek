@@ -45,13 +45,12 @@ export function setupInputListeners(gameState: GameState, uiElements: { leftButt
         }
 
         // Prevent default browser behavior for arrow keys to improve responsiveness
-        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'a', 'd', 'w', 's'].includes(event.key.toLowerCase())) {
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(event.key.toLowerCase())) {
             event.preventDefault();
         }
 
         switch (event.key.toLowerCase()) {
             case 'arrowleft':
-            case 'a':
                 if (gameState.flags.useCoreSimulation) {
                     enqueueInput('left');
                 } else {
@@ -61,7 +60,6 @@ export function setupInputListeners(gameState: GameState, uiElements: { leftButt
                 }
                 break;
             case 'arrowright':
-            case 'd':
                 if (gameState.flags.useCoreSimulation) {
                     enqueueInput('right');
                 } else {

@@ -1,6 +1,62 @@
-# Multiplayer Refactor — Scratchpad
+# Snek — Scratchpad
 
-Last updated: 2026-02-03 (6.4 upgraded: frame-rate-independent interpolation)
+Last updated: 2026-02-04 (Visual Overhaul — ALL 20 tasks COMPLETE)
+
+## Remaining Tasks — Implementation Notes
+
+### Task 16: Dynamic bloom on powerup (~80% done)
+Alpha bloom spike+ease already works. Missing: bloom pulse on powerup pickup.
+- Add bloom pulse in `applyPowerUp()` in playerSnake.js
+- Reuse getBloomPass() + tween pattern from alpha activation
+- Files: playerSnake.js
+
+### Task 17: Emissive glow on powerup food (~25% done)
+Static emissive colors exist on frog materials. Missing: dynamic pulsing.
+- Add emissiveIntensity oscillation in `updateFoodAnimations()` in food.js
+- Only for powerup frogs (speed/ghost/shrink/score_x2), not apples
+- Files: food.js, possibly materials.js
+
+### Task 18: Respawn assembly animation (~15% done)
+Core respawn logic + tween system exist. Missing: visual assembly effect.
+- Add `playRespawnAssemblyEffect()` in playerSnake.js
+- Staggered scale pop-in per segment with particle burst
+- Trigger from main.ts on PlayerRespawned event
+- Files: playerSnake.js, main.ts
+
+### Task 20: Mobile postprocessing toggle (~10% done)
+Mobile detection + performanceSettings exist. Missing: postprocessing flag + conditional rendering.
+- Add `postprocessing` flag to performanceSettings in deviceUtils.js
+- Conditionally init postprocessing in main.ts
+- Fallback to raw renderer.render() when disabled
+- Guard getBloomPass()/getOutlinePass() calls
+- Files: deviceUtils.js, main.ts, postprocessing.ts
+
+## Visual Overhaul Plan (20 tasks)
+
+- [x] Task 1: Postprocessing pipeline (EffectComposer + bloom)
+- [x] Task 2: Centralized color palette module
+- [x] Task 3: Migrate materials to MeshToonMaterial
+- [x] Task 4: Outline postprocessing pass
+- [x] Task 5: Lighting overhaul (warm/cool split + fog)
+- [x] Task 6: Procedural gradient sky + drifting clouds
+- [x] Task 7: Ground improvements (grid overlay + rocks)
+- [x] Task 8: Animation utility module (tween system)
+- [x] Task 9: Snake body wave motion
+- [x] Task 10: Head squash/stretch + smooth turning
+- [x] Task 11: Eating feedback (chomp + food squish)
+- [x] Task 12: Death scatter effect
+- [x] Task 13: Alpha mode activation effects
+- [x] Task 14: Speed trail particles
+- [x] Task 15: UI visual integration
+- [x] Task 16: Dynamic bloom on powerup/alpha
+- [x] Task 17: Emissive glow on powerup food
+- [x] Task 18: Respawn assembly animation
+- [x] Task 19: Consistent shadow casting (already implemented across all meshes)
+- [x] Task 20: Mobile postprocessing toggle
+
+---
+
+## Previous Work (Multiplayer Refactor — completed 2026-02-03)
 
 ## Phase 1: Shared Types & Core State Refactor
 

@@ -168,7 +168,8 @@ function isMoveInvalid(pos: Vec3, enemy: any, state: CoreState) {
     }
   }
 
-  if (checkObstacleCollisionCore(state.obstacles, pos)) {
+  const obstacleType = checkObstacleCollisionCore(state.obstacles, pos);
+  if (obstacleType && obstacleType !== 'bush') {
     return true;
   }
 

@@ -2,6 +2,19 @@ import * as THREE from 'three';
 import CONFIG from './config';
 import { PATHS, FOOD_TYPES, GEOMETRIES } from './constants';
 import { Logger } from './debugLogger.js';
+import { PALETTE } from './palette';
+
+function createToonGradient(steps = 4) {
+    const colors = new Uint8Array(steps);
+    for (let i = 0; i < steps; i++) {
+        colors[i] = Math.round((i / (steps - 1)) * 255);
+    }
+    const texture = new THREE.DataTexture(colors, steps, 1, THREE.RedFormat);
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
+    texture.needsUpdate = true;
+    return texture;
+}
 
 async function loadTexture(loader, path, applySRGB = true, configFn = null) {
     return new Promise((resolve, reject) => {
@@ -120,7 +133,11 @@ export async function loadAndCreateMaterials() {
 
         // --- Create Materials ---
 
-        // Particle Material
+        // Shared toon gradient map for cel-shading
+        const gradientMap = createToonGradient(4);
+        materials.gradientMap = gradientMap;
+
+        // Particle Material (keep MeshBasicMaterial — needs additive blending)
         materials.particle = new THREE.MeshBasicMaterial({
             map: particleTex,
             transparent: true,
@@ -131,10 +148,10 @@ export async function loadAndCreateMaterials() {
         });
 
         // Snake Materials
-        const baseSnakeParams = { side: THREE.FrontSide };
+        const baseSnakeParams = { side: THREE.FrontSide, gradientMap };
         const createSpriteMaterial = (offsetX, offsetY, spriteSheetTexture) => {
-            if (!spriteSheetTexture) return new THREE.MeshLambertMaterial({ color: 0xff00ff, ...baseSnakeParams }); // Fallback
-            const mat = new THREE.MeshLambertMaterial(baseSnakeParams);
+            if (!spriteSheetTexture) return new THREE.MeshToonMaterial({ color: 0xff00ff, ...baseSnakeParams }); // Fallback
+            const mat = new THREE.MeshToonMaterial(baseSnakeParams);
             mat.map = spriteSheetTexture.clone(); // Clone map for unique offsets
             mat.map.needsUpdate = true; // Ensure clone is used
             const r = 1.0 / CONFIG.SPRITE_SHEET_DIM;
@@ -148,10 +165,10 @@ export async function loadAndCreateMaterials() {
         materials.snake.body2 = createSpriteMaterial(1, 0, snakeSpriteSheetTexture); // Bottom Right
 
         // Enemy Materials
-        const baseEnemyParams = { side: THREE.FrontSide };
+        const baseEnemyParams = { side: THREE.FrontSide, gradientMap };
         const createEnemySpriteMaterial = (offsetX, offsetY, spriteSheetTexture) => {
-            if (!spriteSheetTexture) return new THREE.MeshLambertMaterial({ color: 0xff00ff, ...baseEnemyParams }); // Fallback
-            const mat = new THREE.MeshLambertMaterial(baseEnemyParams);
+            if (!spriteSheetTexture) return new THREE.MeshToonMaterial({ color: 0xff00ff, ...baseEnemyParams }); // Fallback
+            const mat = new THREE.MeshToonMaterial(baseEnemyParams);
             mat.map = spriteSheetTexture.clone(); // Clone map for unique offsets
             mat.map.needsUpdate = true; // Ensure clone is used
             const r = 1.0 / CONFIG.SPRITE_SHEET_DIM;
@@ -170,102 +187,125 @@ export async function loadAndCreateMaterials() {
             if (foodType.type === 'normal') {
                 // Normal food keeps the same appearance with texture
                 if (texture) {
-                    materials.food[foodType.type] = new THREE.MeshLambertMaterial({
+                    materials.food[foodType.type] = new THREE.MeshToonMaterial({
                         map: texture,
                         side: THREE.FrontSide,
-                        color: 0xffffff // White color to allow texture to show properly
+                        color: 0xffffff,
+                        gradientMap,
                     });
                 } else {
                     // Fallback if texture failed
-                    materials.food[foodType.type] = new THREE.MeshLambertMaterial({
+                    materials.food[foodType.type] = new THREE.MeshToonMaterial({
                         color: foodType.colorHint || 0xff00ff,
-                        emissive: 0x222222 // Small amount of emissive to make up for lack of reflectivity
+                        emissive: 0x222222,
+                        gradientMap,
                     });
                 }
             } else {
+                // Type-specific emissive tints so frogs glow with their powerup color
+                const emissiveByType = {
+                    speed: 0x2E7D32,
+                    shrink: 0x6A1B9A,
+                    score_x2: 0x8D6E00,
+                    ghost: 0x616161,
+                };
                 // Frog powerups use solid colors instead of textures for a blocky look
-                materials.food[foodType.type] = new THREE.MeshLambertMaterial({
+                materials.food[foodType.type] = new THREE.MeshToonMaterial({
                     color: foodType.colorHint,
                     side: THREE.FrontSide,
-                    emissive: 0x222222, // Add a bit of emissive glow to compensate for loss of metalness
-                    transparent: foodType.type === 'ghost', // Ghost frog needs transparency
-                    opacity: foodType.type === 'ghost' ? 0.7 : 1.0 // Ghost frog opacity
+                    emissive: emissiveByType[foodType.type] || 0x222222,
+                    transparent: foodType.type === 'ghost',
+                    opacity: foodType.type === 'ghost' ? 0.7 : 1.0,
+                    gradientMap,
                 });
             }
         });
 
         // Obstacle Materials
-        materials.obstacle.tree_trunk = new THREE.MeshLambertMaterial({ 
-            map: treeTrunkTexture, 
-            color: 0x966F33
+        materials.obstacle.tree_trunk = new THREE.MeshToonMaterial({
+            map: treeTrunkTexture,
+            color: PALETTE.obstacle.trunk,
+            gradientMap,
         });
-        materials.obstacle.tree_leaves = new THREE.MeshLambertMaterial({ 
-            map: treeLeavesTexture, 
-            color: 0x388E3C,
-            transparent: true, // Enable transparency for the leaves
-            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
-            side: THREE.DoubleSide // Render both sides of the leaves
+        materials.obstacle.tree_leaves = new THREE.MeshToonMaterial({
+            map: treeLeavesTexture,
+            color: PALETTE.obstacle.leaves,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        materials.obstacle.bush = new THREE.MeshLambertMaterial({ 
-            color: 0x689F38
+        materials.obstacle.bush = new THREE.MeshToonMaterial({
+            map: treeLeavesTexture,
+            color: PALETTE.obstacle.bush,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        materials.obstacle.flower_bush = new THREE.MeshLambertMaterial({ 
-            map: flowerBushTexture, 
-            color: 0xFFFFFF, // Use white to not tint the texture
-            transparent: true, // Enable transparency
-            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
-            side: THREE.DoubleSide // Render both sides of the bush
+        materials.obstacle.flower_bush = new THREE.MeshToonMaterial({
+            map: flowerBushTexture,
+            color: 0xFFFFFF,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        materials.obstacle.pink_flower = new THREE.MeshLambertMaterial({ 
-            map: pinkFlowerTexture, 
-            color: 0xFFFFFF, // Use white to not tint the texture
-            transparent: true, // Enable transparency
-            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
-            side: THREE.DoubleSide // Render both sides of the flower
+        materials.obstacle.pink_flower = new THREE.MeshToonMaterial({
+            map: pinkFlowerTexture,
+            color: 0xFFFFFF,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        materials.obstacle.white_daisy = new THREE.MeshLambertMaterial({ 
-            map: whiteDaisyTexture, 
-            color: 0xFFFFFF, // Use white to not tint the texture
-            transparent: true, // Enable transparency
-            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
-            side: THREE.DoubleSide // Render both sides of the flower
+        materials.obstacle.white_daisy = new THREE.MeshToonMaterial({
+            map: whiteDaisyTexture,
+            color: 0xFFFFFF,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        materials.obstacle.white_tulip = new THREE.MeshLambertMaterial({ 
-            map: whiteTulipTexture, 
-            color: 0xFFFFFF, // Use white to not tint the texture
-            transparent: true, // Enable transparency
-            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
-            side: THREE.DoubleSide // Render both sides of the flower
+        materials.obstacle.white_tulip = new THREE.MeshToonMaterial({
+            map: whiteTulipTexture,
+            color: 0xFFFFFF,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        materials.obstacle.yellow_flower = new THREE.MeshLambertMaterial({ 
-            map: yellowFlowerTexture, 
-            color: 0xFFFFFF, // Use white to not tint the texture
-            transparent: true, // Enable transparency
-            alphaTest: 0.5,    // Only render pixels with alpha > 0.5
-            side: THREE.DoubleSide // Render both sides of the flower
+        materials.obstacle.yellow_flower = new THREE.MeshToonMaterial({
+            map: yellowFlowerTexture,
+            color: 0xFFFFFF,
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
 
         // Environment Materials
-        materials.ground = new THREE.MeshLambertMaterial({ 
-            map: groundTileTex, 
+        materials.ground = new THREE.MeshToonMaterial({
+            map: groundTileTex,
             side: THREE.FrontSide,
-            // Apply color tint if configured
-            color: CONFIG.GROUND_COLOR || 0xFFFFFF // Use white (no tint) if GROUND_COLOR is null
+            color: PALETTE.ground.base,
+            gradientMap,
         });
-        Logger.system.info("Ground material created with color:", CONFIG.GROUND_COLOR ? 
-            "#" + CONFIG.GROUND_COLOR.toString(16).padStart(6, '0') : "No tint (white)");
-        
+        Logger.system.info("Ground material created with palette color:", "#" + PALETTE.ground.base.toString(16).padStart(6, '0'));
+
         // Create wall material with ivy texture
-        materials.wall = new THREE.MeshLambertMaterial({
+        materials.wall = new THREE.MeshToonMaterial({
             map: wallIvyTex,
-            color: 0xffffff, // Use white to let the texture color show through
-            side: THREE.DoubleSide
+            color: PALETTE.wall.base,
+            side: THREE.DoubleSide,
+            gradientMap,
         });
-        
-        materials.grass = new THREE.MeshLambertMaterial({ 
-            color: 0x558B2F, 
-            side: THREE.DoubleSide
-        }); // Simple green for grass blades
+
+        materials.grass = new THREE.MeshToonMaterial({
+            color: PALETTE.vegetation.grass,
+            side: THREE.DoubleSide,
+            gradientMap,
+        });
         
         // Skybox should remain as MeshBasicMaterial
         materials.skybox = new THREE.MeshBasicMaterial({ 

@@ -50,6 +50,10 @@ export function evaluatePlayerMove(state: CoreState, playerId: string, collision
   if (!player.ghostModeActive) {
     const obstacleType = checkObstacleCollisionCore(state.obstacles, newHead);
     if (obstacleType) {
+      if (obstacleType === 'bush') {
+        // Bushes slow the player instead of killing them
+        return { newHead, collisionReason: null, obstacleType: 'bush' };
+      }
       return { newHead, collisionReason: 'OBSTACLE', obstacleType };
     }
   }
@@ -101,6 +105,9 @@ export function updatePlayerCore(state: CoreState, playerId: string, delta: numb
   if (player.alphaMode?.active) {
     speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
   }
+  if (player.bushSlowUntil && state.time < player.bushSlowUntil) {
+    speedMultiplier *= CONFIG.BUSH_SLOW_MULTIPLIER;
+  }
   const effectiveSpeed = player.speed / speedMultiplier;
 
   if (player.moveTimer < effectiveSpeed) {
@@ -128,7 +135,7 @@ export function updatePlayerCore(state: CoreState, playerId: string, delta: numb
     return { events };
   }
 
-  const { newHead, collisionReason } = evaluatePlayerMove(state, playerId);
+  const { newHead, collisionReason, obstacleType } = evaluatePlayerMove(state, playerId);
   if (collisionReason === 'WALL') {
     events.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'WALL_COLLISION' } });
     return { events };
@@ -140,6 +147,11 @@ export function updatePlayerCore(state: CoreState, playerId: string, delta: numb
   if (collisionReason === 'OBSTACLE') {
     events.push({ type: EventType.PlayerDead, playerId, payload: { reason: 'OBSTACLE_COLLISION' } });
     return { events };
+  }
+
+  // Bush slow effect: player passes through but gets slowed
+  if (obstacleType === 'bush') {
+    player.bushSlowUntil = state.time + CONFIG.BUSH_SLOW_DURATION;
   }
 
   // Movement update

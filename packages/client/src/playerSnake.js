@@ -2,15 +2,18 @@ import * as THREE from 'three';
 import CONFIG from './config';
 import { FOOD_TYPES } from './constants'; // Import FOOD_TYPES for power-ups
 import { createSnakeSegmentMesh } from './utils.js';
-import { createExplosion } from './particleSystem.js';
+import { createExplosion, createSpeedTrail } from './particleSystem.js';
 import { setGameOver } from './main.ts'; // To trigger game over
 import { checkEnemyCollision, killEnemySnake as killEnemy } from './enemySnake.js';
 import { checkAndEatFood } from './food.js';
 import { evaluatePlayerMove } from './core/player.ts';
 import * as UI from './ui.js'; // For power-up UI updates
+import { PALETTE } from './palette';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
 import { getAdjustedSetting } from './gameState'; // For mode-adjusted settings
+import { tween, tweenUniform, ease, cancelTween } from './animations';
+import { getOutlinePass, getBloomPass } from './postprocessing';
 
 let playerSnakeMeshes = []; // Keep track of meshes separately for easy removal/update
 let remotePlayerMeshes = {}; // Store meshes keyed by remote player ID: { id: [mesh1, mesh2,...] }
@@ -22,6 +25,31 @@ const PLAYER_COLORS = [
     0xF44336, // red
     0xFFEB3B, // yellow
 ];
+
+// Helper: convert a direction vector {x, z} to a Y rotation angle (radians).
+function directionToAngle(dir) {
+    return Math.atan2(dir.x, dir.z);
+}
+
+// Trigger a squash-and-recover tween on the head mesh when turning.
+function triggerHeadSquash() {
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+    // Cancel any in-flight head scale tweens to avoid conflicts
+    cancelTween(head, 'scale');
+    // Squash: compress Y, expand X/Z, then bounce back via outElastic
+    tween(head, 'scale', 'y', 0.7, 1.0, 0.15, ease.outElastic);
+    tween(head, 'scale', 'x', 1.2, 1.0, 0.15, ease.outElastic);
+    tween(head, 'scale', 'z', 1.2, 1.0, 0.15, ease.outElastic);
+}
+
+// Trigger a chomp (scale pulse) on the head mesh when eating food.
+export function triggerHeadChomp() {
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+    cancelTween(head, 'scale');
+    tweenUniform(head, 'scale', 1.3, 1.0, 0.18, ease.outElastic);
+}
 
 // --- Player State (managed within gameState.playerSnake) ---
 // gameState.playerSnake = {
@@ -227,19 +255,42 @@ export function syncPlayerMeshes(gameState, frameDelta) {
         ? 1 - Math.exp(-CONFIG.MULTIPLAYER_LERP_SPEED * frameDelta)
         : 1.0;
 
+    const elapsedTime = gameState.clock ? gameState.clock.getElapsedTime() : 0;
+
     for (let i = 0; i < playerSnake.segments.length; i++) {
         const segment = playerSnake.segments[i];
         const mesh = playerSnakeMeshes[i];
         if (!mesh) continue;
         const targetX = segment.x * CONFIG.UNIT_SIZE;
-        const targetY = CONFIG.UNIT_SIZE / 2;
+        const baseY = CONFIG.UNIT_SIZE / 2;
         const targetZ = segment.z * CONFIG.UNIT_SIZE;
+        const waveY = Math.sin(elapsedTime * CONFIG.WAVE_SPEED + i * CONFIG.WAVE_FREQUENCY) * CONFIG.WAVE_AMPLITUDE;
         if (lerpFactor >= 1.0) {
-            mesh.position.set(targetX, targetY, targetZ);
+            mesh.position.set(targetX, baseY + waveY, targetZ);
         } else {
             mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
-            mesh.position.y = targetY;
+            mesh.position.y = baseY + waveY;
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+        }
+
+        // Head-specific: smooth rotation + speed stretch
+        if (i === 0) {
+            // Smooth rotation toward movement direction
+            const targetAngle = directionToAngle(playerSnake.direction);
+            // Shortest-arc interpolation: wrap difference to [-PI, PI]
+            let angleDiff = targetAngle - mesh.rotation.y;
+            angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+            mesh.rotation.y += angleDiff * 0.3;
+
+            // Speed-based stretch along forward axis
+            const speedRatio = CONFIG.BASE_SNAKE_SPEED / (calculateActualSpeed(gameState) || CONFIG.BASE_SNAKE_SPEED);
+            if (speedRatio > 1.2) {
+                const stretch = 1.0 + (speedRatio - 1.0) * 0.15;
+                // Apply stretch in local Z (forward) and compress Y slightly
+                // Only if no active squash tween is running (scale.x == 1 means idle)
+                mesh.scale.z = stretch;
+                mesh.scale.y = 1.0 / Math.sqrt(stretch); // Preserve volume
+            }
         }
     }
     // Texture updates are driven by animation timer in updatePlayerStateOnly,
@@ -251,15 +302,27 @@ export function syncPlayerMeshes(gameState, frameDelta) {
 // Shared geometry for all remote player segments (avoids per-segment allocation)
 const _sharedBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
 
+// Compute a lighter version of a color for edible tail segments
+function lightenColor(hex, factor = 0.4) {
+    const color = new THREE.Color(hex);
+    color.r = color.r + (1 - color.r) * factor;
+    color.g = color.g + (1 - color.g) * factor;
+    color.b = color.b + (1 - color.b) * factor;
+    return color;
+}
+
 function createRemotePlayerMeshes(playerId, segments, colorIndex, scene, materials) {
     const meshes = [];
     const color = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length] || PLAYER_COLORS[1];
+    const tailColor = lightenColor(color);
+    const tailSegments = CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
     segments.forEach((pos, index) => {
         const isHead = index === 0;
+        const isEdibleTail = segments.length >= tailSegments && index >= segments.length - tailSegments;
         const baseMat = isHead ? materials.snake.head1 : materials.snake.body1;
         if (!baseMat) return;
         const mat = baseMat.clone();
-        mat.color = new THREE.Color(color);
+        mat.color = isEdibleTail ? tailColor.clone() : new THREE.Color(color);
         const mesh = new THREE.Mesh(_sharedBoxGeometry, mat);
         mesh.scale.setScalar(CONFIG.UNIT_SIZE);
         mesh.position.set(
@@ -348,6 +411,7 @@ export function syncAllPlayerMeshes(gameState, frameDelta) {
         }
 
         // Update positions with frame-rate-independent lerp
+        const remoteElapsed = gameState.clock ? gameState.clock.getElapsedTime() : 0;
         for (let i = 0; i < player.segments.length; i++) {
             const seg = player.segments[i];
             const mesh = existingMeshes[i];
@@ -355,9 +419,17 @@ export function syncAllPlayerMeshes(gameState, frameDelta) {
             mesh.visible = true;
             const targetX = seg.x * CONFIG.UNIT_SIZE;
             const targetZ = seg.z * CONFIG.UNIT_SIZE;
+            const waveY = Math.sin(remoteElapsed * CONFIG.WAVE_SPEED + i * CONFIG.WAVE_FREQUENCY) * CONFIG.WAVE_AMPLITUDE;
             mesh.position.x += (targetX - mesh.position.x) * lerpFactor;
-            mesh.position.y = CONFIG.UNIT_SIZE / 2;
+            mesh.position.y = CONFIG.UNIT_SIZE / 2 + waveY;
             mesh.position.z += (targetZ - mesh.position.z) * lerpFactor;
+            // Smooth head rotation for remote players
+            if (i === 0 && player.direction) {
+                const targetAngle = directionToAngle(player.direction);
+                let angleDiff = targetAngle - mesh.rotation.y;
+                angleDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+                mesh.rotation.y += angleDiff * 0.25;
+            }
         }
     });
 }
@@ -399,15 +471,18 @@ export function turnLeft(gameState) {
     if ((nextDir.x !== -referenceDir.x || nextDir.z !== -referenceDir.z)) {
         // Store this turn in the pending turns queue
         playerSnake.pendingTurns.push({...nextDir});
-        
+
         // Only update nextDirection if there are no other pending turns
         if (playerSnake.pendingTurns.length === 1) {
             playerSnake.nextDirection = nextDir;
         }
-        
+
         // Set flag for immediate direction change
         playerSnake.immediateDirectionChange = true;
-        
+
+        // Squash the head on turn
+        triggerHeadSquash();
+
         // For improved responsiveness: If we're adding a second turn in a short time,
         // boost the move timer to make the snake respond more quickly
         // This helps with rapid direction changes at slow speeds
@@ -449,15 +524,18 @@ export function turnRight(gameState) {
     if ((nextDir.x !== -referenceDir.x || nextDir.z !== -referenceDir.z)) {
         // Store this turn in the pending turns queue
         playerSnake.pendingTurns.push({...nextDir});
-        
+
         // Only update nextDirection if there are no other pending turns
         if (playerSnake.pendingTurns.length === 1) {
             playerSnake.nextDirection = nextDir;
         }
-        
+
         // Set flag for immediate direction change
         playerSnake.immediateDirectionChange = true;
-        
+
+        // Squash the head on turn
+        triggerHeadSquash();
+
         // For improved responsiveness: If we're adding a second turn in a short time,
         // boost the move timer to make the snake respond more quickly
         // This helps with rapid direction changes at slow speeds
@@ -606,17 +684,21 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
          // 3. Obstacle Collision (Ignore if ghost mode handled in core)
          if (collisionReason === 'OBSTACLE') {
             Logger.gameplay.info("Collision: Obstacle type:", obstacleType);
-            
+
             // Use specific death message based on obstacle type
             let deathReason = 'OBSTACLE_COLLISION';
             if (obstacleType === 'tree') {
                 deathReason = 'TREE_COLLISION';
-            } else if (obstacleType === 'bush') {
-                deathReason = 'BUSH_COLLISION';
             }
-            
+
             triggerPlayerDeath(gameState, deathReason);
             return;
+         }
+
+         // Bush collision: slow the player instead of killing
+         if (obstacleType === 'bush') {
+            Logger.gameplay.info("Bush collision: applying slow effect");
+            playerSnake.bushSlowUntil = currentTime + CONFIG.BUSH_SLOW_DURATION;
          }
 
          // 4. Enemy Collision - Check if it's an edible tail
@@ -635,6 +717,7 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
         let growSnake = false;
 
         if (eatenFood) {
+            triggerHeadChomp();
             Logger.gameplay.info("Food eaten in playerSnake.js:", eatenFood.type, "Alpha Mode active:", playerSnake.alphaMode?.active);
             
             // Calculate score with multiplier
@@ -692,9 +775,11 @@ export function updatePlayer(deltaTime, currentTime, gameState) {
                  }
             }
         } else {
-             // Create a new mesh for the new head segment
+             // Create a new mesh for the new head segment with pop-in animation
              const newMesh = createSnakeSegmentMesh(newHeadPos, true, materials, true); // Fix: Set isPlayer to true
              if (newMesh) {
+                 newMesh.scale.setScalar(0);
+                 tweenUniform(newMesh, 'scale', 0, 1.0, 0.2, ease.outBounce);
                  scene.add(newMesh);
                  playerSnakeMeshes.unshift(newMesh);
              }
@@ -770,7 +855,7 @@ export function killEnemySnake(enemyId, gameState) {
         UI.updateKills(gameState.enemies.kills);
         
         // Show kill message with particle effect color
-        UI.showPowerUpTextEffect(UI.getRandomEnemyKillMessage(), CONFIG.PARTICLE_COLOR_KILL);
+        UI.showPowerUpTextEffect(UI.getRandomEnemyKillMessage(), PALETTE.particles.kill);
         
         // Trigger camera shake
         startCameraShake(gameState);
@@ -790,7 +875,7 @@ export function killEnemySnake(enemyId, gameState) {
             playerSnake.alphaMode.endTime += extensionTime;
             
             // Show a message indicating the alpha mode extension
-            UI.showPowerUpTextEffect(`+${extensionTime}s ALPHA TIME`, CONFIG.ALPHA_MODE_COLOR);
+            UI.showPowerUpTextEffect(`+${extensionTime}s ALPHA TIME`, PALETTE.alpha.primary);
             
             Logger.gameplay.info(`Alpha mode extended by ${extensionTime} seconds! New end time:`, playerSnake.alphaMode.endTime);
         }
@@ -819,9 +904,11 @@ function growSnakeSegments(gameState, numSegments) {
         const newSegment = { ...lastSegment }; // Clone the last segment position
         playerSnake.segments.push(newSegment);
         
-        // Create a mesh for the new segment
+        // Create a mesh for the new segment with pop-in animation
         const newMesh = createSnakeSegmentMesh(newSegment, false, materials, true); // Fix: Set isPlayer to true
         if (newMesh) {
+            newMesh.scale.setScalar(0);
+            tweenUniform(newMesh, 'scale', 0, 1.0, 0.2, ease.outBounce);
             scene.add(newMesh);
             playerSnakeMeshes.push(newMesh);
         }
@@ -843,9 +930,9 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 export function updateCamera(gameState) {
     const { camera, playerSnake, scene } = gameState;
-    const directionalLight = gameState.lights?.directionalLight;
+    const sunLight = gameState.lights?.sunLight;
 
-    if (!camera || !playerSnake || playerSnake.segments.length === 0 || playerSnakeMeshes.length === 0 || !directionalLight) return;
+    if (!camera || !playerSnake || playerSnake.segments.length === 0 || playerSnakeMeshes.length === 0 || !sunLight) return;
 
     const headMesh = playerSnakeMeshes[0];
     const headPos = headMesh.position;
@@ -855,9 +942,9 @@ export function updateCamera(gameState) {
     _lookDir.set(playerSnake.direction.x, 0, playerSnake.direction.z).normalize();
     _targetLookAt.copy(headPos).addScaledVector(_lookDir, lookAheadFactor);
 
-    // Target for directional light (follows the head more closely)
-    if (directionalLight.target) {
-        directionalLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5);
+    // Sun light target follows the head for dynamic shadow positioning
+    if (sunLight.target) {
+        sunLight.target.position.lerp(headPos, CONFIG.CAMERA_LAG * 1.5);
     }
 
     // Target position for the camera (behind the snake)
@@ -896,6 +983,16 @@ export function applyPowerUp(type, gameState) {
     // Start camera shake effect if enabled AND it's not regular food
     if (CONFIG.CAMERA_SHAKE_ENABLED && type !== 'normal') {
         startCameraShake(gameState);
+    }
+
+    // Brief bloom pulse on powerup pickup (not normal food)
+    if (type !== 'normal') {
+        const bloom = getBloomPass();
+        if (bloom) {
+            bloom.strength = 0.55;
+            bloom.threshold = 0.65;
+            // updateAlphaModeVisuals() eases these back to defaults each frame
+        }
     }
 
     // Apply power-up effect based on type
@@ -1047,8 +1144,8 @@ function updatePowerUpState(currentTime, gameState) {
 function updatePowerUpInfoDisplay(gameState, message = '') {
     const { playerSnake, clock } = gameState;
     if (!playerSnake?.activePowerUps || !clock) return;
-    
-    const currentTime = clock.getElapsedTime();
+
+    const currentTime = gameState.flags?.useCoreSimulation ? gameState.simulation.time : clock.getElapsedTime();
 
     if (message) {
         UI.updatePowerUpInfo(message);
@@ -1057,22 +1154,15 @@ function updatePowerUpInfoDisplay(gameState, message = '') {
     
     // If we have active power-ups, display them
     if (playerSnake.activePowerUps.length > 0) {
-        // Create a combined message of all active power-ups
-        const powerUpMessages = playerSnake.activePowerUps.map(powerUp => {
-            // Calculate remaining time and round to 1 decimal place
+        // Build structured power-up data for type-aware UI display
+        const powerUpItems = playerSnake.activePowerUps.map(powerUp => {
             const remainingSeconds = Math.max(0, powerUp.endTime - currentTime);
-            // Format to show only one decimal place
             const remainingTime = remainingSeconds.toFixed(1);
-            
-            // Get the power-up description
             const foodTypeInfo = FOOD_TYPES.find(ft => ft.type === powerUp.type);
             const description = foodTypeInfo ? foodTypeInfo.description : powerUp.type;
-            
-            return `${description}: ${remainingTime}s`;
+            return { type: powerUp.type, text: `${description}: ${remainingTime}s` };
         });
-        
-        // Join the messages with a separator
-        UI.updatePowerUpInfo(powerUpMessages.join(' | '));
+        UI.updatePowerUpInfo(powerUpItems);
     } else {
         // No active power-ups
         UI.updatePowerUpInfo('');
@@ -1083,8 +1173,8 @@ function updatePowerUpInfoDisplay(gameState, message = '') {
 export function updatePowerUps(gameState) {
     const { playerSnake, clock } = gameState;
     if (!playerSnake?.activePowerUps || !clock) return;
-    
-    const currentTime = clock.getElapsedTime();
+
+    const currentTime = gameState.flags?.useCoreSimulation ? gameState.simulation.time : clock.getElapsedTime();
     let powerUpStateChanged = false;
     
     // Check each active power-up
@@ -1130,6 +1220,19 @@ export function updatePowerUps(gameState) {
     }
 }
 
+// Cached material for player edible tail segments — created once, reused
+let playerEdibleTailMaterial = null;
+
+function getPlayerEdibleTailMaterial() {
+    if (!playerEdibleTailMaterial) {
+        playerEdibleTailMaterial = new THREE.MeshToonMaterial({
+            color: PALETTE.players[0].accent,
+            side: THREE.FrontSide,
+        });
+    }
+    return playerEdibleTailMaterial;
+}
+
 // Updates textures for the entire snake based on animation frame and ghost mode
 export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
     const { playerSnake, materials } = gameState;
@@ -1137,26 +1240,30 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
 
     // Only update if animation frame changed or forced update
     if (!forceUpdate && playerSnake.lastTextureUpdateFrame === playerSnake.animationFrame) return;
-    
+
     // Store current frame to avoid unnecessary updates
     playerSnake.lastTextureUpdateFrame = playerSnake.animationFrame;
 
     // Determine which materials to use based on state
     let headMaterial, bodyMaterial;
-    
+
     if (playerSnake.alphaMode.active) {
-        // In Alpha Mode, use purple-tinted materials
+        // In Alpha Mode, use purple-tinted materials with emissive glow
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
-        // Apply Alpha Mode color (purple)
-        headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
-        bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+
+        // Apply Alpha Mode color (purple) and emissive for bloom
+        headMaterial.color.setHex(PALETTE.alpha.primary);
+        headMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        headMaterial.emissiveIntensity = 0.4;
+        bodyMaterial.color.setHex(PALETTE.alpha.primary);
+        bodyMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        bodyMaterial.emissiveIntensity = 0.3;
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
+
         // Make materials transparent
         headMaterial.transparent = true;
         headMaterial.opacity = 0.6;
@@ -1168,13 +1275,19 @@ export function updatePlayerSnakeTextures(gameState, forceUpdate = false) {
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2;
     }
 
+    const tailSegments = CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
+    const tailMat = getPlayerEdibleTailMaterial();
+
     // Apply materials to meshes
     playerSnakeMeshes.forEach((mesh, index) => {
         if (!mesh) return; // Skip if mesh is undefined
-        
+
         if (index === 0) {
             // Head
             mesh.material = headMaterial;
+        } else if (playerSnakeMeshes.length >= tailSegments && index >= playerSnakeMeshes.length - tailSegments) {
+            // Edible tail segment — use lighter color
+            mesh.material = tailMat;
         } else {
             // Body
             mesh.material = bodyMaterial;
@@ -1188,20 +1301,24 @@ function updatePlayerMaterialsAfterMove(gameState) {
     if (playerSnakeMeshes.length === 0 || !materials?.snake) return;
 
     let headMaterial, bodyMaterial;
-    
+
     if (playerSnake.alphaMode.active) {
-        // In Alpha Mode, use purple-tinted materials
+        // In Alpha Mode, use purple-tinted materials with emissive glow
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
-        // Apply Alpha Mode color (purple)
-        headMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
-        bodyMaterial.color.setHex(CONFIG.ALPHA_MODE_COLOR);
+
+        // Apply Alpha Mode color (purple) and emissive for bloom
+        headMaterial.color.setHex(PALETTE.alpha.primary);
+        headMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        headMaterial.emissiveIntensity = 0.4;
+        bodyMaterial.color.setHex(PALETTE.alpha.primary);
+        bodyMaterial.emissive = new THREE.Color(PALETTE.alpha.glow);
+        bodyMaterial.emissiveIntensity = 0.3;
     } else if (playerSnake.ghostModeActive) {
         // In Ghost Mode, use standard materials but make them transparent
         headMaterial = playerSnake.animationFrame === 0 ? materials.snake.head1.clone() : materials.snake.head2.clone();
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1.clone() : materials.snake.body2.clone();
-        
+
         // Make materials transparent
         headMaterial.transparent = true;
         headMaterial.opacity = 0.6;
@@ -1213,12 +1330,27 @@ function updatePlayerMaterialsAfterMove(gameState) {
         bodyMaterial = playerSnake.animationFrame === 0 ? materials.snake.body1 : materials.snake.body2;
     }
 
+    const tailSegments = CONFIG.PLAYER_TAIL_EDIBLE_SEGMENTS;
+    const tailMat = getPlayerEdibleTailMaterial();
+
     // Update head mesh
     playerSnakeMeshes[0].material = headMaterial;
 
     // Update the segment that was previously the head (now the first body segment)
     if (playerSnakeMeshes.length > 1 && playerSnakeMeshes[1]) {
-        playerSnakeMeshes[1].material = bodyMaterial;
+        // Check if this segment is now an edible tail segment
+        if (playerSnakeMeshes.length >= tailSegments && 1 >= playerSnakeMeshes.length - tailSegments) {
+            playerSnakeMeshes[1].material = tailMat;
+        } else {
+            playerSnakeMeshes[1].material = bodyMaterial;
+        }
+    }
+
+    // Update tail segments that may have shifted due to movement
+    for (let i = Math.max(2, playerSnakeMeshes.length - tailSegments); i < playerSnakeMeshes.length; i++) {
+        if (playerSnakeMeshes[i]) {
+            playerSnakeMeshes[i].material = tailMat;
+        }
     }
 }
 
@@ -1335,38 +1467,85 @@ function checkAlphaModeActivation(score, currentTime, gameState) {
  */
 export function activateAlphaMode(currentTime, gameState) {
     const { playerSnake } = gameState;
-    
+
     // Get the duration adjusted for game mode (longer in Casual mode)
     const alphaDuration = getAdjustedSetting('ALPHA_MODE_DURATION') || CONFIG.ALPHA_MODE_DURATION;
-    
+
     // Set up Alpha Mode parameters
     playerSnake.alphaMode.active = true;
     playerSnake.alphaMode.progress = 1.0;  // Start at full progress
     playerSnake.alphaMode.startTime = currentTime;
     playerSnake.alphaMode.endTime = currentTime + alphaDuration;
-    
+
     // Set base score multiplier
     playerSnake.alphaMode.scoreMultiplier = CONFIG.ALPHA_MODE_SCORE_MULTIPLIER;
-    
+
     // Add a new score multiplier to the stack
     addScoreMultiplier(currentTime, gameState);
-    
+
     // Track consecutive activations
     playerSnake.alphaMode.consecutiveActivations++;
-    
+
     // Show UI effect
     UI.showAlphaModeActivation();
-    
+
     // Play activation sound
     Audio.playAlphaModeActivation();
-    
+
     // Update the UI to show Alpha Mode is active
     UI.updateAlphaModeUI(1.0, alphaDuration, playerSnake.alphaMode.scoreMultiplier);
-    
+
     Logger.gameplay.info(`Alpha Mode activated for ${alphaDuration} seconds, multiplier: ${playerSnake.alphaMode.scoreMultiplier}`);
 
     // Force texture update to apply alpha mode color immediately
     updatePlayerSnakeTextures(gameState, true);
+
+    // --- Visual activation effects ---
+    triggerAlphaActivationEffects(gameState);
+}
+
+/** Trigger alpha activation visuals (exported for use from event handlers). */
+export function triggerAlphaActivationVisuals(gameState) {
+    triggerAlphaActivationEffects(gameState);
+}
+
+/**
+ * Visual juice for alpha mode activation:
+ *  - Purple particle burst at the head
+ *  - Body scale pulse (enlarge → bounce back)
+ *  - Camera shake
+ *  - Boost bloom + switch outline to purple (revert handled in updateAlphaModeVisuals)
+ */
+function triggerAlphaActivationEffects(gameState) {
+    const { scene, camera } = gameState;
+    const head = playerSnakeMeshes[0];
+    if (!head || !scene || !camera) return;
+
+    // 1. Purple particle burst at head
+    createExplosion(scene, camera, head.position.clone(), 30, PALETTE.alpha.glow);
+
+    // 2. Body scale pulse — every segment pops out then bounces back
+    playerSnakeMeshes.forEach((mesh) => {
+        if (!mesh) return;
+        cancelTween(mesh, 'scale', 'alphaPulse');
+        tweenUniform(mesh, 'scale', 1.35, 1.0, 0.3, ease.outElastic, undefined, 'alphaPulse');
+    });
+
+    // 3. Camera shake
+    startCameraShake(gameState);
+
+    // 4. Boost bloom strength briefly (reverts in updateAlphaModeVisuals)
+    const bloom = getBloomPass();
+    if (bloom) {
+        bloom.strength = 0.8;
+    }
+
+    // 5. Switch outline color to purple glow
+    const outline = getOutlinePass();
+    if (outline) {
+        outline.visibleEdgeColor.setHex(PALETTE.alpha.glow);
+        outline.edgeStrength = 4.5;
+    }
 }
 
 /**
@@ -1512,7 +1691,7 @@ function handleEnemyCollision(collision, gameState, currentTime) {
         Audio.playAlphaKillVoice();
         
         // Show the next message in the sequence for Alpha Mode kills
-        UI.showPowerUpTextEffect(getNextAlphaKillMessage(), CONFIG.ALPHA_MODE_COLOR);
+        UI.showPowerUpTextEffect(getNextAlphaKillMessage(), PALETTE.alpha.primary);
         
         return true;
     } else if (collision.isTail) {
@@ -1556,15 +1735,78 @@ export function playPlayerDeathEffects(gameState) {
 
     Audio.playSoundEffect('playerDeath');
 
-    if (playerSnakeMeshes.length > 0) {
-        createExplosion(
-            scene,
-            camera,
-            playerSnakeMeshes[0].position,
-            CONFIG.PARTICLE_COUNT_DEATH,
-            0xff4444
-        );
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+
+    // Particle explosion at head position
+    createExplosion(
+        scene,
+        camera,
+        head.position.clone(),
+        CONFIG.PARTICLE_COUNT_DEATH,
+        PALETTE.particles.death
+    );
+
+    // Scatter each segment outward from head
+    const count = playerSnakeMeshes.length;
+    playerSnakeMeshes.forEach((mesh, i) => {
+        if (!mesh) return;
+        // Cancel any in-flight tweens on this segment
+        cancelTween(mesh);
+
+        // Scatter direction: evenly spread around a circle with slight randomness
+        const angle = (i / Math.max(count, 1)) * Math.PI * 2 + Math.random() * 0.5;
+        const distance = 2 + Math.random() * 3;
+        const targetX = mesh.position.x + Math.cos(angle) * distance;
+        const targetZ = mesh.position.z + Math.sin(angle) * distance;
+        const peakY = 1.5 + Math.random() * 2;
+
+        // Horizontal scatter
+        tween(mesh, 'position', 'x', mesh.position.x, targetX, 0.4, ease.outQuad);
+        tween(mesh, 'position', 'z', mesh.position.z, targetZ, 0.4, ease.outQuad);
+
+        // Arc up then fall down, then shrink away
+        tween(mesh, 'position', 'y', mesh.position.y, peakY, 0.2, ease.outQuad, () => {
+            tween(mesh, 'position', 'y', peakY, -0.5, 0.3, ease.inOutCubic, () => {
+                tweenUniform(mesh, 'scale', 1.0, 0, 0.2, ease.linear, () => {
+                    scene.remove(mesh);
+                });
+            });
+        });
+
+        // Spin during scatter
+        const spinDir = Math.random() > 0.5 ? 1 : -1;
+        tween(mesh, 'rotation', 'x', 0, Math.PI * 2 * spinDir, 0.7, ease.outQuad);
+        tween(mesh, 'rotation', 'z', 0, Math.PI * (Math.random() > 0.5 ? 1 : -1), 0.7, ease.outQuad);
+    });
+}
+
+// --- Respawn Assembly ---
+
+/**
+ * Staggered pop-in animation when a player respawns.
+ * Call immediately after syncPlayerMeshes creates the new meshes.
+ */
+export function playRespawnAssemblyEffect(gameState) {
+    const { scene, camera } = gameState;
+    const count = playerSnakeMeshes.length;
+    if (count === 0 || !scene || !camera) return;
+
+    // Small particle burst at head position
+    const head = playerSnakeMeshes[0];
+    if (head) {
+        createExplosion(scene, camera, head.position.clone(), 15, PALETTE.particles.respawn ?? 0x88ccff);
     }
+
+    // Staggered scale pop-in from head → tail
+    playerSnakeMeshes.forEach((mesh, i) => {
+        if (!mesh) return;
+        mesh.scale.setScalar(0);
+        const delay = i * 0.06; // 60ms stagger per segment
+        setTimeout(() => {
+            tweenUniform(mesh, 'scale', 0, 1.0, 0.25, ease.outBounce);
+        }, delay * 1000);
+    });
 }
 
 // Update Alpha Mode progress based on score
@@ -1718,7 +1960,12 @@ function calculateActualSpeed(gameState) {
         // Multiply the speed multiplier by the alpha mode speed multiplier
         speedMultiplier *= CONFIG.ALPHA_MODE_SPEED_MULTIPLIER;
     }
-    
+
+    // Apply bush slow if active
+    if (playerSnake.bushSlowUntil && playerSnake.bushSlowUntil > gameState.simulation?.time) {
+        speedMultiplier *= CONFIG.BUSH_SLOW_MULTIPLIER;
+    }
+
     // Apply the combined speed multiplier
     // Lower actualSpeed value = faster movement (since it's the time between moves)
     // So we divide by the multiplier to make the snake faster
@@ -1738,4 +1985,103 @@ function checkPositionCollision(pos1, pos2, forgiveness = 0) {
         // Standard collision check (exact position match)
         return pos1.x === pos2.x && pos1.z === pos2.z;
     }
+}
+
+// Default postprocessing values (set once, used for alpha mode revert)
+const DEFAULT_BLOOM_STRENGTH = 0.3;
+const DEFAULT_BLOOM_THRESHOLD = 0.85;
+const DEFAULT_OUTLINE_STRENGTH = 3.0;
+const ALPHA_BLOOM_STRENGTH = 0.55;
+const ALPHA_BLOOM_THRESHOLD = 0.6;
+const ALPHA_OUTLINE_STRENGTH = 4.0;
+
+/**
+ * Per-frame update of bloom/outline during alpha mode.
+ * Call from the render loop. Smoothly eases bloom back toward
+ * the alpha-active values after the initial spike, and restores
+ * defaults when alpha mode ends.
+ */
+export function updateAlphaModeVisuals(gameState, deltaTime) {
+    const { playerSnake } = gameState;
+    if (!playerSnake) return;
+
+    const bloom = getBloomPass();
+    const outline = getOutlinePass();
+    const active = playerSnake.alphaMode?.active;
+
+    if (active) {
+        // Ease bloom from spike toward sustained alpha values
+        if (bloom) {
+            bloom.strength += (ALPHA_BLOOM_STRENGTH - bloom.strength) * Math.min(1, 3 * deltaTime);
+            bloom.threshold += (ALPHA_BLOOM_THRESHOLD - bloom.threshold) * Math.min(1, 3 * deltaTime);
+        }
+        if (outline) {
+            outline.edgeStrength += (ALPHA_OUTLINE_STRENGTH - outline.edgeStrength) * Math.min(1, 3 * deltaTime);
+        }
+    } else {
+        // Revert to defaults
+        if (bloom && Math.abs(bloom.strength - DEFAULT_BLOOM_STRENGTH) > 0.01) {
+            bloom.strength += (DEFAULT_BLOOM_STRENGTH - bloom.strength) * Math.min(1, 5 * deltaTime);
+            bloom.threshold += (DEFAULT_BLOOM_THRESHOLD - bloom.threshold) * Math.min(1, 5 * deltaTime);
+        }
+        if (outline) {
+            if (outline.visibleEdgeColor.getHex() !== PALETTE.outline.edge) {
+                outline.visibleEdgeColor.setHex(PALETTE.outline.edge);
+            }
+            if (Math.abs(outline.edgeStrength - DEFAULT_OUTLINE_STRENGTH) > 0.05) {
+                outline.edgeStrength += (DEFAULT_OUTLINE_STRENGTH - outline.edgeStrength) * Math.min(1, 5 * deltaTime);
+            }
+        }
+    }
+}
+
+// --- Speed Trail ---
+let speedTrailTimer = 0;
+
+/**
+ * Emit speed trail particles behind the snake head when moving fast.
+ * Call once per render frame from the animation loop.
+ */
+export function updateSpeedTrail(gameState, deltaTime) {
+    const { playerSnake, scene } = gameState;
+    if (!playerSnake || !scene || playerSnake.segments?.length === 0) return;
+    if (gameState.flags?.gameOver) return;
+
+    speedTrailTimer += deltaTime;
+    if (speedTrailTimer < CONFIG.SPEED_TRAIL_EMIT_INTERVAL) return;
+    speedTrailTimer = 0;
+
+    // Determine speed ratio (higher = faster than base)
+    const actualSpeed = calculateActualSpeed(gameState);
+    const speedRatio = CONFIG.BASE_SNAKE_SPEED / (actualSpeed || CONFIG.BASE_SNAKE_SPEED);
+
+    if (speedRatio < CONFIG.SPEED_TRAIL_SPEED_THRESHOLD) return;
+
+    const head = playerSnakeMeshes[0];
+    if (!head) return;
+
+    const dir = {
+        x: playerSnake.direction.x,
+        z: playerSnake.direction.z
+    };
+
+    const isAlpha = playerSnake.alphaMode?.active || false;
+
+    createSpeedTrail(scene, head.position, dir, isAlpha);
+}
+
+/** Return all visible player meshes (local + remote) for outline pass. */
+export function getAllPlayerMeshes() {
+    const meshes = [];
+    for (const m of playerSnakeMeshes) {
+        if (m && m.visible) meshes.push(m);
+    }
+    for (const id of Object.keys(remotePlayerMeshes)) {
+        const arr = remotePlayerMeshes[id];
+        if (!arr) continue;
+        for (const m of arr) {
+            if (m && m.visible) meshes.push(m);
+        }
+    }
+    return meshes;
 }

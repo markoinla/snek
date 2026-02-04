@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import CONFIG from './config';
 import { GEOMETRIES } from './constants';
+import { PALETTE } from './palette';
 
 let activeParticles = [];
 let particleMaterialRef = null; // Hold reference to the material
@@ -55,7 +56,7 @@ export function createNormalFoodEffect(scene, camera, position) {
         return;
     }
 
-    const baseColor = new THREE.Color(CONFIG.PARTICLE_COLOR_NORMAL_FOOD);
+    const baseColor = new THREE.Color(PALETTE.particles.normalFood);
     const count = adjustParticleCount(CONFIG.PARTICLE_COUNT_NORMAL_FOOD);
     
     if (count <= 0) return;
@@ -162,7 +163,7 @@ export function createKillEffect(scene, camera, position) {
         return;
     }
     
-    const color = new THREE.Color(CONFIG.PARTICLE_COLOR_KILL);
+    const color = new THREE.Color(PALETTE.particles.kill);
     const size = CONFIG.PARTICLE_SIZE * 1.5; // Larger particles
     const lifespan = CONFIG.PARTICLE_LIFESPAN * 1.5; // Longer lifespan
     const speed = CONFIG.PARTICLE_SPEED * 1.2; // Faster particles
@@ -273,6 +274,56 @@ export function createFrogEffect(scene, camera, position, color = 0x8BC34A) {
     }
 }
 
+// Speed trail particles emitted behind the snake when moving fast
+export function createSpeedTrail(scene, position, direction, isAlpha = false) {
+    if (!particleMaterialRef || !scene) return;
+
+    // Fewer particles on mobile; skip entirely near capacity
+    if (isMobileDevice || activeParticles.length > MAX_PARTICLES * 0.6) return;
+
+    const count = adjustParticleCount(CONFIG.SPEED_TRAIL_PARTICLE_COUNT);
+    if (count <= 0) return;
+
+    const baseColor = new THREE.Color(
+        isAlpha ? PALETTE.particles.alphaSpeedTrail : PALETTE.particles.speedTrail
+    );
+
+    for (let i = 0; i < count; i++) {
+        const pMat = particleMaterialRef.clone();
+        pMat.color = baseColor.clone().offsetHSL(0, 0, (Math.random() - 0.5) * 0.15);
+
+        const particleMesh = new THREE.Mesh(GEOMETRIES.particle, pMat);
+
+        // Spawn slightly behind and to the side of the position
+        const lateralOffset = (Math.random() - 0.5) * 0.4;
+        particleMesh.position.set(
+            position.x - direction.x * 0.3 + direction.z * lateralOffset,
+            position.y + Math.random() * 0.3,
+            position.z - direction.z * 0.3 - direction.x * lateralOffset
+        );
+        particleMesh.scale.setScalar(CONFIG.SPEED_TRAIL_SIZE * (0.7 + Math.random() * 0.6));
+
+        // Drift backward relative to movement
+        const drift = CONFIG.SPEED_TRAIL_SPEED;
+        const velocity = new THREE.Vector3(
+            -direction.x * drift + (Math.random() - 0.5) * drift * 0.3,
+            Math.random() * drift * 0.4,
+            -direction.z * drift + (Math.random() - 0.5) * drift * 0.3
+        );
+
+        const life = CONFIG.SPEED_TRAIL_LIFESPAN * (0.7 + Math.random() * 0.6);
+
+        activeParticles.push({
+            mesh: particleMesh,
+            velocity,
+            life,
+            initialLife: life,
+            isTrail: true
+        });
+        scene.add(particleMesh);
+    }
+}
+
 export function updateParticles(deltaTime, scene) { // Pass scene for removal
     if (!scene) return;
     const gravity = 9.8; // Simple gravity simulation
@@ -333,6 +384,12 @@ export function updateParticles(deltaTime, scene) { // Pass scene for removal
             // Shrink size
             const scale = Math.max(0.1, lifeRatio * 0.8 + 0.2); // Ensure minimum size
             p.mesh.scale.set(scale, scale, scale);
+
+            // Trail particles: gentle float, no gravity
+            if (p.isTrail) {
+                p.velocity.multiplyScalar(0.95); // slow drag
+                continue; // skip gravity and frog logic
+            }
 
             // Apply gravity
             p.velocity.y -= gravity * deltaTime;

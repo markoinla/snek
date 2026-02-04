@@ -8,7 +8,9 @@ import { checkAndEatFoodCore } from './core/food.ts';
 import * as UI from './ui.js';
 import * as Audio from './audioSystem.js'; // Import audio system for sound effects
 import { Logger, isLoggingEnabled } from './debugLogger.js';
+import { PALETTE } from './palette';
 import { getAdjustedSetting } from './gameState'; // Import for mode-adjusted settings
+import { tweenUniform, tween, ease } from './animations';
 
 /**
  * Creates a blocky apple model made of a few cubes
@@ -20,11 +22,9 @@ function createAppleModel(material) {
     const appleGroup = new THREE.Group();
     const unitSize = CONFIG.UNIT_SIZE * 0.4; // Larger blocks for simpler design
     
-    // Apple body material - solid red color
-    const appleBodyMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0xDD2C00, // Bright red color for the apple
-        roughness: 0.7,
-        metalness: 0.1
+    // Apple body material - solid red color (cel-shaded)
+    const appleBodyMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.apple,
     });
     
     // Create the main apple body (center block)
@@ -36,10 +36,8 @@ function createAppleModel(material) {
     appleGroup.add(mainBody);
     
     // Create a small indentation at the top (darker red block)
-    const indentMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x8B0000, // Darker red color for the indentation
-        roughness: 0.8,
-        metalness: 0.1
+    const indentMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.appleIndent,
     });
     const indent = new THREE.Mesh(GEOMETRIES.cube, indentMaterial);
     indent.scale.set(unitSize * 0.6, unitSize * 0.3, unitSize * 0.6);
@@ -48,10 +46,8 @@ function createAppleModel(material) {
     appleGroup.add(indent);
     
     // Create the stem (brown block)
-    const stemMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x654321, // Dark brown color for the stem
-        roughness: 0.9,
-        metalness: 0.1
+    const stemMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.appleStem,
     });
     
     // Stem block
@@ -62,10 +58,8 @@ function createAppleModel(material) {
     appleGroup.add(stem);
     
     // Create the leaf (green block)
-    const leafMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x228B22, // Forest green color for the leaf
-        roughness: 0.7,
-        metalness: 0.1
+    const leafMaterial = new THREE.MeshToonMaterial({
+        color: PALETTE.food.appleLeaf,
     });
     
     // Leaf block
@@ -143,10 +137,10 @@ function createFoodMeshInstance(pos, type, materials) {
             directionX: dirX,
             directionZ: dirZ,
             // Random hop frequency based on config
-            hopFrequency: CONFIG.FROG_MOVEMENT.HOP_FREQUENCY + 
+            hopFrequency: CONFIG.FROG_MOVEMENT.HOP_FREQUENCY +
                          (Math.random() * 2 - 1) * CONFIG.FROG_MOVEMENT.HOP_FREQUENCY_VARIATION,
             // Random movement speed based on config
-            speed: CONFIG.FROG_MOVEMENT.BASE_SPEED + 
+            speed: CONFIG.FROG_MOVEMENT.BASE_SPEED +
                   (Math.random() * 2 - 1) * CONFIG.FROG_MOVEMENT.SPEED_VARIATION,
             // Keep track of original grid position
             originalGridPos: { ...pos },
@@ -155,15 +149,23 @@ function createFoodMeshInstance(pos, type, materials) {
             // Movement timer with random starting phase to prevent synchronized animations
             timer: Math.random() * Math.PI * 2,
             // Maximum distance from original position (in grid units)
-            maxDistance: CONFIG.FROG_MOVEMENT.MAX_DISTANCE + 
+            maxDistance: CONFIG.FROG_MOVEMENT.MAX_DISTANCE +
                         (Math.random() * 2 - 1) * CONFIG.FROG_MOVEMENT.DISTANCE_VARIATION,
             // Add phase offsets for secondary movement patterns
             phaseOffset1: Math.random() * Math.PI * 2,
             phaseOffset2: Math.random() * Math.PI * 2,
             // Time between movement steps (in seconds)
             moveInterval: CONFIG.FROG_MOVEMENT.MOVE_INTERVAL * (0.8 + Math.random() * 0.4),
+            // Start position for current hop (world coords)
+            startPosition: {
+                x: pos.x * CONFIG.UNIT_SIZE,
+                z: pos.z * CONFIG.UNIT_SIZE
+            },
             // Target position (for interpolation)
-            targetPosition: null
+            targetPosition: {
+                x: pos.x * CONFIG.UNIT_SIZE,
+                z: pos.z * CONFIG.UNIT_SIZE
+            }
         };
     }
     
@@ -229,11 +231,12 @@ export function syncFoodMeshes(gameState) {
         });
     }
 
-    // Update positions for existing meshes
+    // Update positions for existing meshes (only normal food; frogs are positioned by updateFoodAnimations)
     for (let i = 0; i < food.positions.length; i++) {
         const pos = food.positions[i];
         const mesh = food.meshes[i];
         if (!mesh) continue;
+        if (pos.type !== 'normal' && mesh.userData.movementProperties) continue;
         mesh.position.set(
             pos.x * CONFIG.UNIT_SIZE,
             0,
@@ -244,7 +247,7 @@ export function syncFoodMeshes(gameState) {
 
 // Function to create a blocky frog made of multiple cubes
 function createBlockyFrog(group, material, type) {
-    const unitSize = CONFIG.UNIT_SIZE * 0.4; // Slightly smaller frog blocks
+    const unitSize = CONFIG.UNIT_SIZE * 0.22; // Compact frog
 
     const cloneMaterialWithTint = (source, scalar) => {
         const mat = source.clone();
@@ -254,116 +257,128 @@ function createBlockyFrog(group, material, type) {
         return mat;
     };
 
-    const bellyMat = cloneMaterialWithTint(material, 1.1);
-    const darkMat = cloneMaterialWithTint(material, 0.8);
-    const eyeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const eyeBlackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    
-    // Create the body (main block)
+    const darkMat = cloneMaterialWithTint(material, 0.65);
+    const spotMat = cloneMaterialWithTint(material, 0.5);
+    const eyeWhiteMat = new THREE.MeshToonMaterial({ color: 0xffffff });
+    const eyeBlackMat = new THREE.MeshToonMaterial({ color: 0x111111 });
+
+    // --- Body: wide, flat, toad-like ---
     const body = new THREE.Mesh(GEOMETRIES.cube, material);
-    body.scale.set(unitSize * 2, unitSize, unitSize * 2);
-    body.position.set(0, unitSize / 2, 0);
+    body.scale.set(unitSize * 2.6, unitSize * 0.9, unitSize * 2.2);
+    body.position.set(0, unitSize * 0.45, 0);
     body.castShadow = true;
     group.add(body);
 
-    // Belly plate for a bit of shape
-    const belly = new THREE.Mesh(GEOMETRIES.cube, bellyMat);
-    belly.scale.set(unitSize * 1.6, unitSize * 0.35, unitSize * 1.6);
-    belly.position.set(0, unitSize * 0.2, unitSize * 0.1);
-    belly.castShadow = true;
-    group.add(belly);
-    
-    // Create the head - position it at the front of the body
+    // Top ridge for slight roundness
+    const ridge = new THREE.Mesh(GEOMETRIES.cube, material);
+    ridge.scale.set(unitSize * 1.8, unitSize * 0.35, unitSize * 1.6);
+    ridge.position.set(0, unitSize * 1.05, 0);
+    ridge.castShadow = true;
+    group.add(ridge);
+
+    // --- Head: wide, flat, at front ---
     const head = new THREE.Mesh(GEOMETRIES.cube, material);
-    head.scale.set(unitSize * 1.6, unitSize * 0.8, unitSize);
-    // Position the head at the front (negative Z is forward in Three.js)
-    head.position.set(0, unitSize / 2, -unitSize * 1.5);
+    head.scale.set(unitSize * 2.2, unitSize * 0.7, unitSize * 1.2);
+    head.position.set(0, unitSize * 0.4, -unitSize * 1.6);
     head.castShadow = true;
     group.add(head);
 
-    // Simple snout/mouth block
-    const snout = new THREE.Mesh(GEOMETRIES.cube, darkMat);
-    snout.scale.set(unitSize * 1.2, unitSize * 0.3, unitSize * 0.4);
-    snout.position.set(0, unitSize * 0.35, -unitSize * 2);
-    snout.castShadow = true;
-    group.add(snout);
-    
-    // Create eyes (white cubes with black pupils)
+    // --- Eyes: big, bulging, protruding upward ---
     const leftEye = new THREE.Mesh(GEOMETRIES.cube, eyeWhiteMat);
-    leftEye.scale.set(unitSize * 0.45, unitSize * 0.45, unitSize * 0.45);
-    leftEye.position.set(-unitSize * 0.55, unitSize, -unitSize * 1.8);
+    leftEye.scale.set(unitSize * 0.65, unitSize * 0.7, unitSize * 0.65);
+    leftEye.position.set(-unitSize * 0.7, unitSize * 1.1, -unitSize * 1.8);
     leftEye.castShadow = true;
     group.add(leftEye);
-    
+
     const rightEye = new THREE.Mesh(GEOMETRIES.cube, eyeWhiteMat);
-    rightEye.scale.set(unitSize * 0.45, unitSize * 0.45, unitSize * 0.45);
-    rightEye.position.set(unitSize * 0.55, unitSize, -unitSize * 1.8);
+    rightEye.scale.set(unitSize * 0.65, unitSize * 0.7, unitSize * 0.65);
+    rightEye.position.set(unitSize * 0.7, unitSize * 1.1, -unitSize * 1.8);
     rightEye.castShadow = true;
     group.add(rightEye);
 
     const leftPupil = new THREE.Mesh(GEOMETRIES.cube, eyeBlackMat);
-    leftPupil.scale.set(unitSize * 0.18, unitSize * 0.18, unitSize * 0.18);
-    leftPupil.position.set(-unitSize * 0.55, unitSize * 0.98, -unitSize * 2.02);
-    leftPupil.castShadow = true;
+    leftPupil.scale.set(unitSize * 0.3, unitSize * 0.35, unitSize * 0.15);
+    leftPupil.position.set(-unitSize * 0.7, unitSize * 1.15, -unitSize * 2.12);
     group.add(leftPupil);
 
     const rightPupil = new THREE.Mesh(GEOMETRIES.cube, eyeBlackMat);
-    rightPupil.scale.set(unitSize * 0.18, unitSize * 0.18, unitSize * 0.18);
-    rightPupil.position.set(unitSize * 0.55, unitSize * 0.98, -unitSize * 2.02);
-    rightPupil.castShadow = true;
+    rightPupil.scale.set(unitSize * 0.3, unitSize * 0.35, unitSize * 0.15);
+    rightPupil.position.set(unitSize * 0.7, unitSize * 1.15, -unitSize * 2.12);
     group.add(rightPupil);
-    
-    // Create legs
-    // Front legs positioned toward the head
+
+    // --- Spots: darker cubes on the back for skin texture ---
+    const spotPositions = [
+        { x: -unitSize * 0.5, z: unitSize * 0.3 },
+        { x: unitSize * 0.6, z: -unitSize * 0.2 },
+        { x: 0, z: unitSize * 0.6 },
+        { x: -unitSize * 0.3, z: -unitSize * 0.5 },
+    ];
+    for (const sp of spotPositions) {
+        const spot = new THREE.Mesh(GEOMETRIES.cube, spotMat);
+        spot.scale.set(unitSize * 0.45, unitSize * 0.15, unitSize * 0.45);
+        spot.position.set(sp.x, unitSize * 1.0, sp.z);
+        group.add(spot);
+    }
+
+    // --- Front legs: stubby ---
     const frontLeftLeg = new THREE.Mesh(GEOMETRIES.cube, material);
-    frontLeftLeg.scale.set(unitSize * 0.6, unitSize * 0.6, unitSize * 0.8);
-    frontLeftLeg.position.set(-unitSize, unitSize * 0.3, -unitSize);
+    frontLeftLeg.scale.set(unitSize * 0.45, unitSize * 0.45, unitSize * 0.6);
+    frontLeftLeg.position.set(-unitSize * 1.3, unitSize * 0.22, -unitSize * 1.0);
     frontLeftLeg.castShadow = true;
     group.add(frontLeftLeg);
-    
+
     const frontRightLeg = new THREE.Mesh(GEOMETRIES.cube, material);
-    frontRightLeg.scale.set(unitSize * 0.6, unitSize * 0.6, unitSize * 0.8);
-    frontRightLeg.position.set(unitSize, unitSize * 0.3, -unitSize);
+    frontRightLeg.scale.set(unitSize * 0.45, unitSize * 0.45, unitSize * 0.6);
+    frontRightLeg.position.set(unitSize * 1.3, unitSize * 0.22, -unitSize * 1.0);
     frontRightLeg.castShadow = true;
     group.add(frontRightLeg);
 
+    // Front feet
     const frontLeftFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
-    frontLeftFoot.scale.set(unitSize * 0.8, unitSize * 0.2, unitSize * 0.9);
-    frontLeftFoot.position.set(-unitSize, unitSize * 0.05, -unitSize * 1.2);
-    frontLeftFoot.castShadow = true;
+    frontLeftFoot.scale.set(unitSize * 0.55, unitSize * 0.15, unitSize * 0.5);
+    frontLeftFoot.position.set(-unitSize * 1.35, unitSize * 0.05, -unitSize * 1.3);
     group.add(frontLeftFoot);
 
     const frontRightFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
-    frontRightFoot.scale.set(unitSize * 0.8, unitSize * 0.2, unitSize * 0.9);
-    frontRightFoot.position.set(unitSize, unitSize * 0.05, -unitSize * 1.2);
-    frontRightFoot.castShadow = true;
+    frontRightFoot.scale.set(unitSize * 0.55, unitSize * 0.15, unitSize * 0.5);
+    frontRightFoot.position.set(unitSize * 1.35, unitSize * 0.05, -unitSize * 1.3);
     group.add(frontRightFoot);
-    
-    // Back legs positioned toward the rear
-    const backLeftLeg = new THREE.Mesh(GEOMETRIES.cube, material);
-    backLeftLeg.scale.set(unitSize * 0.9, unitSize * 0.7, unitSize * 1.2);
-    backLeftLeg.position.set(-unitSize * 1.1, unitSize * 0.35, unitSize * 0.9);
-    backLeftLeg.castShadow = true;
-    group.add(backLeftLeg);
-    
-    const backRightLeg = new THREE.Mesh(GEOMETRIES.cube, material);
-    backRightLeg.scale.set(unitSize * 0.9, unitSize * 0.7, unitSize * 1.2);
-    backRightLeg.position.set(unitSize * 1.1, unitSize * 0.35, unitSize * 0.9);
-    backRightLeg.castShadow = true;
-    group.add(backRightLeg);
 
+    // --- Back legs: bigger, folded ---
+    const backLeftThigh = new THREE.Mesh(GEOMETRIES.cube, material);
+    backLeftThigh.scale.set(unitSize * 0.7, unitSize * 0.6, unitSize * 1.0);
+    backLeftThigh.position.set(-unitSize * 1.3, unitSize * 0.35, unitSize * 0.8);
+    backLeftThigh.castShadow = true;
+    group.add(backLeftThigh);
+
+    const backRightThigh = new THREE.Mesh(GEOMETRIES.cube, material);
+    backRightThigh.scale.set(unitSize * 0.7, unitSize * 0.6, unitSize * 1.0);
+    backRightThigh.position.set(unitSize * 1.3, unitSize * 0.35, unitSize * 0.8);
+    backRightThigh.castShadow = true;
+    group.add(backRightThigh);
+
+    // Back shins (angled outward)
+    const backLeftShin = new THREE.Mesh(GEOMETRIES.cube, material);
+    backLeftShin.scale.set(unitSize * 0.5, unitSize * 0.5, unitSize * 0.8);
+    backLeftShin.position.set(-unitSize * 1.5, unitSize * 0.25, unitSize * 1.5);
+    group.add(backLeftShin);
+
+    const backRightShin = new THREE.Mesh(GEOMETRIES.cube, material);
+    backRightShin.scale.set(unitSize * 0.5, unitSize * 0.5, unitSize * 0.8);
+    backRightShin.position.set(unitSize * 1.5, unitSize * 0.25, unitSize * 1.5);
+    group.add(backRightShin);
+
+    // Back feet (webbed-looking, wider)
     const backLeftFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
-    backLeftFoot.scale.set(unitSize * 1.1, unitSize * 0.2, unitSize * 1.2);
-    backLeftFoot.position.set(-unitSize * 1.1, unitSize * 0.05, unitSize * 1.4);
-    backLeftFoot.castShadow = true;
+    backLeftFoot.scale.set(unitSize * 0.9, unitSize * 0.15, unitSize * 0.7);
+    backLeftFoot.position.set(-unitSize * 1.5, unitSize * 0.05, unitSize * 1.9);
     group.add(backLeftFoot);
 
     const backRightFoot = new THREE.Mesh(GEOMETRIES.cube, darkMat);
-    backRightFoot.scale.set(unitSize * 1.1, unitSize * 0.2, unitSize * 1.2);
-    backRightFoot.position.set(unitSize * 1.1, unitSize * 0.05, unitSize * 1.4);
-    backRightFoot.castShadow = true;
+    backRightFoot.scale.set(unitSize * 0.9, unitSize * 0.15, unitSize * 0.7);
+    backRightFoot.position.set(unitSize * 1.5, unitSize * 0.05, unitSize * 1.9);
     group.add(backRightFoot);
-    
+
     // For ghost frogs, make them semi-transparent
     if (type === 'ghost') {
         group.traverse(child => {
@@ -374,7 +389,7 @@ function createBlockyFrog(group, material, type) {
             }
         });
     }
-    
+
     // Set initial random rotation so frogs don't all face the same direction
     group.rotation.y = Math.random() * Math.PI * 2;
 }
@@ -437,6 +452,41 @@ function selectFoodTypeByRatio() {
     // Fallback to normal food if something goes wrong
     Logger.warn("Food selection fallback - check that FOOD_SPAWN_RATIOS adds up to 100");
     return 'normal';
+}
+
+// Dispose a food mesh's resources and remove it from the scene.
+function disposeFoodMesh(mesh, scene) {
+    if (!mesh) return;
+    if (mesh.isGroup) {
+        mesh.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry && child.geometry !== GEOMETRIES.cube &&
+                    child.geometry !== GEOMETRIES.particle) {
+                    child.geometry.dispose();
+                }
+                if (child.material && !child.userData?.useSharedMaterial) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => mat.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+        });
+    } else if (mesh.isMesh) {
+        if (mesh.geometry && mesh.geometry !== GEOMETRIES.cube &&
+            mesh.geometry !== GEOMETRIES.particle) {
+            mesh.geometry.dispose();
+        }
+        if (mesh.material && !mesh.userData?.useSharedMaterial) {
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(mat => mat.dispose());
+            } else {
+                mesh.material.dispose();
+            }
+        }
+    }
+    scene.remove(mesh);
 }
 
 // Returns the type of food eaten, or null if no food at position
@@ -539,7 +589,7 @@ export function checkAndEatFood(position, gameState) {
             // Add alpha points (core handles alpha-mode multiplier)
             addAlphaPoints(coreResult.effects.alphaPoints, gameState);
             if (gameState.playerSnake.alphaMode.active) {
-                UI.showPowerUpTextEffect(`+${coreResult.effects.alphaPoints.toFixed(0)} ALPHA PTS!`, CONFIG.ALPHA_MODE_COLOR);
+                UI.showPowerUpTextEffect(`+${coreResult.effects.alphaPoints.toFixed(0)} ALPHA PTS!`, PALETTE.alpha.primary);
             }
         }
 
@@ -562,49 +612,14 @@ export function checkAndEatFood(position, gameState) {
                     foodTypeInfo?.colorHint.getHex() || 0x8BC34A
                 );
             }
-            
-            // Properly dispose of food resources
-            if (eatenFoodMesh.isGroup) {
-                // Dispose resources for model made of multiple meshes (like apple or frog)
-                eatenFoodMesh.traverse((child) => {
-                    if (child.isMesh) {
-                        // Dispose of geometry if it's not shared/reused
-                        if (child.geometry && child.geometry !== GEOMETRIES.cube && 
-                            child.geometry !== GEOMETRIES.particle) {
-                            child.geometry.dispose();
-                        }
-                        
-                        // Dispose of material if it's unique to this food (not shared)
-                        if (child.material && !child.userData?.useSharedMaterial) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(mat => mat.dispose());
-                            } else {
-                                child.material.dispose();
-                            }
-                        }
-                    }
-                });
-            } else if (eatenFoodMesh.isMesh) {
-                // For single mesh food items
-                if (eatenFoodMesh.geometry && eatenFoodMesh.geometry !== GEOMETRIES.cube && 
-                    eatenFoodMesh.geometry !== GEOMETRIES.particle) {
-                    eatenFoodMesh.geometry.dispose();
-                }
-                
-                if (eatenFoodMesh.material && !eatenFoodMesh.userData?.useSharedMaterial) {
-                    if (Array.isArray(eatenFoodMesh.material)) {
-                        eatenFoodMesh.material.forEach(mat => mat.dispose());
-                    } else {
-                        eatenFoodMesh.material.dispose();
-                    }
-                }
-            }
-            
-            // Remove the food mesh from the scene
-            scene.remove(eatenFoodMesh);
-            
-            // Set to null to help garbage collection
-            food.meshes[eatenFoodIndex] = null;
+
+            // Squish animation: shrink to zero + spin, then dispose
+            const meshToSquish = eatenFoodMesh;
+            const startRotY = meshToSquish.rotation.y;
+            tweenUniform(meshToSquish, 'scale', 1.0, 0, 0.15, ease.inOutCubic, () => {
+                disposeFoodMesh(meshToSquish, scene);
+            });
+            tween(meshToSquish, 'rotation', 'y', startRotY, startRotY + Math.PI, 0.15, ease.linear);
         }
         if (foodTypeInfo?.effectText) {
              UI.showPowerUpTextEffect(foodTypeInfo.effectText, foodTypeInfo.colorHint.getHex());
@@ -718,11 +733,21 @@ export function updateFoodAnimations(gameState, deltaTime) {
                 appleModel.position.y = CONFIG.UNIT_SIZE * 0.45 + bobHeight;
             }
         } else if (foodMesh.userData.foodType !== 'normal' && foodMesh.userData.movementProperties) {
+            // Pulse emissiveIntensity on powerup frogs for a glow effect
+            const glowTime = gameState.simulation?.time ?? gameState.clock.getElapsedTime();
+            const phase = foodMesh.userData.movementProperties.phaseOffset1 || 0;
+            const intensity = 1.0 + 1.2 * (0.5 + 0.5 * Math.sin(glowTime * 3.0 + phase));
+            foodMesh.traverse(child => {
+                if (child.isMesh && child.material && child.material.emissive) {
+                    child.material.emissiveIntensity = intensity;
+                }
+            });
+
             if (gameState.flags.useCoreSimulation) {
                 // Keep power-ups static in X/Z while core simulation is authoritative,
                 // but still allow hopping for visual feedback.
                 const props = foodMesh.userData.movementProperties;
-                const time = gameState.simulation?.time ?? gameState.clock.getElapsedTime();
+                const time = glowTime;
                 const baseHop = Math.abs(
                     Math.sin((time + props.phaseOffset1) * props.hopFrequency * 2)
                 );
@@ -751,38 +776,44 @@ export function updateFoodAnimations(gameState, deltaTime) {
             
             if (CONFIG.FROG_MOVEMENT.MOVEMENT_STYLE === 'crawl') {
                 // Snake-like movement with grid-based steps
-                
+
                 // Check if it's time for the next movement step
                 if (props.timer >= props.moveInterval) {
                     props.timer = 0; // Reset timer
-                    
+
+                    // Store current position as the start of the new hop
+                    props.startPosition = {
+                        x: foodMesh.position.x,
+                        z: foodMesh.position.z
+                    };
+
                     // Calculate target position based on current direction
                     const targetX = props.currentGridPos.x + props.directionX;
                     const targetZ = props.currentGridPos.z + props.directionZ;
-                    
+
                     // Check if we're too far from original position
                     const distanceFromOrigin = Math.sqrt(
-                        Math.pow(targetX - props.originalGridPos.x, 2) + 
+                        Math.pow(targetX - props.originalGridPos.x, 2) +
                         Math.pow(targetZ - props.originalGridPos.z, 2)
                     );
-                    
+
                     // If we're too far or about to hit a boundary, change direction
-                    if (distanceFromOrigin > props.maxDistance || 
+                    if (distanceFromOrigin > props.maxDistance ||
                         Math.random() < CONFIG.FROG_MOVEMENT.DIRECTION_CHANGE_PROBABILITY) {
-                        
+
                         // Choose a new direction that points back toward the original position
                         const dirToOrigin = {
                             x: props.originalGridPos.x - props.currentGridPos.x,
                             z: props.originalGridPos.z - props.currentGridPos.z
                         };
-                        
+
                         // Normalize and add some randomness
                         const length = Math.sqrt(dirToOrigin.x * dirToOrigin.x + dirToOrigin.z * dirToOrigin.z);
                         if (length > 0) {
                             dirToOrigin.x /= length;
                             dirToOrigin.z /= length;
                         }
-                        
+
                         // Choose one of four cardinal directions, with bias toward origin
                         const possibleDirections = [
                             { x: 1, z: 0 },  // Right
@@ -790,11 +821,11 @@ export function updateFoodAnimations(gameState, deltaTime) {
                             { x: 0, z: 1 },  // Down
                             { x: 0, z: -1 }  // Up
                         ];
-                        
+
                         // Find the direction closest to our desired direction
                         let bestDirection = possibleDirections[0];
                         let bestDot = -Infinity;
-                        
+
                         for (const dir of possibleDirections) {
                             // Calculate dot product to find closest direction
                             const dot = dir.x * dirToOrigin.x + dir.z * dirToOrigin.z;
@@ -803,7 +834,7 @@ export function updateFoodAnimations(gameState, deltaTime) {
                                 bestDirection = dir;
                             }
                         }
-                        
+
                         // 50% chance to choose the best direction, otherwise random
                         if (Math.random() < 0.5) {
                             props.directionX = bestDirection.x;
@@ -814,41 +845,41 @@ export function updateFoodAnimations(gameState, deltaTime) {
                             props.directionZ = randomDir.z;
                         }
                     }
-                    
+
                     // Update current grid position
                     props.currentGridPos.x += props.directionX;
                     props.currentGridPos.z += props.directionZ;
-                    
+
                     // Set target world position
                     props.targetPosition = {
                         x: props.currentGridPos.x * CONFIG.UNIT_SIZE,
                         z: props.currentGridPos.z * CONFIG.UNIT_SIZE
                     };
                 }
-                
-                // Smoothly interpolate toward target position
+
+                // Calculate progress through current hop (0 to 1)
                 const t = Math.min(props.timer / props.moveInterval, 1.0);
-                const easedT = t * t * (3 - 2 * t); // Smooth step interpolation
-                
-                if (props.targetPosition) {
+                const easedT = t * t * (3 - 2 * t); // Smooth step for X/Z
+
+                if (props.targetPosition && props.startPosition) {
+                    // Interpolate from stored start to target (not from current position)
                     foodMesh.position.x = THREE.MathUtils.lerp(
-                        prevX, 
-                        props.targetPosition.x, 
-                        easedT * props.speed
+                        props.startPosition.x,
+                        props.targetPosition.x,
+                        easedT
                     );
-                    
+
                     foodMesh.position.z = THREE.MathUtils.lerp(
-                        prevZ, 
-                        props.targetPosition.z, 
-                        easedT * props.speed
+                        props.startPosition.z,
+                        props.targetPosition.z,
+                        easedT
                     );
                 }
-                
-                // Create a hopping motion during movement
-                const hopProgress = easedT;
-                const hopHeight = Math.sin(hopProgress * Math.PI) * CONFIG.FROG_MOVEMENT.HOP_HEIGHT * CONFIG.UNIT_SIZE;
+
+                // Hop arc: sin(0 to PI) gives a smooth 0 -> peak -> 0 parabolic arc
+                const hopHeight = Math.sin(t * Math.PI) * CONFIG.FROG_MOVEMENT.HOP_HEIGHT * CONFIG.UNIT_SIZE;
                 foodMesh.position.y = hopHeight;
-                
+
             } else {
                 // Original hopping movement style
                 

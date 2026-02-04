@@ -98,9 +98,9 @@ function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
     } else if (type === 'bush') {
         collisionCells.push({ x: pos.x, z: pos.z }); // Bush occupies the base cell
 
-        // Minecraft-style bush: compact cube blocks using the leaf material
+        // Minecraft-style bush: compact cube blocks using lighter bush material
         const addBushBlock = (dx, dy, dz) => {
-            const block = new THREE.Mesh(GEOMETRIES.cube, leavesMat);
+            const block = new THREE.Mesh(GEOMETRIES.cube, bushMat);
             block.scale.setScalar(CONFIG.UNIT_SIZE);
             block.position.set(
                 dx * CONFIG.UNIT_SIZE,
@@ -127,6 +127,23 @@ function createObstacleMeshInstance(pos, type, materials, obstacleGroup) {
         if (Math.random() < 0.6) addBushBlock(-1, 1, 0);
         if (Math.random() < 0.6) addBushBlock(0, 1, 1);
         if (Math.random() < 0.6) addBushBlock(0, 1, -1);
+
+        // Add small flowers on top of the bush
+        const flowerMats = [pinkFlowerMat, whiteDaisyMat, whiteTulipMat, yellowFlowerMat];
+        const flowerCount = 2 + Math.floor(Math.random() * 3); // 2-4 flowers
+        for (let f = 0; f < flowerCount; f++) {
+            const mat = flowerMats[Math.floor(Math.random() * flowerMats.length)];
+            const flowerPlane = new THREE.PlaneGeometry(CONFIG.UNIT_SIZE * 0.5, CONFIG.UNIT_SIZE * 0.5);
+            const flower = new THREE.Mesh(flowerPlane, mat);
+            const fx = (Math.random() - 0.5) * 1.5 * CONFIG.UNIT_SIZE;
+            const fz = (Math.random() - 0.5) * 1.5 * CONFIG.UNIT_SIZE;
+            flower.position.set(fx, 2 * CONFIG.UNIT_SIZE + blockOffset, fz);
+            flower.rotation.x = -Math.PI / 4 + (Math.random() - 0.5) * 0.3;
+            flower.rotation.y = Math.random() * Math.PI * 2;
+            flower.castShadow = false;
+            flower.receiveShadow = false;
+            group.add(flower);
+        }
     } else {
         return null; // Unknown type
     }
