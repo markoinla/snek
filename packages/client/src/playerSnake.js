@@ -985,6 +985,16 @@ export function applyPowerUp(type, gameState) {
         startCameraShake(gameState);
     }
 
+    // Brief bloom pulse on powerup pickup (not normal food)
+    if (type !== 'normal') {
+        const bloom = getBloomPass();
+        if (bloom) {
+            bloom.strength = 0.55;
+            bloom.threshold = 0.65;
+            // updateAlphaModeVisuals() eases these back to defaults each frame
+        }
+    }
+
     // Apply power-up effect based on type
     switch (type) {
         case 'speed':
