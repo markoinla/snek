@@ -1795,3 +1795,19 @@ function checkPositionCollision(pos1, pos2, forgiveness = 0) {
         return pos1.x === pos2.x && pos1.z === pos2.z;
     }
 }
+
+/** Return all visible player meshes (local + remote) for outline pass. */
+export function getAllPlayerMeshes() {
+    const meshes = [];
+    for (const m of playerSnakeMeshes) {
+        if (m && m.visible) meshes.push(m);
+    }
+    for (const id of Object.keys(remotePlayerMeshes)) {
+        const arr = remotePlayerMeshes[id];
+        if (!arr) continue;
+        for (const m of arr) {
+            if (m && m.visible) meshes.push(m);
+        }
+    }
+    return meshes;
+}

@@ -92,6 +92,12 @@ export const PALETTE = {
   wall: {
     base: 0xFFFFFF,
   },
+
+  // Outline (postprocessing edge pass)
+  outline: {
+    edge: 0x222222,      // dark ink outline
+    edgeGlow: 0x000000,  // no hidden-edge glow
+  },
 } as const;
 
 // Helper: convert hex to THREE.Color

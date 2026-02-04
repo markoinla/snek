@@ -802,3 +802,16 @@ export function checkEnemyRespawns(gameState) {
     enemies.respawnQueue = stillWaiting;
 }
 
+/** Return all visible enemy meshes for outline pass. */
+export function getAllEnemyMeshes() {
+    const meshes = [];
+    for (const id of Object.keys(enemyMeshes)) {
+        const arr = enemyMeshes[id];
+        if (!arr) continue;
+        for (const m of arr) {
+            if (m && m.visible) meshes.push(m);
+        }
+    }
+    return meshes;
+}
+

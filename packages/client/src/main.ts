@@ -25,7 +25,7 @@ import { applyPlayerInput } from './core/player.ts';
 import { spawnFoodCore } from './core/spawn.ts';
 import { spawnInitialEnemiesCore } from './core/enemy.ts';
 import { connectMultiplayer } from './network/colyseusClient.ts';
-import { initPostprocessing, resizePostprocessing, renderPostprocessing } from './postprocessing';
+import { initPostprocessing, resizePostprocessing, renderPostprocessing, setOutlinedObjects } from './postprocessing';
 import { PALETTE } from './palette';
 
 // FPS counter
@@ -586,6 +586,30 @@ function processEventEnvelopes(envelopes: any[], state: any, isMultiplayer: bool
     });
 }
 
+// --- Outline Sync ---
+// Collects all visible game-object meshes and feeds them to the outline pass.
+// Called once per render frame, after mesh interpolation.
+function syncOutlinedObjects(): void {
+    const objects: THREE.Object3D[] = [];
+
+    // Player + remote player meshes
+    const playerMeshes = Player.getAllPlayerMeshes?.();
+    if (playerMeshes) objects.push(...playerMeshes);
+
+    // Enemy meshes
+    const enemyMeshes = Enemy.getAllEnemyMeshes?.();
+    if (enemyMeshes) objects.push(...enemyMeshes);
+
+    // Food meshes
+    if (gameState.food?.meshes) {
+        for (const m of gameState.food.meshes) {
+            if (m && m.visible !== false) objects.push(m);
+        }
+    }
+
+    setOutlinedObjects(objects);
+}
+
 // --- Main Loop ---
 function animate() {
     requestAnimationFrame(animate);
@@ -700,9 +724,12 @@ function render() {
         Food.syncFoodMeshes(gameState);
     }
 
+    // Rebuild outline selection from visible game meshes
+    syncOutlinedObjects();
+
     // Update camera (even slightly after game over for effect?)
     Player.updateCamera(gameState);
-    
+
     // Update camera effects (shake, etc.)
     updateCameraEffects(gameState.simulation.time);
 
